@@ -1,0 +1,299 @@
+{
+  "$defs": {
+    "DashboardContext": {
+      "properties": {
+        "type": {
+          "const": "dashboard",
+          "default": "dashboard",
+          "type": "string"
+        }
+      },
+      "title": "DashboardContext",
+      "type": "object"
+    },
+    "DepositContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "term_days": {
+          "type": "integer"
+        },
+        "type": {
+          "const": "deposit",
+          "default": "deposit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "term_days"
+      ],
+      "title": "DepositContext",
+      "type": "object"
+    },
+    "FollowupContext": {
+      "properties": {
+        "card_id": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "type": {
+          "const": "followup",
+          "default": "followup",
+          "type": "string"
+        }
+      },
+      "required": [
+        "card_id",
+        "question"
+      ],
+      "title": "FollowupContext",
+      "type": "object"
+    },
+    "FxContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "country": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "currency": {
+          "type": "string"
+        },
+        "type": {
+          "const": "fx",
+          "default": "fx",
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "title": "FxContext",
+      "type": "object"
+    },
+    "LoanContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "product": {
+          "enum": [
+            "loan",
+            "leasing",
+            "guarantee"
+          ],
+          "type": "string"
+        },
+        "rate_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "floating",
+                "fixed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "loan",
+          "default": "loan",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product",
+        "amount"
+      ],
+      "title": "LoanContext",
+      "type": "object"
+    },
+    "PageContext": {
+      "properties": {
+        "entities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "text": {
+          "type": "string"
+        },
+        "type": {
+          "const": "page",
+          "default": "page",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "text"
+      ],
+      "title": "PageContext",
+      "type": "object"
+    },
+    "PaymentContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "beneficiary_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "currency": {
+          "default": "RUB",
+          "type": "string"
+        },
+        "inn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "payment",
+          "default": "payment",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount"
+      ],
+      "title": "PaymentContext",
+      "type": "object"
+    },
+    "PayrollContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "headcount": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "payroll",
+          "default": "payroll",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount"
+      ],
+      "title": "PayrollContext",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "owner",
+        "ceo",
+        "cfo",
+        "treasurer",
+        "chief_accountant"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "action_context": {
+      "discriminator": {
+        "mapping": {
+          "dashboard": "#/$defs/DashboardContext",
+          "deposit": "#/$defs/DepositContext",
+          "followup": "#/$defs/FollowupContext",
+          "fx": "#/$defs/FxContext",
+          "loan": "#/$defs/LoanContext",
+          "page": "#/$defs/PageContext",
+          "payment": "#/$defs/PaymentContext",
+          "payroll": "#/$defs/PayrollContext"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PaymentContext"
+        },
+        {
+          "$ref": "#/$defs/DepositContext"
+        },
+        {
+          "$ref": "#/$defs/FxContext"
+        },
+        {
+          "$ref": "#/$defs/LoanContext"
+        },
+        {
+          "$ref": "#/$defs/PayrollContext"
+        },
+        {
+          "$ref": "#/$defs/DashboardContext"
+        },
+        {
+          "$ref": "#/$defs/PageContext"
+        },
+        {
+          "$ref": "#/$defs/FollowupContext"
+        }
+      ]
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/Role"
+    },
+    "user_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_id",
+    "client_id",
+    "role",
+    "action_context"
+  ],
+  "title": "InterpretRequest",
+  "type": "object"
+}
