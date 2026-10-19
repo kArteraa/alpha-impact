@@ -1,0 +1,17 @@
+{
+  "name": "alfa-insight",
+  "private": true,
+  "workspaces": [
+    "apps/front/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @alfa-insight/plugin && npm run build --workspace @alfa-insight/application",
+    "test": "npm run test --workspaces",
+    "gen:types": "node apps/front/app-plugin/scripts/gen-types.mjs",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "json-schema-to-typescript": "^16.0.0"
+  }
+}
