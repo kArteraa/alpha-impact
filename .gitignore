@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node
+node_modules/
+dist/
+dist-extension/
+.vite/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Data
+data/raw/
+
+# Editors and local agent settings
+.idea/
+.vscode/
+.DS_Store
+.claude/settings.local.json
