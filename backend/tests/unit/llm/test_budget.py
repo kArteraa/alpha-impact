@@ -2,13 +2,12 @@ from datetime import timedelta
 
 import pytest
 
-from apps.services.llm.store import Usage
 from shared.contracts.errors import BudgetExceeded
-from tests.unit.llm.fakes import TODAY, MemoryStore, ModelServer, make_gateway
+from tests.unit.llm.fakes import TODAY, MemoryStore, ModelServer, Usage, make_gateway
 
 
 def spent(store: MemoryStore, cost_rub: float, days_ago: int = 0) -> None:
-    store.usages.append(
+    store.add(
         Usage(
             day=TODAY - timedelta(days=days_ago),
             task="interpret",

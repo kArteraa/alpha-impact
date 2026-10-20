@@ -1,11 +1,13 @@
+import asyncio
 from collections.abc import Callable
+from datetime import timedelta
 from typing import Any
 
 import httpx
 import pytest
 from fastapi import FastAPI, Header
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from apps.services.llm import utc_today
@@ -16,6 +18,8 @@ from shared.contracts.errors import BudgetExceeded
 from shared.db.models import LlmCacheRow, LlmUsageRow
 from tests.unit.llm import fakes
 
+CACHE_TTL_SECONDS = 3600
+
 
 class Factor(BaseModel):
     name: str
@@ -23,8 +27,9 @@ class Factor(BaseModel):
 
 
 class MockModelServer:
-    def __init__(self) -> None:
+    def __init__(self, delay_seconds: float = 0.0) -> None:
         self.calls = 0
+        self.delay_seconds = delay_seconds
         self.app = FastAPI()
         self.app.post("/v1/chat/completions")(self.chat)
         self.app.post("/v1/embeddings")(self.embeddings)
@@ -32,6 +37,7 @@ class MockModelServer:
     async def chat(self, body: dict[str, Any], authorization: str = Header()) -> dict[str, Any]:
         assert authorization == "Bearer test-key"
         self.calls += 1
+        await asyncio.sleep(self.delay_seconds)
         return {
             "choices": [{"message": {"content": '{"name": "key_rate", "strength": 0.8}'}}],
             "usage": {"prompt_tokens": 2000, "completion_tokens": 400},
@@ -61,7 +67,7 @@ def make_gateway(
     def build(daily_budget_rub: float = 500.0) -> ModelGateway:
         return fakes.make_gateway(
             server.http_client(),
-            SqlUsageStore(sessions),
+            SqlUsageStore(sessions, CACHE_TTL_SECONDS),
             daily_budget_rub=daily_budget_rub,
             prices=load_prices(MODELS_PATH),
             today=utc_today,
@@ -125,3 +131,84 @@ async def test_embedding_is_cached_in_database(
     assert await make_gateway().embed("ставка") == [0.5, 0.25]
     assert await make_gateway().embed("ставка") == [0.5, 0.25]
     assert server.calls == 1
+
+
+async def age_cache(sessions: async_sessionmaker[AsyncSession], seconds: int) -> None:
+    aged = func.now() - timedelta(seconds=seconds)
+    async with sessions() as session, session.begin():
+        await session.execute(update(LlmCacheRow).values(created_at=aged))
+
+
+async def test_concurrent_calls_share_one_reservation_across_gateways(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    server = MockModelServer(delay_seconds=0.2)
+    async with sessions() as session, session.begin():
+        session.add(
+            LlmUsageRow(
+                day=utc_today(),
+                task="interpret",
+                model="glm-5.3-flash",
+                tokens_in=0,
+                tokens_out=0,
+                cost_rub=449.5,
+            )
+        )
+    gateways = [
+        fakes.make_gateway(
+            server.http_client(),
+            SqlUsageStore(sessions, CACHE_TTL_SECONDS),
+            prices=load_prices(MODELS_PATH),
+            today=utc_today,
+        )
+        for _ in range(5)
+    ]
+    results = await asyncio.gather(
+        *(gateway.complete("interpret", "sys", f"usr {n}") for n, gateway in enumerate(gateways)),
+        return_exceptions=True,
+    )
+    assert sum(not isinstance(result, BaseException) for result in results) == 1
+    assert sum(isinstance(result, BudgetExceeded) for result in results) == 4
+    assert server.calls == 1
+
+
+async def test_expired_cache_entry_is_a_miss_and_is_refreshed(
+    make_gateway: Callable[..., ModelGateway],
+    server: MockModelServer,
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    gateway = make_gateway()
+    await gateway.complete("interpret", "sys", "usr", Factor)
+    await age_cache(sessions, CACHE_TTL_SECONDS + 60)
+    result = await gateway.complete("interpret", "sys", "usr", Factor)
+    assert result == (Factor(name="key_rate", strength=0.8), 2000, 400)
+    assert server.calls == 2
+    assert await gateway.complete("interpret", "sys", "usr", Factor) == (
+        Factor(name="key_rate", strength=0.8),
+        0,
+        0,
+    )
+    assert server.calls == 2
+
+
+async def test_fresh_cache_entry_is_still_a_hit(
+    make_gateway: Callable[..., ModelGateway],
+    server: MockModelServer,
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    gateway = make_gateway()
+    await gateway.embed("ставка")
+    await age_cache(sessions, CACHE_TTL_SECONDS - 60)
+    assert await gateway.embed("ставка") == [0.5, 0.25]
+    assert server.calls == 1
+
+
+async def test_writing_to_cache_drops_other_expired_entries(
+    make_gateway: Callable[..., ModelGateway], sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    gateway = make_gateway()
+    await gateway.embed("старый текст")
+    await age_cache(sessions, CACHE_TTL_SECONDS + 60)
+    await gateway.embed("новый текст")
+    async with sessions() as session:
+        assert await session.scalar(select(func.count()).select_from(LlmCacheRow)) == 1
