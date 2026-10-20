@@ -15,7 +15,7 @@ Read what the task needs, not everything up front.
 | Product idea and demo flow | `docs/CONCEPT.md`, `docs/DEMO.md` |
 | Services, request flow, layout, security | `docs/ARCHITECTURE.md`, the section you touch |
 | Schemas and ports | `backend/shared/contracts/` (code is the source); `docs/CONTRACTS.md` before touching them |
-| Team decisions not visible in code | `docs/DECISIONS.md` |
+| Team decisions not visible in code | `docs/DECISIONS.md` (rules and index) and every file in `docs/decisions/` |
 | Dataset and bank report facts | `docs/DATA.md` |
 | Who owns what and in which order | `docs/TEAM.md` |
 | Project essence, goals and current state in one page | `docs/SUMMARY.md` |
@@ -39,7 +39,7 @@ frontend/                 npm workspace; run npm from here
   application/            React + Vite mock of Alfa-Business that embeds InsightPanel
   app-plugin/             InsightPanel library + MV3 browser extension
   tests/e2e/              Playwright
-docs/                     SUMMARY, CONCEPT, ARCHITECTURE, CONTRACTS, PIPELINE, BACKLOG, TEAM, DEMO, DECISIONS, DATA
+docs/                     SUMMARY, CONCEPT, ARCHITECTURE, CONTRACTS, PIPELINE, BACKLOG, TEAM, DEMO, DECISIONS (+ decisions/ per member), DATA
 ```
 
 Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/integration` in docs are relative to `backend/`; `application/`, `app-plugin/`, `tests/e2e` are relative to `frontend/`.
@@ -97,7 +97,7 @@ Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/
 
 ## Knowledge
 
-- A new team decision → one dated line appended to `docs/DECISIONS.md`; old lines are never rewritten. A new dataset fact → `docs/DATA.md`.
+- A new team decision → one dated line appended to your own file in `docs/decisions/` (index: `docs/DECISIONS.md`); never write into another member's file; old lines are never rewritten. A new dataset fact → `docs/DATA.md`.
 - Machine-specific notes (ports, local tools) stay in your agent's personal memory outside git: Claude auto-memory or `CLAUDE.local.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`. Never create `AGENTS.override.md`: Codex would ignore this file.
 
 ## Definition of done

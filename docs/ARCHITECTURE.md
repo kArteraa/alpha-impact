@@ -54,8 +54,9 @@ alpha-impact/
   docs/
     CONCEPT.md ARCHITECTURE.md CONTRACTS.md DEMO.md   продукт, устройство, контракты, демо
     PIPELINE.md                процесс задачи для любого агента
-    BACKLOG.md TEAM.md         задачи AH-1…AH-50; кто и в каком порядке их делает
-    DECISIONS.md DATA.md       журнал решений команды; факты о данных
+    BACKLOG.md TEAM.md         задачи AH-1…AH-51; кто и в каком порядке их делает
+    DECISIONS.md DATA.md       правила и оглавление журнала решений; факты о данных
+    decisions/                 журнал решений: по файлу на участника
     SUMMARY.md                 суть, цели и текущее состояние на одной странице
   AGENTS.md                    правила для всех агентов — единственный источник
   CLAUDE.md  GEMINI.md         только импорт AGENTS.md
