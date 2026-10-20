@@ -27,3 +27,19 @@ def test_stronger_ruble_makes_payment_cheaper() -> None:
 def test_rejects_invalid_input(amount: float, currency: str) -> None:
     with pytest.raises(ValueError):
         fx_exposure(amount, currency, 82.0, 87.0)
+
+
+def test_rejects_ruble_as_foreign_currency() -> None:
+    with pytest.raises(ValueError):
+        fx_exposure(100.0, "RUB", 1.0, 1.0)
+
+
+@pytest.mark.parametrize(
+    ("amount", "rate_now", "rate_forecast"),
+    [(float("nan"), 82.0, 87.0), (100.0, 82.0, -87.0), (100.0, float("inf"), 87.0)],
+)
+def test_rejects_non_finite_or_negative_values(
+    amount: float, rate_now: float, rate_forecast: float
+) -> None:
+    with pytest.raises(ValueError):
+        fx_exposure(amount, "USD", rate_now, rate_forecast)

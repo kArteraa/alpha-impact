@@ -15,7 +15,12 @@ RUB = "RUB"
 def rate_burden(
     portfolio_amount: float, rate_now: float, rate_expected: float, months: int
 ) -> WhatIfResult:
-    _require_positive(portfolio_amount=portfolio_amount, months=months)
+    _require_positive(
+        portfolio_amount=portfolio_amount,
+        rate_now=rate_now,
+        rate_expected=rate_expected,
+        months=months,
+    )
     value = round(
         portfolio_amount * (rate_expected - rate_now) / PERCENT * months / MONTHS_IN_YEAR, 2
     )
@@ -39,6 +44,7 @@ def rate_burden(
 
 def deposit_terms(amount: float, term_days: int, rate_path: list[float]) -> WhatIfResult:
     _require_positive(amount=amount, term_days=term_days)
+    _require_positive(**{f"rate_path[{i}]": rate for i, rate in enumerate(rate_path)})
     months = math.ceil(term_days / DAYS_IN_MONTH)
     if len(rate_path) < months:
         raise ValueError(f"rate_path must cover {months} months, got {len(rate_path)}")
@@ -72,9 +78,9 @@ def deposit_terms(amount: float, term_days: int, rate_path: list[float]) -> What
 def fx_exposure(
     amount: float, currency: str, rate_now: float, rate_forecast: float
 ) -> WhatIfResult:
-    _require_positive(amount=amount)
-    if not CURRENCY_CODE.fullmatch(currency):
-        raise ValueError(f"currency must be a three-letter ISO code, got {currency!r}")
+    _require_positive(amount=amount, rate_now=rate_now, rate_forecast=rate_forecast)
+    if not CURRENCY_CODE.fullmatch(currency) or currency == RUB:
+        raise ValueError(f"currency must be a foreign three-letter ISO code, got {currency!r}")
     value = round(amount * (rate_forecast - rate_now), 2)
     formula = (
         f"{format_amount(amount)} {currency} × "
@@ -100,5 +106,5 @@ def _interest(amount: float, rate: float, days: int) -> float:
 
 def _require_positive(**values: float) -> None:
     for name, value in values.items():
-        if value <= 0:
-            raise ValueError(f"{name} must be positive, got {value}")
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(f"{name} must be a positive finite number, got {value}")

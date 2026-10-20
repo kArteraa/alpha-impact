@@ -42,3 +42,12 @@ def test_flat_path_gives_zero_difference() -> None:
 def test_rejects_invalid_input(amount: float, term_days: int, rate_path: list[float]) -> None:
     with pytest.raises(ValueError):
         deposit_terms(amount, term_days, rate_path)
+
+
+@pytest.mark.parametrize(
+    "rate_path",
+    [[14.0, float("nan"), 13.0], [14.0, -1.0, 13.0], [float("inf"), 13.5, 13.0]],
+)
+def test_rejects_invalid_rates(rate_path: list[float]) -> None:
+    with pytest.raises(ValueError):
+        deposit_terms(1_000_000.0, 90, rate_path)
