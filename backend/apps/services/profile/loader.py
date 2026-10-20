@@ -8,6 +8,7 @@ from apps.services.profile.okved import normalize
 
 MARK_ON = "1.0"
 COUNTRY_SEPARATOR = ","
+CSV_DELIMITER = ";"
 
 
 @dataclass(frozen=True)
@@ -63,7 +64,7 @@ def parse_row(row: dict[str, str], config: ProfileConfig) -> Company:
 
 def load_companies(path: Path, config: ProfileConfig) -> Companies:
     with path.open(encoding="utf-8", newline="") as file:
-        rows = list(csv.DictReader(file, delimiter=";"))
+        rows = list(csv.DictReader(file, delimiter=CSV_DELIMITER))
     counts = Counter(row["SYNTHETIC_U"] for row in rows)
     placeholders = frozenset(client_id for client_id, count in counts.items() if count > 1)
     by_id = {
