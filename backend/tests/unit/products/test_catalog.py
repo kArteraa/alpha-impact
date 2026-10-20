@@ -43,6 +43,8 @@ async def test_rules_are_loaded_from_file(tmp_path: Path) -> None:
         CATALOG.replace("claims:", "tags:"),
         CATALOG.replace("action_types: [page]", "action_types: []"),
         CATALOG.replace("    product: Банковская гарантия\n", ""),
+        CATALOG.replace("action_types: [page]", "action_types: [paymnet]"),
+        CATALOG + CATALOG.split("rules:\n")[1],
     ],
 )
 def test_malformed_catalog_is_rejected(tmp_path: Path, broken: str) -> None:
