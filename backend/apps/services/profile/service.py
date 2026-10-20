@@ -2,8 +2,9 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.profile.builder import FEATURES, Payload, blank_payload
+from apps.services.profile.builder import FEATURES, Payload, blank_payload, exposures
 from apps.services.profile.config import ProfileConfig
+from apps.services.profile.okved import OTHER
 from apps.services.profile.repository import (
     find_corrections,
     find_profile,
@@ -14,6 +15,8 @@ from apps.services.profile.repository import (
 from shared.contracts.errors import AccessDenied, NotFound
 from shared.contracts.schemas import ClientProfile, Feature
 
+INDUSTRY = "industry_class"
+
 
 def is_bank_fact(payload: Payload, feature: str) -> bool:
     return bool(payload["features"].get(feature, {}).get("source") == "bank")
@@ -23,6 +26,7 @@ class Profiler:
     def __init__(self, sessions: async_sessionmaker[AsyncSession], config: ProfileConfig) -> None:
         self._sessions = sessions
         self._config = config
+        self._industries = frozenset(config.industries.values()) | {OTHER}
 
     async def get_profile(self, user_id: str, client_id: str) -> ClientProfile:
         async with self._sessions() as session:
@@ -40,6 +44,8 @@ class Profiler:
             await self._authorize(session, user_id, client_id)
             if feature not in FEATURES:
                 raise NotFound(f"Unknown profile feature: {feature}")
+            if feature == INDUSTRY and not self._is_industry(value):
+                raise NotFound(f"Unknown industry class: {value}")
             row = await find_profile(session, client_id)
             if row is not None and is_bank_fact(row.payload, feature):
                 raise AccessDenied(f"Bank fact {feature} of client {client_id} is read-only")
@@ -55,6 +61,17 @@ class Profiler:
                 "confidence": self._config.confidence.user,
                 "updated_at": updated_at,
             }
+        )
+
+    def _is_industry(self, value: object) -> bool:
+        return isinstance(value, str) and value in self._industries
+
+    def _exposures(self, payload: Payload, features: dict[str, Feature]) -> dict[str, float]:
+        industry = features.get(INDUSTRY)
+        if not payload["features"] or industry is None or industry.source != "user":
+            return dict(payload["exposures"])
+        return exposures(
+            payload["features"], payload["flags"]["imports"], str(industry.value), self._config
         )
 
     async def _authorize(self, session: AsyncSession, user_id: str, client_id: str) -> None:
@@ -83,7 +100,7 @@ class Profiler:
             group_id=payload["group_id"],
             group_members=payload["group_members"],
             features=features,
-            exposures=payload["exposures"],
+            exposures=self._exposures(payload, features),
             flags=payload["flags"],
             version=version + sum(correction.revision for correction in corrections),
         )

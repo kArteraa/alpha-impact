@@ -13,6 +13,7 @@ from tests.unit.profile.fixtures import FIXTURES_DIR
 USER = "user_cfo_construction"
 CLIENT = "U_9250"
 NO_CARD = "U_235754"
+SMALL = "U_85511"
 CONFIG = load_config()
 
 
@@ -87,6 +88,27 @@ async def test_correction_overrides_value_and_survives_rebuild(
     assert rebuilt.version == 2
 
 
+async def test_industry_correction_recomputes_exposures(
+    profiler: Profiler, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    corrected = await profiler.apply_user_correction(USER, CLIENT, "industry_class", "energy")
+
+    assert corrected.exposures["construction_demand"] == 0.0
+    assert corrected.exposures["commodity_prices"] == 0.6
+
+    await rebuild_profiles(sessions, FIXTURES_DIR, CONFIG)
+
+    assert (await profiler.get_profile(USER, CLIENT)).exposures == corrected.exposures
+
+
+async def test_unknown_industry_class_is_not_found(profiler: Profiler) -> None:
+    with pytest.raises(NotFound):
+        await profiler.apply_user_correction(USER, CLIENT, "industry_class", "spaceships")
+    assert (await profiler.get_profile(USER, CLIENT)).features["industry_class"].value == (
+        "construction"
+    )
+
+
 async def test_repeated_correction_raises_version_again(profiler: Profiler) -> None:
     await profiler.apply_user_correction(USER, CLIENT, "industry_class", "energy")
     corrected = await profiler.apply_user_correction(USER, CLIENT, "industry_class", "logistics")
@@ -123,6 +145,20 @@ async def test_client_without_card_gets_empty_profile_that_accepts_corrections(
     assert corrected.features["region"].source == "user"
     assert corrected.flags["no_card"] is True
     assert corrected.version == 1
+
+
+async def test_linked_small_company_gets_profile_from_card(
+    profiler: Profiler, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    async with sessions() as session, session.begin():
+        session.add(UserClientRow(user_id=USER, client_id=SMALL))
+    await rebuild_profiles(sessions, FIXTURES_DIR, CONFIG)
+
+    profile = await profiler.get_profile(USER, SMALL)
+
+    assert profile.flags["no_card"] is False
+    assert profile.features["industry_class"].value == "construction"
+    assert profile.group_id == "group_133188_sb"
 
 
 async def test_placeholder_profile_is_flagged(profiler: Profiler) -> None:

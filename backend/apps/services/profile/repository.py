@@ -80,5 +80,9 @@ async def linked_clients(session: AsyncSession, user_id: str) -> list[str]:
     return list(await session.scalars(query))
 
 
+async def all_linked_clients(session: AsyncSession) -> frozenset[str]:
+    return frozenset(await session.scalars(select(UserClientRow.client_id)))
+
+
 async def is_linked(session: AsyncSession, user_id: str, client_id: str) -> bool:
     return await session.get(UserClientRow, (user_id, client_id)) is not None
