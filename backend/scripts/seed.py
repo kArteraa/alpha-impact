@@ -35,10 +35,10 @@ async def main() -> None:
     engine = create_engine(Settings().DB_URL)
     try:
         sessions = make_session_factory(engine)
-        profiles = await rebuild_profiles(sessions, RAW_DIR, load_config())
-        print(f"profiles: {profiles}")
         users = await seed_users(sessions)
         print(f"users: {users}")
+        profiles = await rebuild_profiles(sessions, RAW_DIR, load_config())
+        print(f"profiles: {profiles}")
     finally:
         await engine.dispose()
 
