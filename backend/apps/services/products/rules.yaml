@@ -1,0 +1,40 @@
+vocabulary:
+  features:
+    cl_type: Тип клиента из столбца CL_TYPE без переименования значений (CLIENT, CLOSE_CLIENT, …)
+  flags:
+    imports: Компания ведёт импорт (ВЭД)
+    buyer_concentration: Выручка сосредоточена у немногих покупателей
+    free_balances: На счетах есть свободные остатки
+  claims:
+    ruble_weakening: Ожидается ослабление рубля
+    industry_stress: Отрасль клиента под давлением
+    counterparty_industry_stress: Отрасль контрагента под давлением
+    high_rate: Ставка высокая
+exclude:
+  features:
+    cl_type: CLOSE_CLIENT
+rules:
+  - id: letter_of_credit
+    product: Аккредитив
+    reason: Контрагент работает в отрасли под давлением — аккредитив защищает оплату до подтверждения поставки
+    action_types: [payment]
+    flags: []
+    claims: [counterparty_industry_stress]
+  - id: fx_hedge
+    product: Валютный форвард
+    reason: Компания импортирует, а рубль ожидаемо слабеет — форвард фиксирует курс будущих закупок
+    action_types: [fx, payment, dashboard]
+    flags: [imports]
+    claims: [ruble_weakening]
+  - id: factoring
+    product: Факторинг
+    reason: Выручка зависит от немногих покупателей в отрасли с проблемами — факторинг ускоряет оплату и снимает риск задержек
+    action_types: [payment, payroll, dashboard]
+    flags: [buyer_concentration]
+    claims: [industry_stress]
+  - id: deposit
+    product: Депозит
+    reason: На счетах есть свободные остатки, а ставка высокая — депозит фиксирует доходность
+    action_types: [deposit, dashboard]
+    flags: [free_balances]
+    claims: [high_rate]
