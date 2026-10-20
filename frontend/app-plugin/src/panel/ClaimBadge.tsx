@@ -1,18 +1,12 @@
 import type { Claim } from "../types";
+import { BadgeContent } from "./ClaimTypeBadge";
 import { CLAIM_BADGES, sourceTitle } from "./labels";
 
 export function ClaimBadge({ claim }: { claim: Claim }) {
   const badge = CLAIM_BADGES[claim.type];
   const title = sourceTitle(claim.source_ref);
   const label = `${badge.label} — источник: ${title}`;
-  const content = (
-    <>
-      <span className="claim-badge-icon" aria-hidden="true">
-        {badge.icon}
-      </span>
-      {badge.label}
-    </>
-  );
+  const content = <BadgeContent type={claim.type} />;
   if (claim.source_ref.url) {
     return (
       <a
