@@ -1,4 +1,4 @@
-import { InsightPanel, mockResponses } from "@alfa-insight/plugin";
+import { InsightPanel, mockResponses } from "@alpha-impact/plugin";
 
 export function PaymentPage() {
   return (

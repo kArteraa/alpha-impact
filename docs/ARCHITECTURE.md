@@ -5,7 +5,7 @@
 ## Дерево репозитория
 
 ```
-alfa-insight/
+alpha-impact/
   backend/                     Python-монолит; uv, pytest, alembic запускаются из этой папки
     main.py                    composition root (FastAPI app factory + DI wiring)
     pyproject.toml  uv.lock    зависимости бэкенда
@@ -96,7 +96,7 @@ interpreter.interpret():
 
 ## Фронтенд
 
-- `frontend/application` — страницы: `/` (виджет), `/payments/new`, `/deposits/new`, `/loans`, `/profile`, `/trace/:id`. Использует `@alfa-insight/plugin` из `frontend/app-plugin` как workspace-зависимость.
+- `frontend/application` — страницы: `/` (персональная лента: виджет и полный список событий), `/payments/new`, `/deposits/new`, `/loans`, `/profile`, `/trace/:id`. Использует `@alpha-impact/plugin` из `frontend/app-plugin` как workspace-зависимость.
 - `frontend/app-plugin` — экспортирует `InsightPanel`, `useInterpret(actionContext)`, типы из `shared/contracts/openapi`; второй entry собирает расширение (`manifest.json`, `content.ts`, `background.ts`, `sidepanel.tsx`, `popup.tsx`).
 - Типы фронта генерируются из JSON Schema (`npm run gen:types`), руками не пишутся.
 
