@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import yaml
 from pydantic import BaseModel
@@ -35,11 +36,12 @@ class ProfileConfig(BaseModel):
     industries: dict[str, str]
 
 
-def read_yaml(name: str) -> object:
-    return yaml.safe_load((CONFIG_DIR / name).read_text(encoding="utf-8"))
+def read_yaml(name: str) -> dict[str, Any]:
+    content: dict[str, Any] = yaml.safe_load((CONFIG_DIR / name).read_text(encoding="utf-8"))
+    return content
 
 
 def load_config() -> ProfileConfig:
-    settings = read_yaml("config.yaml")
-    assert isinstance(settings, dict)
-    return ProfileConfig.model_validate({**settings, "industries": read_yaml("industries.yaml")})
+    return ProfileConfig.model_validate(
+        {**read_yaml("config.yaml"), "industries": read_yaml("industries.yaml")}
+    )

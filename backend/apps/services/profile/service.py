@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.profile.builder import FEATURES, blank_payload
+from apps.services.profile.builder import FEATURES, Payload, blank_payload
 from apps.services.profile.config import ProfileConfig
 from apps.services.profile.repository import (
     find_corrections,
@@ -13,6 +13,10 @@ from apps.services.profile.repository import (
 )
 from shared.contracts.errors import AccessDenied, NotFound
 from shared.contracts.schemas import ClientProfile, Feature
+
+
+def is_bank_fact(payload: Payload, feature: str) -> bool:
+    return bool(payload["features"].get(feature, {}).get("source") == "bank")
 
 
 class Profiler:
@@ -37,19 +41,21 @@ class Profiler:
             if feature not in FEATURES:
                 raise NotFound(f"Unknown profile feature: {feature}")
             row = await find_profile(session, client_id)
-            if row is not None and row.payload["features"].get(feature, {}).get("source") == "bank":
+            if row is not None and is_bank_fact(row.payload, feature):
                 raise AccessDenied(f"Bank fact {feature} of client {client_id} is read-only")
-            Feature.model_validate(
-                {
-                    "value": value,
-                    "source": "user",
-                    "confidence": self._config.confidence.user,
-                    "updated_at": datetime.now(UTC),
-                }
-            )
+            self._user_feature(value, datetime.now(UTC))
             await save_correction(session, client_id, feature, value, user_id)
-        async with self._sessions() as session:
             return await self._read(session, client_id)
+
+    def _user_feature(self, value: object, updated_at: datetime) -> Feature:
+        return Feature.model_validate(
+            {
+                "value": value,
+                "source": "user",
+                "confidence": self._config.confidence.user,
+                "updated_at": updated_at,
+            }
+        )
 
     async def _authorize(self, session: AsyncSession, user_id: str, client_id: str) -> None:
         if not await is_linked(session, user_id, client_id):
@@ -68,12 +74,10 @@ class Profiler:
                 for name, data in payload["features"].items()
             }
         for correction in corrections:
-            features[correction.feature] = Feature(
-                value=correction.value,
-                source="user",
-                confidence=self._config.confidence.user,
-                updated_at=correction.updated_at,
-            )
+            if not is_bank_fact(payload, correction.feature):
+                features[correction.feature] = self._user_feature(
+                    correction.value, correction.updated_at
+                )
         return ClientProfile(
             client_id=client_id,
             group_id=payload["group_id"],
