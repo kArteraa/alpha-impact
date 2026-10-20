@@ -35,7 +35,7 @@ alfa-insight/
         container.py           Container: register(port, factory) / resolve(port); scope per request
         wiring.py              порядок регистрации сервисов
       config/
-        settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, MODEL_* , FEATURE_*
+        settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, MODEL_*, RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
     scripts/                   gen_schemas.py, seed.py
     data/
       raw/                     три csv (не коммитятся, .gitignore) + PDF/DOCX отчётов
@@ -48,22 +48,21 @@ alfa-insight/
     application/               React + Vite: макет Альфа-Бизнеса (главный, платёж, депозит, кредит, профиль, трасса)
     app-plugin/                React + Vite: библиотека InsightPanel + сборка расширения MV3 (content script, service worker, side panel, popup)
     tests/e2e/                 Playwright: сквозной сценарий демо
-  docker-compose.yml           api, db (postgres+pgvector), front, seed
-  Makefile                     up / down / seed / check / test / lint / e2e
+  docker-compose.yml           db, db_test (профиль test), api, front, seed (профиль seed); запуск — docker compose up -d --build
   .env.example
   THIRD_PARTY_NOTICES.md
   README.md
   docs/
-    CONCEPT.md ARCHITECTURE.md CONTRACTS.md PIPELINE.md TEAM.md ECC-SETUP.md DEMO.md BOOTSTRAP-PROMPT.md
-    tasks/BACKLOG.md (единый) + CLAUDE-TASKS.md GEMINI-TASKS.md CODEX-TASKS.md (как запускать в своём агенте)
-  CLAUDE.md  AGENTS.md  GEMINI.md   одни и те же правила для Claude Code, Codex, Gemini CLI (менять вместе)
-  .claude/
-    memory/MEMORY.md
-    rules/ecc/                 скопированные rules/common + rules/python + rules/typescript из ECC
-    skills/task/SKILL.md       точка входа /task для Claude Code
-    settings.json              hooks profile, allowed tools
-  .agents/skills/task/SKILL.md  точка входа $task для Codex (копия в .codex/skills/task/)
-  .gemini/commands/task.toml    точка входа /task для Gemini CLI
+    CONCEPT.md ARCHITECTURE.md CONTRACTS.md DEMO.md   продукт, устройство, контракты, демо
+    PIPELINE.md                процесс задачи для любого агента
+    BACKLOG.md TEAM.md         задачи AH-1…AH-47; кто и в каком порядке их делает
+    DECISIONS.md DATA.md       журнал решений команды; факты о данных
+  AGENTS.md                    правила для всех агентов — единственный источник
+  CLAUDE.md  GEMINI.md         только импорт AGENTS.md
+  .claude/skills/task/SKILL.md  /task в Claude Code → docs/PIPELINE.md
+  .claude/settings.json        разрешённые команды для Claude Code
+  .agents/skills/task/SKILL.md  $task в Codex → docs/PIPELINE.md
+  .gemini/commands/task.toml    /task в Gemini CLI → docs/PIPELINE.md
   .github/workflows/           backend.yml (ruff, mypy, import-linter, pytest), frontend.yml (gen:types, vitest, npm run build)
 ```
 
@@ -71,11 +70,11 @@ alfa-insight/
 
 ## Правила изоляции
 
-1. Сервис импортирует только себя, `shared.contracts`, `shared.config`, `shared.db` (свои репозитории). Другие сервисы — никогда.
-2. Зависимость между сервисами выражается портом из `shared/contracts/ports.py` и разрешается из DI-контейнера в `main.py`. Пример: `interpreter` получает `ProfileService`, `CounterpartyService`, `NewsService`, `HouseViewService`, `WhatIfService`, `ProductRulesService`, `LLMGateway`, `TraceStore` в конструктор.
-3. Каждый сервис экспортирует только `register(container: Container) -> None`.
-4. Таблицы принадлежат сервису; чужие таблицы читаются только через порт владельца.
-5. Проверка — `tests/unit/test_import_boundaries.py` на `import-linter` (contracts: `forbidden` между `apps.services.*`).
+Сами правила — в `AGENTS.md`, раздел «Service isolation»; здесь — как они устроены.
+
+- Зависимость между сервисами выражается портом из `shared/contracts/ports.py` и разрешается из DI-контейнера. Пример: `interpreter` получает `ProfileService`, `CounterpartyService`, `NewsService`, `HouseViewService`, `WhatIfService`, `ProductRulesService`, `LLMGateway`, `TraceStore` в конструктор.
+- Сервис экспортирует только `register(container: Container) -> None`.
+- Проверка — `tests/unit/test_import_boundaries.py` запускает `import-linter` с контрактами из `backend/pyproject.toml`: `independence` между `apps.services.*`, `forbidden` на `shared.di.wiring` и `shared.db.migrations`, `layers` — `shared` не зависит от сервисов.
 
 ## Поток запроса
 
@@ -93,7 +92,7 @@ interpreter.interpret():
 
 ## Пакетный контур
 
-`make seed` запускает по порядку: загрузка csv → чистка → профили и агрегаты графа → OCR отчётов → извлечение утверждений (черновики в статусе `draft`, подтверждение в `data/seed/house_view_approved.json`) → парсинг RSS и разметка. Повторный запуск идемпотентен.
+`scripts.seed` запускает по порядку: загрузка csv → чистка → профили и агрегаты графа → OCR отчётов → извлечение утверждений (черновики в статусе `draft`, подтверждение в `data/seed/house_view_approved.json`) → парсинг RSS и разметка. Повторный запуск идемпотентен.
 
 ## Фронтенд
 
