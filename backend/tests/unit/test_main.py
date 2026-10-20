@@ -52,11 +52,11 @@ def app(settings_env: dict[str, str]) -> FastAPI:
 @pytest.fixture
 def extra_services_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     monkeypatch.setattr(apps.services, "__path__", [*apps.services.__path__, str(tmp_path)])
-    before = set(sys.modules)
     yield tmp_path
-    for name in set(sys.modules) - before:
-        if name.startswith(f"{apps.services.__name__}."):
+    for name, module in list(sys.modules.items()):
+        if Path(getattr(module, "__file__", None) or "").is_relative_to(tmp_path):
             del sys.modules[name]
+            vars(apps.services).pop(name.rsplit(".", 1)[1], None)
 
 
 def add_service(directory: Path, name: str, source: str) -> None:
