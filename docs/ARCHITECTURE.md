@@ -29,12 +29,12 @@ alpha-impact/
         openapi/               экспорт схем в JSON Schema для фронта (генерируется, коммитится)
       db/
         engine.py session.py   SQLAlchemy 2 async
-        models/                таблицы по сервисам (profiles, counterparties, news, house_view, traces, feedback, users)
+        models/                таблицы по сервисам (profiles, counterparties, news, house_view, traces, feedback, users, llm_cache, llm_usage)
         migrations/            Alembic
       di/
         container.py           Container: register(port, factory) / resolve(port); scope per request
       config/
-        settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, MODEL_*, RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
+        settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, LLM_BUDGET_RESERVE_SHARE, LLM_TIMEOUT_SECONDS, MODEL_* (включая MODEL_EMBED), RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
     scripts/                   gen_schemas.py, seed.py
     data/
       raw/                     три csv (не коммитятся, .gitignore) + PDF/DOCX отчётов
