@@ -67,3 +67,18 @@ async def test_first_matching_rule_wins(catalog: ProductCatalog) -> None:
 
     assert offer is not None
     assert offer.rule_id == "letter_of_credit"
+
+
+@pytest.mark.parametrize("action_type", ["payment", "fx", "deposit", "payroll", "dashboard"])
+async def test_client_without_cl_type_gets_no_offers(
+    catalog: ProductCatalog, action_type: str
+) -> None:
+    profile = make_profile(ALL_FLAGS).model_copy(update={"features": {}})
+
+    assert await catalog.match(profile, action_type, ALL_CLAIMS) is None
+
+
+async def test_client_with_empty_cl_type_gets_no_offers(catalog: ProductCatalog) -> None:
+    profile = make_profile(ALL_FLAGS, cl_type=None)
+
+    assert await catalog.match(profile, "fx", ALL_CLAIMS) is None
