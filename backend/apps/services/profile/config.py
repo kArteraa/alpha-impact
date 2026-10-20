@@ -33,7 +33,6 @@ class ProfileConfig(BaseModel):
     workers_scale: dict[str, float]
     countries_cap: int
     exposures: dict[str, ExposureRule]
-    industries: dict[str, str]
 
 
 def read_yaml(name: str) -> dict[str, Any]:
@@ -42,6 +41,4 @@ def read_yaml(name: str) -> dict[str, Any]:
 
 
 def load_config() -> ProfileConfig:
-    return ProfileConfig.model_validate(
-        {**read_yaml("config.yaml"), "industries": read_yaml("industries.yaml")}
-    )
+    return ProfileConfig.model_validate(read_yaml("config.yaml"))
