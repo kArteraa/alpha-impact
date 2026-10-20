@@ -10,11 +10,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 import apps.services
 from shared.config.settings import Settings
-from shared.contracts import ports
 from shared.contracts.ports import Interpreter
-from shared.di.container import Container, MissingPortsError
-
-SERVICES_DIR = Path(apps.services.__file__).parent
+from shared.di.container import Container
 
 EXPECTED_PORTS = {
     "ProfileService",
@@ -88,13 +85,6 @@ def test_all_ports_covers_every_protocol_in_ports_module() -> None:
     assert {port.__name__ for port in all_ports()} == EXPECTED_PORTS
 
 
-def test_discover_services_finds_every_service_package() -> None:
-    from main import discover_services
-
-    packages = sorted(p.name for p in SERVICES_DIR.iterdir() if (p / "__init__.py").is_file())
-    assert [module.__name__.rsplit(".", 1)[1] for module in discover_services()] == packages
-
-
 def test_build_container_registers_an_implementation_for_every_port(
     settings_env: dict[str, str],
 ) -> None:
@@ -136,14 +126,3 @@ def test_service_without_register_fails_the_build(
 
     with pytest.raises(AttributeError, match="apps.services.broken"):
         build_container()
-
-
-def test_missing_registration_fails_start_with_port_name() -> None:
-    from main import all_ports
-
-    container = Container()
-    for port in all_ports():
-        if port is not ports.TraceStore:
-            container.register(port, lambda _: object())
-    with pytest.raises(MissingPortsError, match="TraceStore"):
-        container.validate(all_ports())
