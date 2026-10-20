@@ -1,12 +1,12 @@
 {
-  "name": "alfa-insight-frontend",
+  "name": "alpha-impact",
   "private": true,
   "workspaces": [
     "application",
     "app-plugin"
   ],
   "scripts": {
-    "build": "npm run build --workspace @alfa-insight/plugin && npm run build --workspace @alfa-insight/application",
+    "build": "npm run build --workspace @alpha-impact/plugin && npm run build --workspace @alpha-impact/application",
     "test": "node --test tests/lockfile.test.mjs && npm run test --workspaces",
     "gen:types": "node app-plugin/scripts/gen-types.mjs",
     "e2e": "playwright test"

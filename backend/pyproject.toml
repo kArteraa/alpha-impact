@@ -1,7 +1,7 @@
 [project]
-name = "alfa-insight"
+name = "alpha-impact"
 version = "0.1.0"
-description = "Аналитика в момент действия — сервис внутри Альфа-Бизнеса"
+description = "Alpha Impact — персональные бизнес-инсайты из новостей и аналитики Альфа-Банка в интернет-банке Альфа-Бизнес"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12,<3.13"

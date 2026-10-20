@@ -23,7 +23,7 @@ def create_app() -> FastAPI:
     container.register(AsyncEngine, lambda c: create_engine(c.resolve(Settings).DB_URL))
     container.register(async_sessionmaker, lambda c: make_session_factory(c.resolve(AsyncEngine)))
     wire(container)
-    app = FastAPI(title="alfa-insight", lifespan=lifespan)
+    app = FastAPI(title="Alpha Impact", lifespan=lifespan)
     app.state.container = container
     app.include_router(container.resolve(APIRouter))
     return app

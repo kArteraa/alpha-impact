@@ -1,4 +1,4 @@
-import type { InterpretRequest, InterpretResponse } from "@alfa-insight/plugin";
+import type { InterpretRequest, InterpretResponse } from "@alpha-impact/plugin";
 
 const API_BASE = "/api";
 
