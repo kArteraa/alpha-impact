@@ -29,6 +29,6 @@ class ProductCatalog:
 def _applies(rule: Rule, profile: ClientProfile, action_type: str, claims: set[str]) -> bool:
     return (
         action_type in rule.action_types
-        and all(profile.flags.get(flag) is True for flag in rule.flags)
+        and all(profile.flags.get(flag, False) for flag in rule.flags)
         and set(rule.claims) <= claims
     )
