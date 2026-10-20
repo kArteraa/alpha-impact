@@ -14,12 +14,12 @@ def catalog() -> ProductCatalog:
 
 
 @pytest.mark.parametrize(
-    ("flags", "action_type", "claims", "rule_id"),
+    ("flags", "action_type", "claims", "rule_id", "product"),
     [
-        ({"imports": True}, "fx", ["ruble_weakening"], "fx_hedge"),
-        ({"buyer_concentration": True}, "payroll", ["industry_stress"], "factoring"),
-        ({"free_balances": True}, "deposit", ["high_rate"], "deposit"),
-        ({}, "payment", ["counterparty_industry_stress"], "letter_of_credit"),
+        ({"imports": True}, "fx", ["ruble_weakening"], "fx_hedge", "Валютный форвард"),
+        ({"buyer_concentration": True}, "payroll", ["industry_stress"], "factoring", "Факторинг"),
+        ({"free_balances": True}, "deposit", ["high_rate"], "deposit", "Депозит"),
+        ({}, "payment", ["counterparty_industry_stress"], "letter_of_credit", "Аккредитив"),
     ],
 )
 async def test_each_rule_offers_its_product(
@@ -28,12 +28,13 @@ async def test_each_rule_offers_its_product(
     action_type: str,
     claims: list[str],
     rule_id: str,
+    product: str,
 ) -> None:
     offer = await catalog.match(make_profile(flags), action_type, claims)
 
     assert offer is not None
     assert offer.rule_id == rule_id
-    assert offer.product
+    assert offer.product == product
     assert offer.reason
 
 
