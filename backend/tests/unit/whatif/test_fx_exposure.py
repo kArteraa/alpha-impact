@@ -43,3 +43,15 @@ def test_rejects_non_finite_or_negative_values(
 ) -> None:
     with pytest.raises(ValueError):
         fx_exposure(amount, "USD", rate_now, rate_forecast)
+
+
+def test_sub_ruble_rates_keep_significant_digits() -> None:
+    result = fx_exposure(10_000_000.0, "KZT", 0.1712, 0.1745)
+
+    assert result.value == 33_000.0
+    assert result.formula == "10 000 000 KZT × (0,1745 − 0,1712) ₽ = 33 000 ₽"
+
+
+def test_rejects_zero_exchange_rate() -> None:
+    with pytest.raises(ValueError):
+        fx_exposure(100.0, "USD", 0.0, 87.0)
