@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -7,6 +6,7 @@ import httpx
 from apps.services.llm.errors import ModelUnavailable
 from shared.config.settings import Settings
 
+CHAT_PATH = "/chat/completions"
 MALFORMED_RESPONSE = (ValueError, KeyError, IndexError, TypeError)
 
 
@@ -34,20 +34,17 @@ class ModelClient:
         }
         if response_format is not None:
             body["response_format"] = response_format
-        return await self._call("/chat/completions", body, read_completion)
-
-    async def _call[T](self, path: str, body: dict[str, Any], read: Callable[[Any], T]) -> T:
         try:
-            response = await self._http.post(path, json=body)
+            response = await self._http.post(CHAT_PATH, json=body)
             response.raise_for_status()
             data = response.json()
         except (httpx.HTTPError, ValueError) as error:
-            raise ModelUnavailable(f"model API {path} failed: {error!r}") from error
+            raise ModelUnavailable(f"model API {CHAT_PATH} failed: {error!r}") from error
         try:
-            return read(data)
+            return read_completion(data)
         except MALFORMED_RESPONSE as error:
             tokens_in, tokens_out = read_usage(data)
-            message = f"model API {path} returned a malformed body: {error!r}"
+            message = f"model API {CHAT_PATH} returned a malformed body: {error!r}"
             raise ModelUnavailable(message, tokens_in, tokens_out) from error
 
 

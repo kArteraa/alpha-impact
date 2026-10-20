@@ -8,9 +8,10 @@ import httpx
 
 from apps.services.llm.catalog import ModelCatalog, ModelPrice
 from apps.services.llm.client import ModelClient
-from apps.services.llm.embedder import EmbedderSpec, load_spec
-from apps.services.llm.service import ModelGateway, TextEmbedder
+from apps.services.llm.embedder import EmbedderSpec, TextEmbedder, load_spec
+from apps.services.llm.service import ModelGateway
 from apps.services.llm.store import UsageStore
+from shared.config.embedding import EMBEDDING_DIMENSION
 from tests.unit.conftest import SETTINGS_ENV
 
 TODAY = date(2026, 10, 20)
@@ -21,7 +22,7 @@ ROUTES = {
 }
 PRICES = {model: PRICE for model in ROUTES.values()}
 SPEC = load_spec()
-VECTOR = [0.1, 0.2, 0.3]
+VECTOR = [0.1] * EMBEDDING_DIMENSION
 
 
 class CountingEmbedder:
