@@ -1,9 +1,11 @@
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.contracts.schemas import HouseViewClaim
 from shared.db.models import HouseViewClaimRow, ReportPageRow
+
+MACHINE_STATUSES = ("draft", "expired")
 
 
 async def cached_text(
@@ -58,3 +60,28 @@ async def add_claims(session: AsyncSession, claims: list[HouseViewClaim]) -> Non
 
 async def claim_count(session: AsyncSession) -> int:
     return int(await session.scalar(select(func.count()).select_from(HouseViewClaimRow)) or 0)
+
+
+async def drop_page_claims(session: AsyncSession, source_doc: str, page: int) -> None:
+    await session.execute(
+        delete(HouseViewClaimRow).where(
+            HouseViewClaimRow.source_doc == source_doc,
+            HouseViewClaimRow.page == page,
+            HouseViewClaimRow.status.in_(MACHINE_STATUSES),
+        )
+    )
+
+
+async def drop_pages_after(session: AsyncSession, source_doc: str, last_page: int) -> None:
+    await session.execute(
+        delete(HouseViewClaimRow).where(
+            HouseViewClaimRow.source_doc == source_doc,
+            HouseViewClaimRow.page > last_page,
+            HouseViewClaimRow.status.in_(MACHINE_STATUSES),
+        )
+    )
+    await session.execute(
+        delete(ReportPageRow).where(
+            ReportPageRow.source_doc == source_doc, ReportPageRow.page > last_page
+        )
+    )

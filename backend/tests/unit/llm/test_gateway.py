@@ -2,8 +2,9 @@ import pytest
 from pydantic import BaseModel
 
 from apps.services.llm.client import build_http_client
+from apps.services.llm.service import cache_key, response_format
 from shared.config.settings import Settings
-from tests.unit.llm.fakes import MemoryStore, ModelServer, make_gateway
+from tests.unit.llm.fakes import ROUTES, MemoryStore, ModelServer, make_gateway
 
 
 class Verdict(BaseModel):
@@ -141,3 +142,16 @@ async def test_reasoning_switch_is_part_of_cache_key() -> None:
     await switched.complete("extract", "sys", "usr", Verdict)
 
     assert len(server.requests) == 2
+
+
+async def test_cache_key_of_task_with_reasoning_is_unchanged() -> None:
+    server = ModelServer(content='{"ok": true, "reason": "r"}')
+    store = MemoryStore()
+    key = cache_key("critic", ROUTES["critic"], "sys", "usr", response_format(Verdict))
+    store.cache[key] = '{"ok": false, "reason": "cached"}'
+    gateway = make_gateway(server.http_client(), store, reasoning_off=frozenset({"extract"}))
+
+    result = await gateway.complete("critic", "sys", "usr", Verdict)
+
+    assert result == (Verdict(ok=False, reason="cached"), 0, 0)
+    assert server.requests == []

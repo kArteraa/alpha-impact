@@ -11,7 +11,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from apps.services.llm import utc_today
-from apps.services.llm.catalog import MODELS_PATH, load_prices
+from apps.services.llm.catalog import MODELS_PATH, load_models
 from apps.services.llm.service import ModelGateway
 from apps.services.llm.store import SqlUsageStore
 from shared.contracts.errors import BudgetExceeded
@@ -69,7 +69,7 @@ def make_gateway(
             server.http_client(),
             SqlUsageStore(sessions, CACHE_TTL_SECONDS),
             daily_budget_rub=daily_budget_rub,
-            prices=load_prices(MODELS_PATH),
+            prices=load_models(MODELS_PATH).models,
             today=utc_today,
         )
 
@@ -158,7 +158,7 @@ async def test_concurrent_calls_share_one_reservation_across_gateways(
         fakes.make_gateway(
             server.http_client(),
             SqlUsageStore(sessions, CACHE_TTL_SECONDS),
-            prices=load_prices(MODELS_PATH),
+            prices=load_models(MODELS_PATH).models,
             today=utc_today,
         )
         for _ in range(5)

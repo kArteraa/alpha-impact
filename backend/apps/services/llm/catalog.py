@@ -28,7 +28,7 @@ class ModelsFile(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     models: dict[str, ModelPrice] = Field(min_length=1)
-    reasoning_off_tasks: frozenset[str] = frozenset()
+    reasoning_off_tasks: frozenset[str]
 
 
 class ModelCatalog:
@@ -37,7 +37,7 @@ class ModelCatalog:
         prices: dict[str, ModelPrice],
         routes: dict[str, str],
         embedding_model: str,
-        reasoning_off: frozenset[str] = frozenset(),
+        reasoning_off: frozenset[str],
     ) -> None:
         foreign = sorted({*routes.values(), embedding_model} - set(prices))
         if foreign:
@@ -69,14 +69,10 @@ def load_models(path: Path) -> ModelsFile:
     return ModelsFile.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
 
 
-def load_prices(path: Path) -> dict[str, ModelPrice]:
-    return load_models(path).models
-
-
 def build_catalog(
     settings: Settings,
     prices: dict[str, ModelPrice],
-    reasoning_off: frozenset[str] = frozenset(),
+    reasoning_off: frozenset[str],
 ) -> ModelCatalog:
     routes = {
         "annotate": settings.MODEL_ANNOTATE,
