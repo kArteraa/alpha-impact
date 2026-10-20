@@ -19,20 +19,32 @@ export function LoginPage() {
   }
 
   return (
-    <form className="login card" onSubmit={submit}>
-      <h1>Вход</h1>
-      <label>
-        Тестовый пользователь
-        <input
-          name="user_id"
-          value={userId}
-          placeholder="user_cfo_wholesale"
-          onChange={(event) => setUserId(event.target.value)}
-          required
-        />
-      </label>
-      <button type="submit">Войти</button>
-      {error && <p role="alert">{error}</p>}
-    </form>
+    <main className="login-screen">
+      <form className="login card form" onSubmit={submit}>
+        <span className="brand">
+          <span className="brand-mark" aria-hidden="true" />
+          Бизнес · Alpha Impact
+        </span>
+        <h1>Вход</h1>
+        <label className="field">
+          <span>Тестовый пользователь</span>
+          <input
+            name="user_id"
+            value={userId}
+            placeholder="user_cfo_wholesale"
+            onChange={(event) => setUserId(event.target.value)}
+            required
+          />
+        </label>
+        <button className="button button-primary" type="submit">
+          Войти
+        </button>
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </main>
   );
 }
