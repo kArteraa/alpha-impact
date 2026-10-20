@@ -26,6 +26,7 @@ export function sourceTitle(source: SourceRef): string {
   return source.title ?? source.id;
 }
 
-export function formatDate(iso: string): string {
-  return DATE.format(new Date(iso));
+export function formatDate(iso: string): string | null {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? null : DATE.format(date);
 }

@@ -167,25 +167,24 @@
   color: var(--text-secondary);
 }
 
-details.insight-block > summary {
-  display: flex;
+.insight-block-toggle {
+  display: inline-flex;
   align-items: center;
   gap: var(--s-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
   cursor: pointer;
-  list-style: none;
 }
 
-details.insight-block > summary::-webkit-details-marker {
-  display: none;
-}
-
-details.insight-block > summary::after {
+.insight-block-toggle::after {
   content: "›";
-  color: var(--text-secondary);
   transition: transform var(--t-fast);
 }
 
-details.insight-block[open] > summary::after {
+.insight-block-toggle[aria-expanded="true"]::after {
   transform: rotate(90deg);
 }
 

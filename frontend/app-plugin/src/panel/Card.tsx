@@ -19,9 +19,10 @@ function BankReport({ card }: { card: InsightCard }) {
   if (!report) {
     return null;
   }
+  const date = report.published_at ? formatDate(report.published_at) : null;
   return (
     <p className="bank-report">
-      {report.published_at && <>Отчёт от {formatDate(report.published_at)} · </>}
+      {date && <>Отчёт от {date} · </>}
       <SourceLink source={report}>{sourceTitle(report)}</SourceLink>
     </p>
   );

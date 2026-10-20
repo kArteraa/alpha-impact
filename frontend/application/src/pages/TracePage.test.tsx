@@ -32,12 +32,13 @@ describe("TracePage", () => {
 
     fireEvent.click(screen.getByText("План"));
 
+
     expect(plan?.hasAttribute("open")).toBe(true);
     expect(screen.getByText("Проверить новости логистики, позицию банка и долю отрасли в платежах")).toBeTruthy();
   });
 
-  it("says calmly when the trace is unknown", () => {
-    renderTrace("nope");
+  it.each(["nope", "constructor", "toString"])("says calmly when the trace %s is unknown", (id) => {
+    renderTrace(id);
 
     expect(screen.getByText(/^Трасса не найдена/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "На главную" }).getAttribute("href")).toBe("/");
