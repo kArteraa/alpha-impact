@@ -1,0 +1,28 @@
+{
+  "properties": {
+    "amount": {
+      "type": "number"
+    },
+    "headcount": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "type": {
+      "const": "payroll",
+      "default": "payroll",
+      "type": "string"
+    }
+  },
+  "required": [
+    "amount"
+  ],
+  "title": "PayrollContext",
+  "type": "object"
+}

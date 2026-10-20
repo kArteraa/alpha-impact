@@ -1,0 +1,27 @@
+{
+  "properties": {
+    "entities": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "text": {
+      "type": "string"
+    },
+    "type": {
+      "const": "page",
+      "default": "page",
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "url",
+    "text"
+  ],
+  "title": "PageContext",
+  "type": "object"
+}

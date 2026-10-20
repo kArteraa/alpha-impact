@@ -1,0 +1,191 @@
+{
+  "$defs": {
+    "Claim": {
+      "properties": {
+        "source_ref": {
+          "$ref": "#/$defs/SourceRef"
+        },
+        "text": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ClaimType"
+        }
+      },
+      "required": [
+        "text",
+        "type",
+        "source_ref"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "ClaimType": {
+      "enum": [
+        "fact",
+        "bank",
+        "ai"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "ProductOffer": {
+      "properties": {
+        "product": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "product",
+        "reason",
+        "rule_id"
+      ],
+      "title": "ProductOffer",
+      "type": "object"
+    },
+    "SourceRef": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "news",
+            "house_view",
+            "profile",
+            "graph",
+            "calc"
+          ],
+          "type": "string"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "type": "array"
+    },
+    "bank_view": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "type": "array"
+    },
+    "basis": {
+      "items": {
+        "$ref": "#/$defs/SourceRef"
+      },
+      "type": "array"
+    },
+    "consequences": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "type": "array"
+    },
+    "headline": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "needs_review": {
+      "default": false,
+      "type": "boolean"
+    },
+    "product_offer": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ProductOffer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "significance": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "trace_id": {
+      "type": "string"
+    },
+    "what_happened": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "type": "array"
+    },
+    "why_for_you": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "headline",
+    "what_happened",
+    "why_for_you",
+    "consequences",
+    "actions",
+    "bank_view",
+    "basis",
+    "significance",
+    "trace_id"
+  ],
+  "title": "InsightCard",
+  "type": "object"
+}

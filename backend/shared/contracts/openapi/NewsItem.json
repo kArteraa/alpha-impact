@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "Factor": {
+      "properties": {
+        "direction": {
+          "enum": [
+            "up",
+            "down",
+            "neutral"
+          ],
+          "type": "string"
+        },
+        "horizon": {
+          "enum": [
+            "week",
+            "month",
+            "quarter",
+            "year"
+          ],
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "strength": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "direction",
+        "strength",
+        "horizon"
+      ],
+      "title": "Factor",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "entities": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "factors": {
+      "items": {
+        "$ref": "#/$defs/Factor"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "published_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "text": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "text",
+    "url",
+    "published_at",
+    "source",
+    "entities",
+    "factors"
+  ],
+  "title": "NewsItem",
+  "type": "object"
+}

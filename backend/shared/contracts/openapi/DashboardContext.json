@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "type": {
+      "const": "dashboard",
+      "default": "dashboard",
+      "type": "string"
+    }
+  },
+  "title": "DashboardContext",
+  "type": "object"
+}

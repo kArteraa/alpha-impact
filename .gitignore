@@ -27,7 +27,8 @@ test-results/
 !.env.example
 
 # Data
-data/raw/
+backend/data/raw/*
+!backend/data/raw/.gitkeep
 
 # Editors and local agent settings
 .idea/
