@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 
 from shared.contracts.errors import BudgetExceeded
-from tests.unit.llm.fakes import TODAY, MemoryStore, ModelServer, Usage, make_gateway
+from tests.unit.llm.fakes import TODAY, VECTOR, MemoryStore, ModelServer, Usage, make_gateway
 
 
 def spent(store: MemoryStore, cost_rub: float, days_ago: int = 0) -> None:
@@ -53,13 +53,13 @@ async def test_reserve_is_never_spent() -> None:
         await gateway.complete("interpret", "system", "user")
 
 
-async def test_exhausted_budget_blocks_embeddings() -> None:
+async def test_exhausted_budget_does_not_block_embeddings() -> None:
     server = ModelServer()
     store = MemoryStore()
     spent(store, 450.0)
-    with pytest.raises(BudgetExceeded):
-        await make_gateway(server.http_client(), store).embed("text")
+    assert await make_gateway(server.http_client(), store).embed("text") == VECTOR
     assert server.requests == []
+    assert len(store.usages) == 1
 
 
 async def test_cache_still_answers_when_budget_is_exhausted() -> None:

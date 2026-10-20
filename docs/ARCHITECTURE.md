@@ -14,12 +14,12 @@ alpha-impact/
       gateway/                 HTTP-вход: POST /interpret, /profile, /feedback, /trace/{id}; auth из мок-сессии, права user→client, лимиты, кэш, журнал
       profile/                 профилировщик: пакетная сборка паспорта клиента, группа, правки пользователя; порт ProfileService
       counterparty/            агрегаты по графу платежей; порт CounterpartyService
-      news/                    RSS-парсер, дедупликация, разметка факторов, индекс (pgvector); порты NewsService и PageContextService
+      news/                    RSS-парсер, дедупликация, разметка факторов, индекс (pgvector, vector(EMBEDDING_DIMENSION)); порты NewsService и PageContextService
       house_view/              OCR отчётов, извлечение утверждений, версии/supersede; порт HouseViewService
       interpreter/             агент (план, вызовы инструментов, черновик), критик; порт Interpreter
       whatif/                  арифметика: нагрузка по ставке, сравнение сроков депозита, курс; порт WhatIfService
       products/                каталог правил «ситуация → продукт» (YAML); порт ProductRulesService
-      llm/                     LLM-шлюз: маршрутизация по разрешённым моделям, кэш, счётчик токенов; порт LLMGateway
+      llm/                     LLM-шлюз: маршрутизация по разрешённым моделям, кэш, счётчик токенов, локальные эмбеддинги multilingual-e5-small (ONNX, embedder.json); порт LLMGateway
       trace/                   трасса, метрики, обратная связь; порт TraceStore
     shared/
       contracts/
@@ -34,10 +34,12 @@ alpha-impact/
       di/
         container.py           Container: register(port, factory) / resolve(port); scope per request; on_close / aclose — закрытие ресурсов при остановке
       config/
-        settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, LLM_BUDGET_RESERVE_SHARE, LLM_TIMEOUT_SECONDS, LLM_CALL_RESERVE_RUB, LLM_CACHE_TTL_SECONDS, MODEL_* (включая MODEL_EMBED), RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
+        settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, LLM_BUDGET_RESERVE_SHARE, LLM_TIMEOUT_SECONDS, LLM_CALL_RESERVE_RUB, LLM_CACHE_TTL_SECONDS, MODEL_*, RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
         industries.py          справочник отраслей: ОКВЭД → отраслевой класс по industries.yaml, общий для profile и counterparty
         clients.py             какие клиенты обслуживаются: файл компаний и порог выручки крупного клиента (clients.yaml), общий для profile и counterparty
-    scripts/                   gen_schemas.py, seed.py
+        embedding.py           EMBEDDING_DIMENSION (384) — длина вектора e5: её сверяет llm, её берёт колонка pgvector новостей
+    scripts/                   gen_schemas.py, seed.py, download_embedder.py (модель эмбеддингов в models/, только стандартная библиотека)
+    models/                    скачанная модель эмбеддингов (не коммитится, .gitignore)
     data/
       raw/                     три csv (не коммитятся, .gitignore) + PDF/DOCX отчётов
       seed/                    тестовые пользователи, контрагенты, остатки, портфели (коммитятся)
@@ -67,7 +69,7 @@ alpha-impact/
   .claude/settings.json        разрешённые команды для Claude Code
   .agents/skills/{task,setup}/  $task и $setup в Codex → docs/PIPELINE.md
   .gemini/commands/             /task и /setup в Gemini CLI → docs/PIPELINE.md
-  .github/workflows/           backend.yml (ruff, mypy, import-linter, pytest), frontend.yml (gen:types, vitest, npm run build)
+  .github/workflows/           backend.yml (ruff, mypy, import-linter, модель эмбеддингов из кэша, pytest), frontend.yml (gen:types, vitest, npm run build)
 ```
 
 Пути `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/integration` в документах и бэклоге указаны относительно `backend/`; `application/`, `app-plugin/`, `tests/e2e` — относительно `frontend/`.
@@ -113,8 +115,9 @@ interpreter.interpret():
 | План и черновик карточки | GLM-5.3-Flash (запасной Qwen3.6) |
 | Критик | GLM-5.3-Flash, другой промпт |
 | Уточняющий вопрос | Qwen3.6 35B A3B |
+| Эмбеддинги: дубли и индекс новостей | multilingual-e5-small локально (ONNX, префикс `query: `), не тратит бюджет |
 
-Онлайн- и пакетные вызовы тратят общий дневной пул `LLM_DAILY_BUDGET_RUB × (1 − LLM_BUDGET_RESERVE_SHARE)`; 10% — резерв, не тратится; деление на онлайн и пакет пока не делается. Перед вызовом модели шлюз под advisory-блокировкой Postgres проверяет остаток и резервирует `LLM_CALL_RESERVE_RUB` строкой в `llm_usage`, после ответа резерв заменяется фактическим расходом или снимается — параллельные вызовы api и seed не проходят лимит вместе. Кэш ответов и эмбеддингов живёт `LLM_CACHE_TTL_SECONDS`, просроченные записи удаляются при записи в кэш. При исчерпании шлюз поднимает `BudgetExceeded`, ответы из кэша отдаются и дальше, вызывающий отвечает `needs_review`. Ошибки шлюза — `BudgetExceeded`, `ModelUnavailable` (HTTP-ошибка, таймаут, обрыв соединения или битое тело ответа 200 — не JSON, нет `choices` / `usage` / `data`, `content` не строка, `embedding` не непустой список чисел, счётчик токенов не целое ≥ 0; расход учитывается, если в теле есть `usage`), `ModelOutputInvalid` (пустой ответ или не по схеме), `UsageNotRecorded` (ответ получен и закэширован, но расход не записан — в `llm_usage` остаётся резерв), `CacheNotWritten` (ответ получен и расход записан фактом, но запись в кэш не удалась) — подклассы `DomainError`.
+Онлайн- и пакетные вызовы тратят общий дневной пул `LLM_DAILY_BUDGET_RUB × (1 − LLM_BUDGET_RESERVE_SHARE)`; 10% — резерв, не тратится; деление на онлайн и пакет пока не делается. Перед вызовом модели шлюз под advisory-блокировкой Postgres проверяет остаток и резервирует `LLM_CALL_RESERVE_RUB` строкой в `llm_usage`, после ответа резерв заменяется фактическим расходом или снимается — параллельные вызовы api и seed не проходят лимит вместе. Эмбеддинги считает локальная модель (`embedder.json`, файлы — в `backend/models`, скачиваются при сборке образа): без HTTP, без резерва и без строк в `llm_usage`. Кэш ответов и эмбеддингов живёт `LLM_CACHE_TTL_SECONDS`, просроченные записи удаляются при записи в кэш. При исчерпании шлюз поднимает `BudgetExceeded`, ответы из кэша отдаются и дальше, вызывающий отвечает `needs_review`. Ошибки шлюза — `BudgetExceeded`, `ModelUnavailable` (HTTP-ошибка, таймаут, обрыв соединения или битое тело ответа 200 — не JSON, нет `choices` / `usage`, `content` не строка, счётчик токенов не целое ≥ 0, расход учитывается, если в теле есть `usage`; для `embed` — нет файлов локальной модели), `ModelOutputInvalid` (пустой ответ или не по схеме), `UsageNotRecorded` (ответ получен и закэширован, но расход не записан — в `llm_usage` остаётся резерв), `CacheNotWritten` (ответ получен и расход записан фактом, но запись в кэш не удалась; для `embed` — вектор посчитан, но не закэширован) — подклассы `DomainError`. Длина вектора не равна `EMBEDDING_DIMENSION` — `EmbeddingDimensionMismatch` (`ValueError`, ошибка конфигурации, а не `DomainError`).
 
 ## Безопасность
 

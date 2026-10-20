@@ -4,8 +4,10 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from apps.services.llm.catalog import MODELS_PATH, build_catalog, load_prices
 from apps.services.llm.client import ModelClient, build_http_client
+from apps.services.llm.embedder import LocalEmbedder, load_spec, model_dir
 from apps.services.llm.service import ModelGateway
 from apps.services.llm.store import SqlUsageStore
+from shared.config.embedding import EMBEDDING_DIMENSION
 from shared.config.settings import Settings
 from shared.contracts.ports import LLMGateway
 from shared.di.container import Container
@@ -21,9 +23,11 @@ def build_gateway(container: Container) -> ModelGateway:
     settings = container.resolve(Settings)
     http = build_http_client(settings)
     container.on_close(http.aclose)
+    spec = load_spec()
     return ModelGateway(
         catalog=build_catalog(settings, load_prices(MODELS_PATH)),
         client=ModelClient(http),
+        embedder=LocalEmbedder(spec, model_dir(spec), EMBEDDING_DIMENSION),
         store=SqlUsageStore(container.resolve(async_sessionmaker), settings.LLM_CACHE_TTL_SECONDS),
         daily_budget_rub=settings.LLM_DAILY_BUDGET_RUB,
         reserve_share=settings.LLM_BUDGET_RESERVE_SHARE,

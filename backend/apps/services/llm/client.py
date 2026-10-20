@@ -17,12 +17,6 @@ class Completion:
     tokens_out: int
 
 
-@dataclass(frozen=True)
-class Embedding:
-    vector: list[float]
-    tokens: int
-
-
 class ModelClient:
     def __init__(self, http: httpx.AsyncClient) -> None:
         self._http = http
@@ -41,9 +35,6 @@ class ModelClient:
         if response_format is not None:
             body["response_format"] = response_format
         return await self._call("/chat/completions", body, read_completion)
-
-    async def embed(self, model: str, text: str) -> Embedding:
-        return await self._call("/embeddings", {"model": model, "input": text}, read_embedding)
 
     async def _call[T](self, path: str, body: dict[str, Any], read: Callable[[Any], T]) -> T:
         try:
@@ -72,14 +63,6 @@ def text_content(value: Any) -> str | None:
     return value
 
 
-def number_vector(value: Any) -> list[float]:
-    if not isinstance(value, list) or not value:
-        raise TypeError("embedding must be a non-empty list of numbers")
-    if any(isinstance(item, bool) or not isinstance(item, int | float) for item in value):
-        raise TypeError("embedding must contain only numbers")
-    return value
-
-
 def read_completion(data: Any) -> Completion:
     usage = data["usage"]
     return Completion(
@@ -95,13 +78,6 @@ def read_usage(data: Any) -> tuple[int, int]:
         return token_count(usage["prompt_tokens"]), token_count(usage.get("completion_tokens", 0))
     except MALFORMED_RESPONSE:
         return 0, 0
-
-
-def read_embedding(data: Any) -> Embedding:
-    return Embedding(
-        vector=number_vector(data["data"][0]["embedding"]),
-        tokens=token_count(data["usage"]["prompt_tokens"]),
-    )
 
 
 def build_http_client(settings: Settings) -> httpx.AsyncClient:

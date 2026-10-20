@@ -1,13 +1,15 @@
+import asyncio
 import hashlib
 import json
 from collections.abc import Awaitable, Callable
 from datetime import date
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import BaseModel, ValidationError
 
 from apps.services.llm.catalog import ModelCatalog
 from apps.services.llm.client import ModelClient
+from apps.services.llm.embedder import EmbedderSpec
 from apps.services.llm.errors import (
     CacheNotWritten,
     ModelOutputInvalid,
@@ -18,6 +20,12 @@ from apps.services.llm.store import UsageStore
 from shared.contracts.errors import BudgetExceeded
 
 EMBED_TASK = "embed"
+
+
+class TextEmbedder(Protocol):
+    spec: EmbedderSpec
+
+    def encode(self, text: str) -> list[float]: ...
 
 
 def pydantic_schema(schema: type | None) -> type[BaseModel] | None:
@@ -60,6 +68,7 @@ class ModelGateway:
         self,
         catalog: ModelCatalog,
         client: ModelClient,
+        embedder: TextEmbedder,
         store: UsageStore,
         daily_budget_rub: float,
         reserve_share: float,
@@ -68,6 +77,7 @@ class ModelGateway:
     ) -> None:
         self._catalog = catalog
         self._client = client
+        self._embedder = embedder
         self._store = store
         self._spendable_rub = daily_budget_rub * (1 - reserve_share)
         self._call_reserve_rub = call_reserve_rub
@@ -98,17 +108,18 @@ class ModelGateway:
         return result, *tokens
 
     async def embed(self, text: str) -> list[float]:
-        model = self._catalog.embedding_model
-        key = cache_key(EMBED_TASK, model, text)
+        spec = self._embedder.spec
+        key = cache_key(EMBED_TASK, spec.model_dump(), text)
         cached = await self._store.cached(key)
         if cached is not None:
-            vector: list[float] = json.loads(cached)
-            return vector
-        reservation = await self._reserve(EMBED_TASK, model)
-        embedding = await self._called(reservation, model, lambda: self._client.embed(model, text))
-        tokens = (embedding.tokens, 0)
-        await self._remembered(reservation, model, key, json.dumps(embedding.vector), tokens)
-        return embedding.vector
+            stored: list[float] = json.loads(cached)
+            return stored
+        vector = await asyncio.to_thread(self._embedder.encode, text)
+        try:
+            await self._store.remember(key, json.dumps(vector))
+        except Exception as error:
+            raise CacheNotWritten(f"embedding by {spec.name} is not cached") from error
+        return vector
 
     async def budget_left_rub(self) -> float:
         spent = await self._store.spent_rub(self._today())
