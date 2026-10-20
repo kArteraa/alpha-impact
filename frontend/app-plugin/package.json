@@ -7,6 +7,11 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./tokens.css": "./src/styles/tokens.css",
+    "./showcase": {
+      "types": "./src/dev/Showcase.tsx",
+      "default": "./src/dev/Showcase.tsx"
     }
   },
   "scripts": {
