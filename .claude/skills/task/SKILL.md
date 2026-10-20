@@ -1,6 +1,6 @@
 ---
 name: task
-description: Run the alfa-insight task pipeline from docs/PIPELINE.md for a backlog task AH-<n> or a free-form task description — task and branch, plan, TDD, cleanup, checks, review, manual check, PR into dev. Use when the user types /task, e.g. /task Выполни задачу AH-7.
+description: Run the Alpha Impact task pipeline from docs/PIPELINE.md for a backlog task AH-<n> or a free-form task description — task and branch, plan, TDD, cleanup, checks, review, manual check, PR into dev. Use when the user types /task, e.g. /task Выполни задачу AH-7.
 argument-hint: AH-<n> or task description
 ---
 

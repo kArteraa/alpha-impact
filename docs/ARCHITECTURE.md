@@ -5,7 +5,7 @@
 ## Дерево репозитория
 
 ```
-alfa-insight/
+alpha-impact/
   backend/                     Python-монолит; uv, pytest, alembic запускаются из этой папки
     main.py                    composition root (FastAPI app factory + DI wiring)
     pyproject.toml  uv.lock    зависимости бэкенда
@@ -57,6 +57,7 @@ alfa-insight/
     PIPELINE.md                процесс задачи для любого агента
     BACKLOG.md TEAM.md         задачи AH-1…AH-47; кто и в каком порядке их делает
     DECISIONS.md DATA.md       журнал решений команды; факты о данных
+    SUMMARY.md                 суть, цели и текущее состояние на одной странице
   AGENTS.md                    правила для всех агентов — единственный источник
   CLAUDE.md  GEMINI.md         только импорт AGENTS.md
   .claude/skills/task/SKILL.md  /task в Claude Code → docs/PIPELINE.md
@@ -96,7 +97,7 @@ interpreter.interpret():
 
 ## Фронтенд
 
-- `frontend/application` — страницы: `/` (виджет), `/payments/new`, `/deposits/new`, `/loans`, `/profile`, `/trace/:id`. Использует `@alfa-insight/plugin` из `frontend/app-plugin` как workspace-зависимость.
+- `frontend/application` — страницы: `/` (персональная лента: виджет и полный список событий), `/payments/new`, `/deposits/new`, `/loans`, `/profile`, `/trace/:id`. Использует `@alpha-impact/plugin` из `frontend/app-plugin` как workspace-зависимость.
 - `frontend/app-plugin` — экспортирует `InsightPanel`, `useInterpret(actionContext)`, типы из `shared/contracts/openapi`; второй entry собирает расширение (`manifest.json`, `content.ts`, `background.ts`, `sidepanel.tsx`, `popup.tsx`).
 - Типы фронта генерируются из JSON Schema (`npm run gen:types`), руками не пишутся.
 

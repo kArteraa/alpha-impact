@@ -1,8 +1,8 @@
-# alfa-insight — rules for coding agents
+# Alpha Impact — rules for coding agents
 
 This file is the single source of rules for every agent: Codex reads it directly, Claude Code and Gemini CLI through the one-line imports in `CLAUDE.md` and `GEMINI.md`. Never add rules to those two files and never restate these rules elsewhere — link here.
 
-alfa-insight — «Аналитика в момент действия», Alfa-Bank hackathon (case «Новостная аналитика для принятия бизнес-решений»). Team of 3, Jira Kanban `KAN` (each issue title starts with its backlog number `AH-<n>`), 5-day deadline. Docs, commits, PRs and Jira: Russian. Code, identifiers and tests: English.
+Alpha Impact — a service in the Alfa-Business internet bank that turns news and Alfa-Bank research into a personal feed of events that matter to a large company, each explained by the case's six questions with every claim marked fact / bank view / AI and sourced. The feed lives on the main screen (mandatory); the same events also appear next to an operation form when they touch it, and in a browser extension — one API, three containers. Details: `docs/CONCEPT.md`, current state: `docs/SUMMARY.md`. Alfa-Bank hackathon (case «Новостная аналитика для принятия бизнес-решений»). Team of 3, Jira Kanban `KAN` (each issue title starts with its backlog number `AH-<n>`), 5-day deadline. Docs, commits, PRs and Jira: Russian. Code, identifiers and tests: English.
 
 ## Where to look
 
@@ -18,6 +18,7 @@ Read what the task needs, not everything up front.
 | Team decisions not visible in code | `docs/DECISIONS.md` |
 | Dataset and bank report facts | `docs/DATA.md` |
 | Who owns what and in which order | `docs/TEAM.md` |
+| Project essence, goals and current state in one page | `docs/SUMMARY.md` |
 
 ## Stack (fixed, do not change)
 
@@ -38,7 +39,7 @@ frontend/                 npm workspace; run npm from here
   application/            React + Vite mock of Alfa-Business that embeds InsightPanel
   app-plugin/             InsightPanel library + MV3 browser extension
   tests/e2e/              Playwright
-docs/                     CONCEPT, ARCHITECTURE, CONTRACTS, PIPELINE, BACKLOG, TEAM, DEMO, DECISIONS, DATA
+docs/                     SUMMARY, CONCEPT, ARCHITECTURE, CONTRACTS, PIPELINE, BACKLOG, TEAM, DEMO, DECISIONS, DATA
 ```
 
 Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/integration` in docs are relative to `backend/`; `application/`, `app-plugin/`, `tests/e2e` are relative to `frontend/`.

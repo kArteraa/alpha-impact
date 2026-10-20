@@ -17,7 +17,7 @@ wheels = [
 ]
 
 [[package]]
-name = "alfa-insight"
+name = "alpha-impact"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

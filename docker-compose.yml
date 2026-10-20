@@ -1,3 +1,5 @@
+name: alpha-impact
+
 services:
   db:
     image: pgvector/pgvector:pg16
