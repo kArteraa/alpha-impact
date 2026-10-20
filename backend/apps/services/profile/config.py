@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 
 import yaml
 from pydantic import BaseModel
@@ -35,10 +34,7 @@ class ProfileConfig(BaseModel):
     exposures: dict[str, ExposureRule]
 
 
-def read_yaml(name: str) -> dict[str, Any]:
-    content: dict[str, Any] = yaml.safe_load((CONFIG_DIR / name).read_text(encoding="utf-8"))
-    return content
-
-
 def load_config() -> ProfileConfig:
-    return ProfileConfig.model_validate(read_yaml("config.yaml"))
+    return ProfileConfig.model_validate(
+        yaml.safe_load((CONFIG_DIR / "config.yaml").read_text(encoding="utf-8"))
+    )

@@ -22,4 +22,5 @@ class ClientGraphRow(Base):
 
     client_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    dependence: Mapped[dict[str, float]] = mapped_column(JSONB)
     built_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

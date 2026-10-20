@@ -30,6 +30,7 @@ def upgrade() -> None:
         "client_graphs",
         sa.Column("client_id", sa.String(length=64), primary_key=True),
         sa.Column("payload", postgresql.JSONB(), nullable=False),
+        sa.Column("dependence", postgresql.JSONB(), nullable=False),
         sa.Column("built_at", sa.DateTime(timezone=True), nullable=False),
     )
 

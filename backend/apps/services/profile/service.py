@@ -24,7 +24,6 @@ class Profiler:
     def __init__(self, sessions: async_sessionmaker[AsyncSession], config: ProfileConfig) -> None:
         self._sessions = sessions
         self._config = config
-        self._industries = INDUSTRY_CLASSES
 
     async def get_profile(self, user_id: str, client_id: str) -> ClientProfile:
         async with self._sessions() as session:
@@ -42,7 +41,7 @@ class Profiler:
             await self._authorize(session, user_id, client_id)
             if feature not in FEATURES:
                 raise NotFound(f"Unknown profile feature: {feature}")
-            if feature == INDUSTRY and not (isinstance(value, str) and value in self._industries):
+            if feature == INDUSTRY and not (isinstance(value, str) and value in INDUSTRY_CLASSES):
                 raise NotFound(f"Unknown industry class: {value}")
             row = await find_profile(session, client_id)
             if row is not None and is_bank_fact(row.payload, feature):
