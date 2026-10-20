@@ -1,0 +1,9 @@
+{
+  "enum": [
+    "fact",
+    "bank",
+    "ai"
+  ],
+  "title": "ClaimType",
+  "type": "string"
+}

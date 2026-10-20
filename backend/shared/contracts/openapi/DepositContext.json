@@ -1,0 +1,21 @@
+{
+  "properties": {
+    "amount": {
+      "type": "number"
+    },
+    "term_days": {
+      "type": "integer"
+    },
+    "type": {
+      "const": "deposit",
+      "default": "deposit",
+      "type": "string"
+    }
+  },
+  "required": [
+    "amount",
+    "term_days"
+  ],
+  "title": "DepositContext",
+  "type": "object"
+}

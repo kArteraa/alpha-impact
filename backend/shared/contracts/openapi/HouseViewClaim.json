@@ -1,0 +1,93 @@
+{
+  "properties": {
+    "claim": {
+      "type": "string"
+    },
+    "date": {
+      "format": "date",
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "page": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_doc": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "approved",
+        "superseded",
+        "expired"
+      ],
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "superseded_by": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "type": {
+      "enum": [
+        "fact",
+        "forecast",
+        "opinion"
+      ],
+      "type": "string"
+    },
+    "valid_until": {
+      "anyOf": [
+        {
+          "format": "date",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "id",
+    "claim",
+    "type",
+    "subject",
+    "value",
+    "date",
+    "valid_until",
+    "source_doc",
+    "page",
+    "superseded_by",
+    "status"
+  ],
+  "title": "HouseViewClaim",
+  "type": "object"
+}

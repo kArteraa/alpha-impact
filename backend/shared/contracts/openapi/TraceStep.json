@@ -1,0 +1,60 @@
+{
+  "properties": {
+    "duration_ms": {
+      "default": 0,
+      "type": "integer"
+    },
+    "input_summary": {
+      "type": "string"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "name": {
+      "type": "string"
+    },
+    "output_summary": {
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "step": {
+      "enum": [
+        "prefilter",
+        "plan",
+        "tool",
+        "draft",
+        "critic",
+        "final"
+      ],
+      "type": "string"
+    },
+    "tokens_in": {
+      "default": 0,
+      "type": "integer"
+    },
+    "tokens_out": {
+      "default": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "step",
+    "name",
+    "input_summary",
+    "output_summary",
+    "started_at"
+  ],
+  "title": "TraceStep",
+  "type": "object"
+}

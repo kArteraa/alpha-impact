@@ -1,0 +1,52 @@
+{
+  "properties": {
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "source": {
+      "enum": [
+        "bank",
+        "graph",
+        "inferred",
+        "user"
+      ],
+      "type": "string"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "value",
+    "source",
+    "confidence",
+    "updated_at"
+  ],
+  "title": "Feature",
+  "type": "object"
+}

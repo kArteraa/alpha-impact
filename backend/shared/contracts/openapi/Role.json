@@ -1,0 +1,11 @@
+{
+  "enum": [
+    "owner",
+    "ceo",
+    "cfo",
+    "treasurer",
+    "chief_accountant"
+  ],
+  "title": "Role",
+  "type": "string"
+}

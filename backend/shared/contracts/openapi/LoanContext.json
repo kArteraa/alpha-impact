@@ -1,0 +1,41 @@
+{
+  "properties": {
+    "amount": {
+      "type": "number"
+    },
+    "product": {
+      "enum": [
+        "loan",
+        "leasing",
+        "guarantee"
+      ],
+      "type": "string"
+    },
+    "rate_type": {
+      "anyOf": [
+        {
+          "enum": [
+            "floating",
+            "fixed"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "type": {
+      "const": "loan",
+      "default": "loan",
+      "type": "string"
+    }
+  },
+  "required": [
+    "product",
+    "amount"
+  ],
+  "title": "LoanContext",
+  "type": "object"
+}

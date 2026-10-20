@@ -1,0 +1,43 @@
+{
+  "properties": {
+    "amount": {
+      "type": "number"
+    },
+    "beneficiary_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "currency": {
+      "default": "RUB",
+      "type": "string"
+    },
+    "inn": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "type": {
+      "const": "payment",
+      "default": "payment",
+      "type": "string"
+    }
+  },
+  "required": [
+    "amount"
+  ],
+  "title": "PaymentContext",
+  "type": "object"
+}

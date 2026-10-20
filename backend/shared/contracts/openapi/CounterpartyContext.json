@@ -1,0 +1,67 @@
+{
+  "properties": {
+    "confidence": {
+      "type": "number"
+    },
+    "industry_class": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "region": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "share_of_client_outflow": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "share_of_counterparty_inflow": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "size_bucket": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "industry_class",
+    "region",
+    "size_bucket",
+    "share_of_client_outflow",
+    "share_of_counterparty_inflow",
+    "confidence"
+  ],
+  "title": "CounterpartyContext",
+  "type": "object"
+}

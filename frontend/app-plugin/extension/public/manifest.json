@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "alfa-insight",
+  "version": "0.1.0",
+  "description": "Аналитика в момент действия: карточка для вашей компании на странице новости или контрагента",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "permissions": ["sidePanel", "storage", "activeTab"]
+}
