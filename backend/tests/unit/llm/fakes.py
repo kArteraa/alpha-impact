@@ -47,7 +47,9 @@ class ModelServer:
         tokens_out: int = 500,
         status: int = 200,
         failure: httpx.HTTPError | None = None,
+        payload: object = None,
     ) -> None:
+        self.payload = payload
         self.content = content
         self.status = status
         self.failure = failure
@@ -61,6 +63,10 @@ class ModelServer:
             raise self.failure
         if self.status != 200:
             return httpx.Response(self.status, json={"error": "unavailable"})
+        if isinstance(self.payload, str):
+            return httpx.Response(200, text=self.payload)
+        if self.payload is not None:
+            return httpx.Response(200, json=self.payload)
         usage = {"prompt_tokens": self.tokens_in, "completion_tokens": self.tokens_out}
         if request.url.path.endswith("/embeddings"):
             body: dict[str, Any] = {

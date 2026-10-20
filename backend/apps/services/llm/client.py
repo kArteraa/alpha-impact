@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -5,6 +6,8 @@ import httpx
 
 from apps.services.llm.errors import ModelUnavailable
 from shared.config.settings import Settings
+
+MALFORMED_RESPONSE = (ValueError, KeyError, IndexError, TypeError)
 
 
 @dataclass(frozen=True)
@@ -37,26 +40,31 @@ class ModelClient:
         }
         if response_format is not None:
             body["response_format"] = response_format
-        data = await self._post("/chat/completions", body)
-        usage = data["usage"]
-        return Completion(
-            content=data["choices"][0]["message"]["content"],
-            tokens_in=usage["prompt_tokens"],
-            tokens_out=usage["completion_tokens"],
-        )
+        return await self._call("/chat/completions", body, read_completion)
 
     async def embed(self, model: str, text: str) -> Embedding:
-        data = await self._post("/embeddings", {"model": model, "input": text})
-        return Embedding(vector=data["data"][0]["embedding"], tokens=data["usage"]["prompt_tokens"])
+        return await self._call("/embeddings", {"model": model, "input": text}, read_embedding)
 
-    async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+    async def _call[T](self, path: str, body: dict[str, Any], read: Callable[[Any], T]) -> T:
         try:
             response = await self._http.post(path, json=body)
             response.raise_for_status()
-        except httpx.HTTPError as error:
-            raise ModelUnavailable(f"model API {path} failed: {error}") from error
-        data: dict[str, Any] = response.json()
-        return data
+            return read(response.json())
+        except (httpx.HTTPError, *MALFORMED_RESPONSE) as error:
+            raise ModelUnavailable(f"model API {path} failed: {error!r}") from error
+
+
+def read_completion(data: Any) -> Completion:
+    usage = data["usage"]
+    return Completion(
+        content=data["choices"][0]["message"]["content"],
+        tokens_in=usage["prompt_tokens"],
+        tokens_out=usage["completion_tokens"],
+    )
+
+
+def read_embedding(data: Any) -> Embedding:
+    return Embedding(vector=data["data"][0]["embedding"], tokens=data["usage"]["prompt_tokens"])
 
 
 def build_http_client(settings: Settings) -> httpx.AsyncClient:
