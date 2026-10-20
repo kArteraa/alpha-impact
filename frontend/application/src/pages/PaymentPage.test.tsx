@@ -58,7 +58,6 @@ describe("PaymentPage", () => {
       type: "payment",
       amount: 1500000,
       beneficiary_id: "cp_logistics_spb",
-      currency: "RUB",
     });
   });
 });
