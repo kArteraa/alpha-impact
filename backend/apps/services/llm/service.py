@@ -62,7 +62,7 @@ class ModelGateway:
         output_schema = pydantic_schema(schema)
         output_format = response_format(output_schema)
         model = self._catalog.route(task)
-        key = cache_key(model, system, user, output_format)
+        key = cache_key(task, model, system, user, output_format)
         cached = await self._store.cached(key)
         if cached is not None:
             return parse(cached, output_schema), 0, 0

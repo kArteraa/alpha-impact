@@ -68,17 +68,16 @@ class ModelServer:
 
 
 def make_gateway(
-    http: httpx.AsyncClient | ModelServer,
+    http: httpx.AsyncClient,
     store: UsageStore,
     daily_budget_rub: float = 500.0,
     reserve_share: float = 0.1,
     prices: dict[str, ModelPrice] = PRICES,
     today: Callable[[], date] = lambda: TODAY,
 ) -> ModelGateway:
-    client = http.http_client() if isinstance(http, ModelServer) else http
     return ModelGateway(
         catalog=ModelCatalog(prices, ROUTES, EMBEDDING_MODEL),
-        client=ModelClient(client),
+        client=ModelClient(http),
         store=store,
         daily_budget_rub=daily_budget_rub,
         reserve_share=reserve_share,
