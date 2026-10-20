@@ -1,13 +1,6 @@
-import { createContext, type ReactNode, useContext, useState } from "react";
-import { COMPANIES, type Company } from "../data/companies";
-
-interface CompanyValue {
-  company: Company;
-  companies: Company[];
-  select: (companyId: string) => void;
-}
-
-const CompanyContext = createContext<CompanyValue | null>(null);
+import { type ReactNode, useState } from "react";
+import { COMPANIES } from "../data/companies";
+import { CompanyContext } from "./context";
 
 export function CompanyProvider({ children }: { children: ReactNode }) {
   const [companyId, setCompanyId] = useState(COMPANIES[0].id);
@@ -17,12 +10,4 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       {children}
     </CompanyContext.Provider>
   );
-}
-
-export function useCompany(): CompanyValue {
-  const value = useContext(CompanyContext);
-  if (value === null) {
-    throw new Error("useCompany must be used inside CompanyProvider");
-  }
-  return value;
 }
