@@ -9,6 +9,7 @@
       "Bash(git:*)",
       "Bash(gh:*)",
       "Bash(docker compose:*)",
+      "Bash(docker info:*)",
       "Bash(alembic:*)"
     ],
     "deny": [

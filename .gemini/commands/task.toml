@@ -1,9 +1,10 @@
-description = "Выполнить задачу бэклога AH-<n> по docs/PIPELINE.md"
+description = "Выполнить задачу по docs/PIPELINE.md: /task — следующая из очереди, /task AH-<n> — задача, /task Ревью AH-<n> — ревью и мерж"
 prompt = """
 Execute the project task pipeline below for: {{args}}
 
+- Empty arguments mean the next task from the user's queue; «Ревью AH-<n>» means the section «Ревью и мерж».
 - Where a step differs by agent, use the Gemini CLI column.
-- Do the steps in order and never skip a stop.
+- Do the steps in order. Stop only at the pipeline's stops: plan, push, merge.
 
 @{docs/PIPELINE.md}
 """
