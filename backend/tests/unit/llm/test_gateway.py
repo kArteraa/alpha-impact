@@ -117,3 +117,27 @@ def test_http_client_uses_shared_key_base_and_timeout(settings_env: dict[str, st
     assert client.headers["Authorization"] == "Bearer test-key"
     assert client.timeout.read == 8
     assert client.timeout.connect == 8
+
+
+async def test_task_without_reasoning_asks_model_not_to_reason() -> None:
+    server = ModelServer(content='{"ok": true, "reason": "r"}')
+    gateway = make_gateway(
+        server.http_client(), MemoryStore(), reasoning_off=frozenset({"extract"})
+    )
+
+    await gateway.complete("extract", "sys", "usr", Verdict)
+    await gateway.complete("critic", "sys", "usr", Verdict)
+
+    assert server.body(0)["reasoning"] == {"enabled": False}
+    assert "reasoning" not in server.body(1)
+
+
+async def test_reasoning_switch_is_part_of_cache_key() -> None:
+    server = ModelServer(content='{"ok": true, "reason": "r"}')
+    store = MemoryStore()
+    await make_gateway(server.http_client(), store).complete("extract", "sys", "usr", Verdict)
+
+    switched = make_gateway(server.http_client(), store, reasoning_off=frozenset({"extract"}))
+    await switched.complete("extract", "sys", "usr", Verdict)
+
+    assert len(server.requests) == 2

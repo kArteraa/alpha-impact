@@ -8,6 +8,7 @@ from apps.services.llm.catalog import (
     ModelNotAllowed,
     UnknownTask,
     build_catalog,
+    load_models,
     load_prices,
 )
 from shared.config.settings import Settings
@@ -76,3 +77,16 @@ def test_models_file_without_prices_is_rejected(tmp_path: Path) -> None:
     path.write_text("models:\n  z-ai/glm-5.3-flash: {input_rub_per_1m: 1}\n", encoding="utf-8")
     with pytest.raises(ValueError, match="output_rub_per_1m"):
         load_prices(path)
+
+
+def test_models_file_turns_reasoning_off_only_for_routed_tasks() -> None:
+    reasoning_off = load_models(MODELS_PATH).reasoning_off_tasks
+    assert reasoning_off == {"extract"}
+    catalog = ModelCatalog(PRICES, ROUTES, EMBEDDING_MODEL, reasoning_off)
+    assert catalog.reasoning("extract") is False
+    assert catalog.reasoning("interpret") is True
+
+
+def test_reasoning_switch_for_unknown_task_is_rejected() -> None:
+    with pytest.raises(UnknownTask, match="summarize"):
+        ModelCatalog(PRICES, ROUTES, EMBEDDING_MODEL, frozenset({"summarize"}))

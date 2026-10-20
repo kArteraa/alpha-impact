@@ -15,13 +15,17 @@ RATE = Document(file="rate.pdf", title="Ставка", date=date(2026, 9, 11))
 STEEL = Document(file="steel.pdf", title="Сталь", date=date(2021, 4, 15), expired=True)
 
 
+PAGE_TEXT = "Банк ожидает ключевую ставку 14% до конца года. " * 10
+
+
 class FakeOcr:
-    def __init__(self) -> None:
+    def __init__(self, text: str = PAGE_TEXT) -> None:
         self.calls = 0
+        self.text = text
 
     def read(self, image: bytes) -> str:
         self.calls += 1
-        return f"страница {self.calls}: ставка 14%"
+        return f"страница {self.calls}: {self.text}"
 
 
 class FakeLlm:
@@ -126,3 +130,21 @@ async def test_missing_report_file_fails(
 
     with pytest.raises(FileNotFoundError):
         await ingest_reports(sessions, FakeLlm(), FakeOcr(), tmp_path, missing)
+
+
+async def test_page_without_text_is_not_sent_to_model(
+    sessions: async_sessionmaker[AsyncSession], config: IngestConfig, tmp_path: Path
+) -> None:
+    llm = FakeLlm()
+
+    result = await ingest_reports(sessions, llm, FakeOcr(text="Итоги"), tmp_path, config)
+
+    assert (result.pages, result.claims) == (3, 0)
+    assert llm.calls == []
+    async with sessions() as session:
+        pending = await session.scalar(
+            select(func.count())
+            .select_from(ReportPageRow)
+            .where(ReportPageRow.extracted.is_(False))
+        )
+    assert pending == 0

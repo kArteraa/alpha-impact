@@ -52,13 +52,17 @@ async def extract(
     document: Document,
     config: IngestConfig,
 ) -> None:
-    schema = extraction_schema(config.subjects)
+    schema = extraction_schema(config.subjects, config.max_claims_per_page)
     async with sessions() as session:
         pages = await pending_pages(session, document.file)
     for page in pages:
+        if len(page.text.strip()) < config.min_page_chars:
+            async with sessions() as session, session.begin():
+                await mark_extracted(session, document.file, page.page)
+            continue
         answer, _, _ = await llm.complete(
             config.llm_task,
-            config.system_prompt,
+            config.prompt,
             page_prompt(document, page.page, page.text, config),
             schema,
         )

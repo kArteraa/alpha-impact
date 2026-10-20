@@ -36,7 +36,7 @@ ANSWER: dict[str, list[dict[str, str | None]]] = {
 
 
 def test_schema_limits_subjects_to_vocabulary() -> None:
-    schema = extraction_schema(CONFIG.subjects)
+    schema = extraction_schema(CONFIG.subjects, CONFIG.max_claims_per_page)
     wrong = {"claims": [{**ANSWER["claims"][0], "subject": "weather"}]}
 
     with pytest.raises(ValidationError):
@@ -45,7 +45,7 @@ def test_schema_limits_subjects_to_vocabulary() -> None:
 
 
 def test_answer_becomes_draft_claims_with_document_date_and_page() -> None:
-    answer = extraction_schema(CONFIG.subjects).model_validate(ANSWER)
+    answer = extraction_schema(CONFIG.subjects, CONFIG.max_claims_per_page).model_validate(ANSWER)
 
     claims = to_claims(answer.claims, RATE_REPORT, 3)
 
@@ -60,13 +60,13 @@ def test_answer_becomes_draft_claims_with_document_date_and_page() -> None:
 
 
 def test_expired_document_gives_expired_claims() -> None:
-    answer = extraction_schema(CONFIG.subjects).model_validate(ANSWER)
+    answer = extraction_schema(CONFIG.subjects, CONFIG.max_claims_per_page).model_validate(ANSWER)
 
     assert {claim.status for claim in to_claims(answer.claims, STEEL_REPORT, 1)} == {"expired"}
 
 
 def test_claim_id_is_stable_and_depends_on_place() -> None:
-    answer = extraction_schema(CONFIG.subjects).model_validate(ANSWER)
+    answer = extraction_schema(CONFIG.subjects, CONFIG.max_claims_per_page).model_validate(ANSWER)
 
     first = to_claims(answer.claims, RATE_REPORT, 3)
     again = to_claims(answer.claims, RATE_REPORT, 3)
@@ -84,3 +84,23 @@ def test_documents_list_covers_bank_reports() -> None:
     assert [document.file for document in CONFIG.documents if document.expired] == [
         "ALFA_Russian_Steels_1К21PreviewUpdate_15Apr2021.pdf"
     ]
+
+
+def test_schema_limits_claims_per_page() -> None:
+    schema = extraction_schema(CONFIG.subjects, 1)
+
+    with pytest.raises(ValidationError):
+        schema.model_validate(ANSWER)
+    assert schema.model_json_schema()["properties"]["claims"]["maxItems"] == 1
+
+
+def test_prompt_describes_every_subject() -> None:
+    for subject in CONFIG.subjects:
+        assert f"- {subject}: {CONFIG.subject_hints[subject]}" in CONFIG.prompt
+
+
+def test_config_rejects_subject_without_hint() -> None:
+    hints = {name: hint for name, hint in CONFIG.subject_hints.items() if name != "debt_market"}
+
+    with pytest.raises(ValidationError, match="subject_hints"):
+        type(CONFIG).model_validate({**CONFIG.model_dump(), "subject_hints": hints})

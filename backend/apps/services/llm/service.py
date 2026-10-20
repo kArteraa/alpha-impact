@@ -79,13 +79,16 @@ class ModelGateway:
         output_schema = pydantic_schema(schema)
         output_format = response_format(output_schema)
         model = self._catalog.route(task)
-        key = cache_key(task, model, system, user, output_format)
+        reasoning = self._catalog.reasoning(task)
+        key = cache_key(task, model, reasoning, system, user, output_format)
         cached = await self._store.cached(key)
         if cached is not None:
             return parse(cached, output_schema), 0, 0
         reservation = await self._reserve(task, model)
         completion = await self._called(
-            reservation, model, lambda: self._client.chat(model, system, user, output_format)
+            reservation,
+            model,
+            lambda: self._client.chat(model, system, user, output_format, reasoning),
         )
         tokens = (completion.tokens_in, completion.tokens_out)
         try:
