@@ -42,10 +42,11 @@ def deposit_terms(amount: float, term_days: int, rate_path: list[float]) -> What
     months = math.ceil(term_days / DAYS_IN_MONTH)
     if len(rate_path) < months:
         raise ValueError(f"rate_path must cover {months} months, got {len(rate_path)}")
-    month_days = [min(DAYS_IN_MONTH, term_days - i * DAYS_IN_MONTH) for i in range(months)]
-    periods = list(zip(rate_path[:months], month_days, strict=True))
-    fixed = round(amount * rate_path[0] / PERCENT * term_days / DAYS_IN_YEAR, 2)
-    rolling = round(sum(amount * rate / PERCENT * days / DAYS_IN_YEAR for rate, days in periods), 2)
+    periods = [
+        (rate_path[i], min(DAYS_IN_MONTH, term_days - i * DAYS_IN_MONTH)) for i in range(months)
+    ]
+    fixed = round(_interest(amount, rate_path[0], term_days), 2)
+    rolling = round(sum(_interest(amount, rate, days) for rate, days in periods), 2)
     value = round(fixed - rolling, 2)
     path_terms = " + ".join(f"{format_rate(rate)}% × {days}" for rate, days in periods)
     formula = (
@@ -91,6 +92,10 @@ def fx_exposure(
             "без хеджирования",
         ],
     )
+
+
+def _interest(amount: float, rate: float, days: int) -> float:
+    return amount * rate / PERCENT * days / DAYS_IN_YEAR
 
 
 def _require_positive(**values: float) -> None:
