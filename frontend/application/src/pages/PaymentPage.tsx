@@ -1,4 +1,4 @@
-import { InsightPanel } from "@alpha-impact/plugin";
+import { InsightPanel, type PaymentContext } from "@alpha-impact/plugin";
 import { type FormEvent, useState } from "react";
 import { COUNTERPARTIES } from "../data/counterparties";
 import { mockInsightFor } from "../payment/mockInsight";
@@ -11,6 +11,14 @@ const EMPTY_FORM: PaymentForm = { beneficiaryId: "", amount: "", purpose: "" };
 export function PaymentPage() {
   const [form, setForm] = useState<PaymentForm>(EMPTY_FORM);
   const paymentContext = toPaymentContext(form);
+  const [lastContext, setLastContext] = useState<PaymentContext | null>(null);
+  if (
+    paymentContext &&
+    (paymentContext.amount !== lastContext?.amount || paymentContext.beneficiary_id !== lastContext?.beneficiary_id)
+  ) {
+    setLastContext(paymentContext);
+  }
+  const panelContext = paymentContext ?? lastContext;
   const recipient = COUNTERPARTIES.find((counterparty) => counterparty.id === form.beneficiaryId);
 
   function update(field: keyof PaymentForm, value: string) {
@@ -70,11 +78,11 @@ export function PaymentPage() {
           </button>
         </form>
         <aside>
-          {paymentContext ? (
+          {panelContext ? (
             <InsightPanel
-              actionContext={paymentContext}
+              actionContext={panelContext}
               role="cfo"
-              response={mockInsightFor(form.beneficiaryId)}
+              response={mockInsightFor(panelContext.beneficiary_id)}
             />
           ) : (
             <div className="card muted">Выберите получателя и сумму — Alpha Impact проверит, что важно для этого платежа</div>

@@ -47,6 +47,17 @@ describe("LoginPage", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ user_id: "user_cfo_wholesale" });
   });
 
+  it("does not log in with a blank user id", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    renderLogin();
+
+    submit("   ");
+
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Войти" }).disabled).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("shows the status when the login fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("unknown user", { status: 404 })));
     renderLogin();

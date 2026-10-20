@@ -54,6 +54,18 @@ describe("PaymentPage", () => {
     expect(panel()?.getAttribute("data-state")).toBe("silent");
   });
 
+  it("keeps the panel while the amount is being typed", () => {
+    render(<PaymentPage />);
+    fill("cp_logistics_spb", "1500");
+    const shown = panel();
+
+    fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "1500," } });
+
+    expect(panel()).toBe(shown);
+    expect(panel()?.getAttribute("data-state")).toBe("cards");
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Продолжить" }).disabled).toBe(true);
+  });
+
   it("hands the PaymentContext to the console on submit", () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
     render(<PaymentPage />);
