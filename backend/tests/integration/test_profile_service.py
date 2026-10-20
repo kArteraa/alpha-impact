@@ -146,6 +146,11 @@ async def test_client_without_card_gets_empty_profile_that_accepts_corrections(
     assert corrected.flags["no_card"] is True
     assert corrected.version == 1
 
+    industry = await profiler.apply_user_correction(USER, NO_CARD, "industry_class", "energy")
+
+    assert industry.features["industry_class"].value == "energy"
+    assert industry.exposures == {}
+
 
 async def test_linked_small_company_gets_profile_from_card(
     profiler: Profiler, sessions: async_sessionmaker[AsyncSession]
