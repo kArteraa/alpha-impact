@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 MINUS = "−"
+RATE_DECIMALS = 10
 RUSSIAN_SEPARATORS = str.maketrans({",": " ", ".": ","})
 
 
@@ -11,7 +12,7 @@ def format_amount(value: float) -> str:
 
 
 def format_rate(value: float) -> str:
-    return _signed(value, format(Decimal(repr(abs(value))).normalize(), ",f"))
+    return _signed(value, format(Decimal(repr(round(abs(value), RATE_DECIMALS))).normalize(), ",f"))
 
 
 def _signed(value: float, digits: str) -> str:

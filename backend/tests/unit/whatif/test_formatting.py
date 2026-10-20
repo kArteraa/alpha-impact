@@ -33,3 +33,8 @@ def test_format_amount(value: float, expected: str) -> None:
 )
 def test_format_rate(value: float, expected: str) -> None:
     assert format_rate(value) == expected
+
+
+def test_format_rate_hides_float_noise() -> None:
+    assert format_rate(0.1 + 0.2) == "0,3"
+    assert format_rate(13.5 + 0.1 + 0.2) == "13,8"
