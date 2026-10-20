@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router";
 import { Brand } from "./Brand";
-import { CompanyProvider, useCompany } from "./company/CompanyContext";
+import { CompanyProvider } from "./company/CompanyContext";
+import { useCompany } from "./company/context";
 
 const NAV = [
   ["/", "Главная"],

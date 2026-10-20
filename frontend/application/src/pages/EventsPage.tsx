@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { useCompany } from "../company/CompanyContext";
+import { useCompany } from "../company/context";
 import { EventSummary } from "../dashboard/EventSummary";
 import { rankEvents } from "../dashboard/rankEvents";
 import { EVENTS } from "../data/events";
