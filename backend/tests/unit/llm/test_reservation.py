@@ -13,7 +13,7 @@ from tests.unit.llm.fakes import TODAY, MemoryStore, ModelServer, Usage, make_ga
 
 
 def spent(store: MemoryStore, cost_rub: float) -> None:
-    store.add(Usage(TODAY, "interpret", "glm-5.3-flash", 0, 0, cost_rub))
+    store.add(Usage(TODAY, "interpret", "z-ai/glm-5.3-flash", 0, 0, cost_rub))
 
 
 def slow_client(server: ModelServer) -> httpx.AsyncClient:

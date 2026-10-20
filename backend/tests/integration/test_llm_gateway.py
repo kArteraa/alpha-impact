@@ -86,7 +86,7 @@ async def test_structured_call_is_recorded_in_usage(
         usage = (await session.scalars(select(LlmUsageRow))).one()
     assert (usage.task, usage.model, usage.tokens_in, usage.tokens_out) == (
         "interpret",
-        "glm-5.3-flash",
+        "z-ai/glm-5.3-flash",
         2000,
         400,
     )
@@ -148,7 +148,7 @@ async def test_concurrent_calls_share_one_reservation_across_gateways(
             LlmUsageRow(
                 day=utc_today(),
                 task="interpret",
-                model="glm-5.3-flash",
+                model="z-ai/glm-5.3-flash",
                 tokens_in=0,
                 tokens_out=0,
                 cost_rub=449.5,

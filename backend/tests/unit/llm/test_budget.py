@@ -11,7 +11,7 @@ def spent(store: MemoryStore, cost_rub: float, days_ago: int = 0) -> None:
         Usage(
             day=TODAY - timedelta(days=days_ago),
             task="interpret",
-            model="glm-5.3-flash",
+            model="z-ai/glm-5.3-flash",
             tokens_in=0,
             tokens_out=0,
             cost_rub=cost_rub,
@@ -29,7 +29,7 @@ async def test_call_is_charged_by_model_prices() -> None:
     gateway = make_gateway(ModelServer(tokens_in=1000, tokens_out=500).http_client(), store)
     await gateway.complete("interpret", "system", "user")
     assert store.usages[0].cost_rub == pytest.approx(0.25)
-    assert store.usages[0].model == "glm-5.3-flash"
+    assert store.usages[0].model == "z-ai/glm-5.3-flash"
     assert store.usages[0].task == "interpret"
     assert store.usages[0].day == TODAY
     assert await gateway.budget_left_rub() == pytest.approx(449.75)

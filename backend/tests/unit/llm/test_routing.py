@@ -14,12 +14,12 @@ from shared.config.settings import Settings
 from tests.unit.llm.fakes import EMBEDDING_MODEL, PRICES, ROUTES
 
 CASE_ALLOW_LIST = {
-    "gemma-4-26b-a4b",
-    "glm-5.3-flash",
-    "qwen3.6-35b-a3b",
-    "deepseek-v4.1-flash",
-    "qwen3-vl-30b-a3b",
-    "kimi-k2.6",
+    "google/gemma-4-26b-a4b-it",
+    "z-ai/glm-5.3-flash",
+    "qwen/qwen3.6-35b-a3b",
+    "deepseek/deepseek-v4.1-flash",
+    "qwen/qwen3-vl-30b-a3b-instruct",
+    "moonshotai/kimi-k2.6",
 }
 
 
@@ -67,12 +67,12 @@ def test_models_file_lists_the_case_allow_list_and_one_embedding_model() -> None
 
 def test_cost_is_priced_per_million_tokens() -> None:
     catalog = ModelCatalog(PRICES, ROUTES, EMBEDDING_MODEL)
-    assert catalog.cost_rub("glm-5.3-flash", 1_000_000, 0) == pytest.approx(100.0)
-    assert catalog.cost_rub("glm-5.3-flash", 1000, 500) == pytest.approx(0.1 + 0.15)
+    assert catalog.cost_rub("z-ai/glm-5.3-flash", 1_000_000, 0) == pytest.approx(100.0)
+    assert catalog.cost_rub("z-ai/glm-5.3-flash", 1000, 500) == pytest.approx(0.1 + 0.15)
 
 
 def test_models_file_without_prices_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "models.yaml"
-    path.write_text("models:\n  glm-5.3-flash: {input_rub_per_1m: 1}\n", encoding="utf-8")
+    path.write_text("models:\n  z-ai/glm-5.3-flash: {input_rub_per_1m: 1}\n", encoding="utf-8")
     with pytest.raises(ValueError, match="output_rub_per_1m"):
         load_prices(path)
