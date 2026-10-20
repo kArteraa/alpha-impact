@@ -1,19 +1,22 @@
-import { InsightPanel } from "@alpha-impact/plugin";
-import { type FormEvent, useMemo, useState } from "react";
+import { InsightPanel, useInterpret } from "@alpha-impact/plugin";
+import { type FormEvent, useId, useState } from "react";
 import { COUNTERPARTIES } from "../data/counterparties";
-import { mockInsightFor } from "../payment/mockInsight";
-import { type PaymentForm, parseAmount, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
-
-const RECIPIENT_HINT_ID = "recipient-hint";
+import { formatRub, parseAmount } from "../money";
+import { mockInterpret } from "../payment/mockInterpret";
+import { type PaymentForm, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
 
 const EMPTY_FORM: PaymentForm = { beneficiaryId: "", amount: "", purpose: "" };
 
 export function PaymentPage() {
+  const recipientHintId = useId();
+  const amountHintId = useId();
   const [form, setForm] = useState<PaymentForm>(EMPTY_FORM);
-  const paymentContext = toPaymentContext(form);
   const [heldAmount, setHeldAmount] = useState<number | null>(null);
-  const panelContext = useMemo(() => paymentContextOf(form.beneficiaryId, heldAmount), [form.beneficiaryId, heldAmount]);
+  const paymentContext = toPaymentContext(form);
+  const panelContext = paymentContextOf(form.beneficiaryId, heldAmount);
+  const insight = useInterpret(panelContext, mockInterpret);
   const recipient = COUNTERPARTIES.find((counterparty) => counterparty.id === form.beneficiaryId);
+  const amountInvalid = form.amount.trim() !== "" && parseAmount(form.amount) === null;
 
   function update(field: keyof PaymentForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -41,42 +44,54 @@ export function PaymentPage() {
         <form className="card form" onSubmit={submit}>
           <h2>Платёж контрагенту</h2>
           <div className="field">
-            <label className="field">
-              <span className="muted">Получатель</span>
-              <select
-                value={form.beneficiaryId}
-                aria-describedby={recipient ? RECIPIENT_HINT_ID : undefined}
-                onChange={(event) => update("beneficiaryId", event.target.value)}
-              >
-                <option value="">Выберите контрагента</option>
-                {COUNTERPARTIES.map((counterparty) => (
-                  <option key={counterparty.id} value={counterparty.id}>
-                    {counterparty.name}
-                  </option>
-                ))}
-              </select>
+            <label htmlFor={`${recipientHintId}-select`} className="muted">
+              Получатель
             </label>
+            <select
+              id={`${recipientHintId}-select`}
+              value={form.beneficiaryId}
+              aria-describedby={recipient ? recipientHintId : undefined}
+              onChange={(event) => update("beneficiaryId", event.target.value)}
+            >
+              <option value="">Выберите контрагента</option>
+              {COUNTERPARTIES.map((counterparty) => (
+                <option key={counterparty.id} value={counterparty.id}>
+                  {counterparty.name}
+                </option>
+              ))}
+            </select>
             {recipient && (
-              <small id={RECIPIENT_HINT_ID} className="muted">
+              <small id={recipientHintId} className="field-hint">
                 {recipient.description}
               </small>
             )}
           </div>
-          <label className="field">
-            <span className="muted">Сумма, ₽</span>
+          <div className="field">
+            <label htmlFor={`${amountHintId}-input`} className="muted">
+              Сумма, ₽
+            </label>
             <input
+              id={`${amountHintId}-input`}
               inputMode="decimal"
               placeholder="0"
               value={form.amount}
+              aria-invalid={amountInvalid}
+              aria-describedby={amountInvalid ? amountHintId : undefined}
               onChange={(event) => updateAmount(event.target.value)}
+              onBlur={() => update("amount", formatRub(form.amount))}
             />
-          </label>
+            {amountInvalid && (
+              <small id={amountHintId} className="field-hint">
+                Сумма — положительное число, не больше двух знаков после запятой
+              </small>
+            )}
+          </div>
           <label className="field">
             <span className="muted">Назначение платежа</span>
             <textarea rows={3} value={form.purpose} onChange={(event) => update("purpose", event.target.value)} />
           </label>
           <button className="button" type="submit" disabled={paymentContext === null}>
-            Продолжить
+            Отправить
           </button>
         </form>
         <aside>
@@ -84,7 +99,10 @@ export function PaymentPage() {
             <InsightPanel
               actionContext={panelContext}
               role="cfo"
-              response={mockInsightFor(panelContext.beneficiary_id)}
+              response={insight.response}
+              pending={insight.pending}
+              failed={insight.failed}
+              onRetry={insight.retry}
             />
           ) : (
             <div className="card muted">Выберите получателя и сумму — Alpha Impact проверит, что важно для этого платежа</div>
