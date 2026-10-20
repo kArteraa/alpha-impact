@@ -74,7 +74,8 @@ async def test_retry_after_invalid_answer_calls_the_model_again() -> None:
 
 
 NOT_JSON = "<html>502 bad gateway</html>"
-USAGE = {"prompt_tokens": 1, "completion_tokens": 1}
+USAGE = {"prompt_tokens": 1200, "completion_tokens": 300}
+EMBED_USAGE = {"prompt_tokens": 40}
 
 
 @pytest.mark.parametrize(
@@ -82,13 +83,13 @@ USAGE = {"prompt_tokens": 1, "completion_tokens": 1}
     [
         NOT_JSON,
         {"choices": [{"message": {"content": "ok"}}]},
-        {"choices": [], "usage": USAGE},
-        {"choices": [{"message": {}}], "usage": USAGE},
-        {"usage": USAGE},
+        {"choices": [], "usage": "broken"},
         ["not", "an", "object"],
     ],
 )
-async def test_malformed_completion_envelope_is_model_unavailable(payload: object) -> None:
+async def test_broken_completion_without_usage_is_unavailable_and_not_charged(
+    payload: object,
+) -> None:
     store = MemoryStore()
     gateway = make_gateway(ModelServer(payload=payload).http_client(), store)
     with pytest.raises(ModelUnavailable) as raised:
@@ -101,18 +102,52 @@ async def test_malformed_completion_envelope_is_model_unavailable(payload: objec
 @pytest.mark.parametrize(
     "payload",
     [
-        NOT_JSON,
-        {"usage": {"prompt_tokens": 1}},
-        {"data": [], "usage": {"prompt_tokens": 1}},
-        {"data": [{"embedding": [0.1]}]},
-        {"data": [{}], "usage": {"prompt_tokens": 1}},
+        {"choices": [], "usage": USAGE},
+        {"choices": [{"message": {}}], "usage": USAGE},
+        {"usage": USAGE},
     ],
 )
-async def test_malformed_embedding_envelope_is_model_unavailable(payload: object) -> None:
+async def test_broken_completion_with_usage_is_unavailable_but_charged(payload: object) -> None:
+    store = MemoryStore()
+    gateway = make_gateway(ModelServer(payload=payload).http_client(), store)
+    with pytest.raises(ModelUnavailable):
+        await gateway.complete("interpret", "sys", "usr")
+    assert [(u.task, u.tokens_in, u.tokens_out) for u in store.usages] == [("interpret", 1200, 300)]
+    assert store.cache == {}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        NOT_JSON,
+        {"data": [{"embedding": [0.1]}]},
+        {"data": []},
+    ],
+)
+async def test_broken_embedding_without_usage_is_unavailable_and_not_charged(
+    payload: object,
+) -> None:
     store = MemoryStore()
     gateway = make_gateway(ModelServer(payload=payload).http_client(), store)
     with pytest.raises(ModelUnavailable) as raised:
         await gateway.embed("text")
     assert isinstance(raised.value, DomainError)
     assert store.usages == []
+    assert store.cache == {}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"usage": EMBED_USAGE},
+        {"data": [], "usage": EMBED_USAGE},
+        {"data": [{}], "usage": EMBED_USAGE},
+    ],
+)
+async def test_broken_embedding_with_usage_is_unavailable_but_charged(payload: object) -> None:
+    store = MemoryStore()
+    gateway = make_gateway(ModelServer(payload=payload).http_client(), store)
+    with pytest.raises(ModelUnavailable):
+        await gateway.embed("text")
+    assert [(u.task, u.tokens_in, u.tokens_out) for u in store.usages] == [("embed", 40, 0)]
     assert store.cache == {}
