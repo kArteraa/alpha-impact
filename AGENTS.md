@@ -74,10 +74,10 @@ Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/
 
 ## Tools
 
-- Allowed: git, uv, npm and npx, docker compose; `gh` only for the branch and PR operations of the pipeline
-- Built-in agent features named in `docs/PIPELINE.md`: Claude Code plan mode, `/simplify`, `/code-review` without flags, `/security-review`; Codex `/review`, typed by the user
-- The task entry point: `/task` in Claude Code and Gemini CLI, `$task` in Codex
-- Jira through the Atlassian MCP: only if it is connected and the user asked — to read a task or move its status
+- Allowed: git, uv, npm and npx, docker compose; `gh` only for the branch and PR operations of the pipeline; `winget` and `docker info` only in `/setup`
+- Built-in agent features named in `docs/PIPELINE.md`: Claude Code plan mode, `/simplify`, `/code-review` without flags, `/security-review`
+- Entry points: `/task` and `/setup` in Claude Code and Gemini CLI, `$task` and `$setup` in Codex
+- Jira via the Atlassian MCP is part of the pipeline (assignee, status, PR link); no MCP → suggest `/setup`
 - Everything else — web search, other MCPs, plugins, skills — only on the user's direct request in the current session
 
 ## Git
@@ -86,12 +86,12 @@ Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/
 - One task = one branch from an up-to-date `dev`: `<prefix>/AH-<n>-<slug>` (prefixes per task type in `docs/PIPELINE.md`). PR into `dev`, title `AH-<n> · <название>`, description in Russian: what was done / how to verify / risks.
 - `dev` → `main` only by a release PR on the owner's command; the release commit gets the tag the jury receives.
 - Commit only at pipeline steps or when the user asks. Commit messages: Russian natural-language list (`- Добавить …`), no `feat:` or `fix:` prefixes, no `Co-Authored-By`, no agent attribution.
-- Never force-push and never merge a PR. Ask before pushing, deleting a branch or rewriting history.
+- Never force-push. Merge only in the review mode of `docs/PIPELINE.md` after the reviewer's yes (merge commit). Ask before pushing, deleting another branch or rewriting history.
 
 ## Workflow
 
 - Every change follows `docs/PIPELINE.md`, whether the user runs `/task`, `$task` or just describes the task.
-- Hard stops: after the plan (wait for approval), before the manual check, before push.
+- Hard stops: after the plan and before push; in review mode, before merge. Nothing else waits for the user.
 - A task is done only when the checks in `docs/PIPELINE.md` are green.
 - Checks fail in code outside your task → don't fix it in your branch; stop and tell the user.
 
@@ -106,4 +106,4 @@ Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/
 - Contracts unchanged, or changed in a `contract` task
 - No new dependency without a line in `THIRD_PARTY_NOTICES.md`
 - README instructions still work: `docker compose up -d --build` on a clean clone
-- PR into `dev` is open; a human adds its link to Jira unless an agent was asked
+- PR into `dev` is open with a reviewer; the Jira issue is «В процессе проверки» with the PR link
