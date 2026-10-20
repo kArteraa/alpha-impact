@@ -3,12 +3,13 @@ from typing import Any
 
 import httpx
 
+from apps.services.llm.errors import ModelUnavailable
 from shared.config.settings import Settings
 
 
 @dataclass(frozen=True)
 class Completion:
-    content: str
+    content: str | None
     tokens_in: int
     tokens_out: int
 
@@ -49,8 +50,11 @@ class ModelClient:
         return Embedding(vector=data["data"][0]["embedding"], tokens=data["usage"]["prompt_tokens"])
 
     async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
-        response = await self._http.post(path, json=body)
-        response.raise_for_status()
+        try:
+            response = await self._http.post(path, json=body)
+            response.raise_for_status()
+        except httpx.HTTPError as error:
+            raise ModelUnavailable(f"model API {path} failed: {error}") from error
         data: dict[str, Any] = response.json()
         return data
 

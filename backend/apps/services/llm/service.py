@@ -4,10 +4,11 @@ from collections.abc import Callable
 from datetime import date
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from apps.services.llm.catalog import ModelCatalog
 from apps.services.llm.client import ModelClient
+from apps.services.llm.errors import ModelOutputInvalid
 from apps.services.llm.store import Usage, UsageStore
 from shared.contracts.errors import BudgetExceeded
 
@@ -37,7 +38,10 @@ def cache_key(*parts: object) -> str:
 def parse(content: str, schema: type[BaseModel] | None) -> object:
     if schema is None:
         return content
-    return schema.model_validate_json(content)
+    try:
+        return schema.model_validate_json(content)
+    except ValidationError as error:
+        raise ModelOutputInvalid(f"answer does not match {schema.__name__}") from error
 
 
 class ModelGateway:
@@ -69,6 +73,8 @@ class ModelGateway:
         await self._ensure_budget()
         completion = await self._client.chat(model, system, user, output_format)
         await self._spend(task, model, completion.tokens_in, completion.tokens_out)
+        if not completion.content:
+            raise ModelOutputInvalid(f"model {model} returned an empty answer")
         result = parse(completion.content, output_schema)
         await self._store.remember(key, completion.content)
         return result, completion.tokens_in, completion.tokens_out

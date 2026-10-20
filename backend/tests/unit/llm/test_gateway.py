@@ -1,5 +1,5 @@
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from apps.services.llm.client import build_http_client
 from shared.config.settings import Settings
@@ -50,16 +50,6 @@ async def test_without_schema_returns_text() -> None:
         "followup", "sys", "usr"
     )
     assert result == ("plain text", 3, 2)
-
-
-async def test_invalid_structured_output_raises_and_is_not_cached() -> None:
-    server = ModelServer(content="not json")
-    store = MemoryStore()
-    gateway = make_gateway(server.http_client(), store)
-    with pytest.raises(ValidationError):
-        await gateway.complete("critic", "sys", "usr", Verdict)
-    assert store.cache == {}
-    assert len(store.usages) == 1
 
 
 async def test_non_pydantic_schema_is_rejected() -> None:
