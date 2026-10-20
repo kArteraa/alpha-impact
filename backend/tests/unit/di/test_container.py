@@ -55,3 +55,41 @@ def test_validate_lists_missing_ports() -> None:
     with pytest.raises(MissingPortsError, match="Impl, Dependent") as info:
         container.validate([Port, Impl, Dependent])
     assert info.value.missing == ["Impl", "Dependent"]
+
+
+async def test_aclose_runs_closers_in_reverse_order() -> None:
+    container = Container()
+    closed: list[str] = []
+
+    async def close(name: str) -> None:
+        closed.append(name)
+
+    container.on_close(lambda: close("engine"))
+    container.on_close(lambda: close("http"))
+    await container.aclose()
+    assert closed == ["http", "engine"]
+
+
+async def test_aclose_runs_each_closer_once() -> None:
+    container = Container()
+    closed: list[str] = []
+
+    async def close() -> None:
+        closed.append("x")
+
+    container.on_close(close)
+    await container.aclose()
+    await container.aclose()
+    assert closed == ["x"]
+
+
+async def test_request_scope_does_not_close_app_objects() -> None:
+    container = Container()
+    closed: list[str] = []
+
+    async def close() -> None:
+        closed.append("app")
+
+    container.on_close(close)
+    await container.request_scope().aclose()
+    assert closed == []

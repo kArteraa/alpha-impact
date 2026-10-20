@@ -126,3 +126,16 @@ def test_service_without_register_fails_the_build(
 
     with pytest.raises(AttributeError, match="apps.services.broken"):
         build_container()
+
+
+async def test_lifespan_closes_the_container(app: FastAPI, monkeypatch: pytest.MonkeyPatch) -> None:
+    container: Container = app.state.container
+    closed: list[str] = []
+
+    async def close() -> None:
+        closed.append("closed")
+
+    container.on_close(close)
+    async with app.router.lifespan_context(app):
+        assert closed == []
+    assert closed == ["closed"]

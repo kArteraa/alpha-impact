@@ -1,8 +1,9 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable
 from typing import Any, Literal, cast
 
 Scope = Literal["app", "request"]
 Factory = Callable[["Container"], object]
+Closer = Callable[[], Awaitable[None]]
 
 
 class MissingPortsError(RuntimeError):
@@ -21,6 +22,7 @@ class Container:
         self._registrations: dict[type[Any], tuple[Factory, Scope]] = {}
         self._app_instances: dict[type[Any], object] = {}
         self._request_instances: dict[type[Any], object] = {}
+        self._closers: list[Closer] = []
 
     def register(self, port: type[Any], factory: Factory, scope: Scope = "app") -> None:
         self._registrations[port] = (factory, scope)
@@ -39,6 +41,14 @@ class Container:
         missing = [port.__name__ for port in required_ports if port not in self._registrations]
         if missing:
             raise MissingPortsError(missing)
+
+    def on_close(self, closer: Closer) -> None:
+        self._closers.append(closer)
+
+    async def aclose(self) -> None:
+        closers, self._closers = self._closers, []
+        for closer in reversed(closers):
+            await closer()
 
     def request_scope(self) -> "Container":
         scope = Container()

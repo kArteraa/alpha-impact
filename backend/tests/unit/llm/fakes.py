@@ -1,5 +1,6 @@
 import json
 from collections.abc import Callable
+from dataclasses import dataclass, replace
 from datetime import date
 from typing import Any
 
@@ -8,7 +9,7 @@ import httpx
 from apps.services.llm.catalog import ModelCatalog, ModelPrice
 from apps.services.llm.client import ModelClient
 from apps.services.llm.service import ModelGateway
-from apps.services.llm.store import Usage, UsageStore
+from apps.services.llm.store import UsageStore
 from tests.unit.conftest import SETTINGS_ENV
 
 TODAY = date(2026, 10, 20)
@@ -21,10 +22,27 @@ EMBEDDING_MODEL = SETTINGS_ENV["MODEL_EMBED"]
 PRICES = {model: PRICE for model in [*ROUTES.values(), EMBEDDING_MODEL]}
 
 
+@dataclass(frozen=True)
+class Usage:
+    day: date
+    task: str
+    model: str
+    tokens_in: int
+    tokens_out: int
+    cost_rub: float
+
+
 class MemoryStore:
     def __init__(self) -> None:
         self.cache: dict[str, str] = {}
-        self.usages: list[Usage] = []
+        self.rows: dict[int, Usage] = {}
+
+    @property
+    def usages(self) -> list[Usage]:
+        return list(self.rows.values())
+
+    def add(self, usage: Usage) -> None:
+        self.rows[len(self.rows) + 1000] = usage
 
     async def cached(self, key: str) -> str | None:
         return self.cache.get(key)
@@ -32,8 +50,24 @@ class MemoryStore:
     async def remember(self, key: str, content: str) -> None:
         self.cache[key] = content
 
-    async def record(self, usage: Usage) -> None:
-        self.usages.append(usage)
+    async def reserve(
+        self, day: date, task: str, model: str, amount_rub: float, spendable_rub: float
+    ) -> int | None:
+        if await self.spent_rub(day) >= spendable_rub:
+            return None
+        reservation = max(self.rows, default=0) + 1
+        self.rows[reservation] = Usage(day, task, model, 0, 0, amount_rub)
+        return reservation
+
+    async def settle(
+        self, reservation: int, tokens_in: int, tokens_out: int, cost_rub: float
+    ) -> None:
+        if tokens_in == 0 and tokens_out == 0:
+            del self.rows[reservation]
+            return
+        self.rows[reservation] = replace(
+            self.rows[reservation], tokens_in=tokens_in, tokens_out=tokens_out, cost_rub=cost_rub
+        )
 
     async def spent_rub(self, day: date) -> float:
         return sum(usage.cost_rub for usage in self.usages if usage.day == day)
@@ -91,6 +125,7 @@ def make_gateway(
     store: UsageStore,
     daily_budget_rub: float = 500.0,
     reserve_share: float = 0.1,
+    call_reserve_rub: float = 1.0,
     prices: dict[str, ModelPrice] = PRICES,
     today: Callable[[], date] = lambda: TODAY,
 ) -> ModelGateway:
@@ -100,5 +135,6 @@ def make_gateway(
         store=store,
         daily_budget_rub=daily_budget_rub,
         reserve_share=reserve_share,
+        call_reserve_rub=call_reserve_rub,
         today=today,
     )

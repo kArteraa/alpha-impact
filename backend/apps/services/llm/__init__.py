@@ -19,12 +19,15 @@ def utc_today() -> date:
 
 def build_gateway(container: Container) -> ModelGateway:
     settings = container.resolve(Settings)
+    http = build_http_client(settings)
+    container.on_close(http.aclose)
     return ModelGateway(
         catalog=build_catalog(settings, load_prices(MODELS_PATH)),
-        client=ModelClient(build_http_client(settings)),
-        store=SqlUsageStore(container.resolve(async_sessionmaker)),
+        client=ModelClient(http),
+        store=SqlUsageStore(container.resolve(async_sessionmaker), settings.LLM_CACHE_TTL_SECONDS),
         daily_budget_rub=settings.LLM_DAILY_BUDGET_RUB,
         reserve_share=settings.LLM_BUDGET_RESERVE_SHARE,
+        call_reserve_rub=settings.LLM_CALL_RESERVE_RUB,
         today=utc_today,
     )
 

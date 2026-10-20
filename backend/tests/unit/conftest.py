@@ -5,6 +5,8 @@ SETTINGS_ENV = {
     "LLM_API_BASE": "https://llm.example/v1",
     "LLM_API_KEY": "test-key",
     "LLM_TIMEOUT_SECONDS": "8",
+    "LLM_CALL_RESERVE_RUB": "1",
+    "LLM_CACHE_TTL_SECONDS": "604800",
     "LLM_BUDGET_RESERVE_SHARE": "0.1",
     "MODEL_ANNOTATE": "gemma-4-26b-a4b",
     "MODEL_EXTRACT": "qwen3.6-35b-a3b",

@@ -33,10 +33,16 @@ def all_ports() -> list[type[Any]]:
     ]
 
 
+def build_engine(container: Container) -> AsyncEngine:
+    engine = create_engine(container.resolve(Settings).DB_URL)
+    container.on_close(engine.dispose)
+    return engine
+
+
 def build_container() -> Container:
     container = Container()
     container.register(Settings, lambda _: Settings())
-    container.register(AsyncEngine, lambda c: create_engine(c.resolve(Settings).DB_URL))
+    container.register(AsyncEngine, build_engine)
     container.register(async_sessionmaker, lambda c: make_session_factory(c.resolve(AsyncEngine)))
     for service in discover_services():
         service.register(container)
@@ -47,7 +53,7 @@ def build_container() -> Container:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
-    await app.state.container.resolve(AsyncEngine).dispose()
+    await app.state.container.aclose()
 
 
 def create_app() -> FastAPI:
