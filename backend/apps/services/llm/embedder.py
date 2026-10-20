@@ -1,6 +1,6 @@
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 import onnxruntime
@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from tokenizers import Tokenizer
 
 from apps.services.llm.errors import ModelUnavailable
+from shared.config.embedding import EMBEDDING_DIMENSION
 
 SPEC_PATH = Path(__file__).with_name("embedder.json")
 MODELS_DIR = Path(__file__).resolve().parents[3] / "models"
@@ -37,6 +38,12 @@ class EmbedderSpec(BaseModel):
     prefix: str
 
 
+class TextEmbedder(Protocol):
+    spec: EmbedderSpec
+
+    def encode(self, text: str) -> list[float]: ...
+
+
 class EmbeddingDimensionMismatch(ValueError):
     pass
 
@@ -55,32 +62,27 @@ class LocalEmbedder:
         self._directory = directory
         self._dimension = dimension
         self._lock = threading.Lock()
-        self._model: tuple[Any, Any] | None = None
+        self._model: tuple[Any, Tokenizer] | None = None
 
     def encode(self, text: str) -> list[float]:
         session, tokenizer = self._loaded()
-        ids = np.array([tokenizer.encode(self.spec.prefix + text).ids], dtype=np.int64)
+        encoding = tokenizer.encode(self.spec.prefix + text)
         inputs = {
-            "input_ids": ids,
-            "attention_mask": np.ones_like(ids),
-            "token_type_ids": np.zeros_like(ids),
+            "input_ids": np.array([encoding.ids], dtype=np.int64),
+            "attention_mask": np.array([encoding.attention_mask], dtype=np.int64),
+            "token_type_ids": np.array([encoding.type_ids], dtype=np.int64),
         }
-        hidden = session.run(None, inputs)[0][0]
-        pooled = hidden.mean(axis=0)
+        pooled = session.run(None, inputs)[0][0].mean(axis=0)
         vector: list[float] = (pooled / np.linalg.norm(pooled)).tolist()
-        if len(vector) != self._dimension:
-            raise EmbeddingDimensionMismatch(
-                f"{self.spec.name} returns {len(vector)} numbers, configured {self._dimension}"
-            )
         return vector
 
-    def _loaded(self) -> tuple[Any, Any]:
+    def _loaded(self) -> tuple[Any, Tokenizer]:
         with self._lock:
             if self._model is None:
                 self._model = self._load()
             return self._model
 
-    def _load(self) -> tuple[Any, Any]:
+    def _load(self) -> tuple[Any, Tokenizer]:
         weights = self._directory / self.spec.files.model.path
         vocabulary = self._directory / self.spec.files.tokenizer.path
         missing = [str(path) for path in (weights, vocabulary) if not path.is_file()]
@@ -89,8 +91,18 @@ class LocalEmbedder:
                 f"embedding model files are missing: {missing}; "
                 "run python -m scripts.download_embedder"
             )
+        session = onnxruntime.InferenceSession(str(weights), providers=["CPUExecutionProvider"])
+        size = session.get_outputs()[0].shape[-1]
+        if size != self._dimension:
+            raise EmbeddingDimensionMismatch(
+                f"{self.spec.name} returns {size} numbers, configured {self._dimension}"
+            )
         tokenizer = Tokenizer.from_file(str(vocabulary))
         tokenizer.no_padding()
         tokenizer.enable_truncation(self.spec.max_tokens)
-        session = onnxruntime.InferenceSession(str(weights), providers=["CPUExecutionProvider"])
         return session, tokenizer
+
+
+def build_embedder() -> LocalEmbedder:
+    spec = load_spec()
+    return LocalEmbedder(spec, model_dir(spec), EMBEDDING_DIMENSION)

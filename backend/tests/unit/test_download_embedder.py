@@ -29,16 +29,12 @@ def write_spec(path: Path, sha256: str) -> Path:
 
 
 class Source:
-    def __init__(self, payload: bytes = PAYLOAD, broken: bool = False) -> None:
-        self.payload = payload
-        self.broken = broken
+    def __init__(self) -> None:
         self.urls: list[str] = []
 
     def __call__(self, url: str, timeout: float) -> io.BytesIO:
         self.urls.append(url)
-        if self.broken:
-            return BrokenStream(self.payload)
-        return io.BytesIO(self.payload)
+        return io.BytesIO(PAYLOAD)
 
 
 class BrokenStream(io.BytesIO):
@@ -81,7 +77,7 @@ def test_file_with_a_foreign_hash_is_not_kept(tmp_path: Path, source: Source) ->
 
 
 def test_dropped_download_leaves_no_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(download_embedder, "urlopen", Source(broken=True))
+    monkeypatch.setattr(download_embedder, "urlopen", lambda url, timeout: BrokenStream())
     spec = write_spec(tmp_path / "embedder.json", hashlib.sha256(PAYLOAD).hexdigest())
     with pytest.raises(ConnectionResetError):
         download_embedder.download(spec, tmp_path / "models")

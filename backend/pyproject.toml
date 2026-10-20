@@ -53,7 +53,7 @@ warn_unused_configs = true
 exclude = ['^\.venv/']
 
 [[tool.mypy.overrides]]
-module = ["onnxruntime", "tokenizers", "tokenizers.*"]
+module = ["onnxruntime"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

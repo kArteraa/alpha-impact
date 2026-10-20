@@ -1,15 +1,15 @@
 import asyncio
 import hashlib
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from datetime import date
-from typing import Any, Protocol
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
 from apps.services.llm.catalog import ModelCatalog
-from apps.services.llm.client import ModelClient
-from apps.services.llm.embedder import EmbedderSpec
+from apps.services.llm.client import Completion, ModelClient
+from apps.services.llm.embedder import TextEmbedder
 from apps.services.llm.errors import (
     CacheNotWritten,
     ModelOutputInvalid,
@@ -20,12 +20,6 @@ from apps.services.llm.store import UsageStore
 from shared.contracts.errors import BudgetExceeded
 
 EMBED_TASK = "embed"
-
-
-class TextEmbedder(Protocol):
-    spec: EmbedderSpec
-
-    def encode(self, text: str) -> list[float]: ...
 
 
 def pydantic_schema(schema: type | None) -> type[BaseModel] | None:
@@ -94,9 +88,7 @@ class ModelGateway:
         if cached is not None:
             return parse(cached, output_schema), 0, 0
         reservation = await self._reserve(task, model)
-        completion = await self._called(
-            reservation, model, lambda: self._client.chat(model, system, user, output_format)
-        )
+        completion = await self._chat(reservation, model, system, user, output_format)
         tokens = (completion.tokens_in, completion.tokens_out)
         try:
             content = answer_text(completion.content, model)
@@ -108,17 +100,13 @@ class ModelGateway:
         return result, *tokens
 
     async def embed(self, text: str) -> list[float]:
-        spec = self._embedder.spec
-        key = cache_key(EMBED_TASK, spec.model_dump(), text)
+        key = cache_key(EMBED_TASK, self._embedder.spec.model_dump(), text)
         cached = await self._store.cached(key)
         if cached is not None:
             stored: list[float] = json.loads(cached)
             return stored
         vector = await asyncio.to_thread(self._embedder.encode, text)
-        try:
-            await self._store.remember(key, json.dumps(vector))
-        except Exception as error:
-            raise CacheNotWritten(f"embedding by {spec.name} is not cached") from error
+        await self._remember(key, json.dumps(vector))
         return vector
 
     async def budget_left_rub(self) -> float:
@@ -133,9 +121,16 @@ class ModelGateway:
             raise BudgetExceeded(f"daily LLM budget of {self._spendable_rub:.2f} RUB is spent")
         return reservation
 
-    async def _called[T](self, reservation: int, model: str, call: Callable[[], Awaitable[T]]) -> T:
+    async def _chat(
+        self,
+        reservation: int,
+        model: str,
+        system: str,
+        user: str,
+        output_format: dict[str, Any] | None,
+    ) -> Completion:
         try:
-            return await call()
+            return await self._client.chat(model, system, user, output_format)
         except ModelUnavailable as error:
             await self._record(reservation, model, error.tokens_in, error.tokens_out)
             raise
@@ -147,11 +142,17 @@ class ModelGateway:
         self, reservation: int, model: str, key: str, content: str, tokens: tuple[int, int]
     ) -> None:
         try:
+            await self._remember(key, content)
+        except CacheNotWritten:
+            await self._record(reservation, model, *tokens)
+            raise
+        await self._record(reservation, model, *tokens)
+
+    async def _remember(self, key: str, content: str) -> None:
+        try:
             await self._store.remember(key, content)
         except Exception as error:
-            await self._record(reservation, model, *tokens)
-            raise CacheNotWritten(f"answer of reservation {reservation} is not cached") from error
-        await self._record(reservation, model, *tokens)
+            raise CacheNotWritten(f"cache entry {key} is not written") from error
 
     async def _record(self, reservation: int, model: str, tokens_in: int, tokens_out: int) -> None:
         cost = self._catalog.cost_rub(model, tokens_in, tokens_out)

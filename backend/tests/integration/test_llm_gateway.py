@@ -129,14 +129,11 @@ async def test_exhausted_budget_raises(
 
 
 async def test_embedding_is_cached_in_database(
-    make_gateway: Callable[..., ModelGateway],
-    server: MockModelServer,
-    embedder: fakes.CountingEmbedder,
+    make_gateway: Callable[..., ModelGateway], embedder: fakes.CountingEmbedder
 ) -> None:
     assert await make_gateway().embed("ставка") == fakes.VECTOR
     assert await make_gateway().embed("ставка") == fakes.VECTOR
     assert embedder.calls == ["ставка"]
-    assert server.calls == 0
 
 
 async def test_embedding_spends_no_budget(

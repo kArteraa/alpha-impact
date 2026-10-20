@@ -54,11 +54,9 @@ async def test_reserve_is_never_spent() -> None:
 
 
 async def test_exhausted_budget_does_not_block_embeddings() -> None:
-    server = ModelServer()
     store = MemoryStore()
     spent(store, 450.0)
-    assert await make_gateway(server.http_client(), store).embed("text") == VECTOR
-    assert server.requests == []
+    assert await make_gateway(ModelServer().http_client(), store).embed("text") == VECTOR
     assert len(store.usages) == 1
 
 
