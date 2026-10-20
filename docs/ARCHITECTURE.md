@@ -57,6 +57,7 @@ alpha-impact/
     PIPELINE.md                процесс задачи для любого агента
     BACKLOG.md TEAM.md         задачи AH-1…AH-47; кто и в каком порядке их делает
     DECISIONS.md DATA.md       журнал решений команды; факты о данных
+    SUMMARY.md                 суть, цели и текущее состояние на одной странице
   AGENTS.md                    правила для всех агентов — единственный источник
   CLAUDE.md  GEMINI.md         только импорт AGENTS.md
   .claude/skills/task/SKILL.md  /task в Claude Code → docs/PIPELINE.md
