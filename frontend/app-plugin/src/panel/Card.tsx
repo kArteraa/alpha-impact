@@ -5,6 +5,7 @@ import { ClaimList } from "./ClaimList";
 import { formatDate, sourceTitle } from "./labels";
 import { ProductOffer } from "./ProductOffer";
 import { Significance } from "./Significance";
+import { SourceLink } from "./SourceLink";
 import { SourceList } from "./SourceList";
 
 interface CardProps {
@@ -21,13 +22,7 @@ function BankReport({ card }: { card: InsightCard }) {
   return (
     <p className="bank-report">
       {report.published_at && <>Отчёт от {formatDate(report.published_at)} · </>}
-      {report.url ? (
-        <a href={report.url} target="_blank" rel="noreferrer">
-          {sourceTitle(report)}
-        </a>
-      ) : (
-        sourceTitle(report)
-      )}
+      <SourceLink source={report}>{sourceTitle(report)}</SourceLink>
     </p>
   );
 }
@@ -40,7 +35,7 @@ export function Card({ card, compact, onFollowup }: CardProps) {
           <h3>{card.headline}</h3>
           <Significance value={card.significance} />
         </header>
-        <Block title="Почему это важно для вас" collapsible={false} className="block-why">
+        <Block title="Почему это важно для вас" collapsible={false}>
           <ClaimList claims={card.why_for_you} withTraits />
         </Block>
         <Block title="Что произошло" collapsible>
@@ -52,7 +47,7 @@ export function Card({ card, compact, onFollowup }: CardProps) {
         <Block title="Что можно сделать" collapsible={compact}>
           <ClaimList claims={card.actions} />
         </Block>
-        <Block title="Как это оценивает банк" collapsible={compact} className="block-bank">
+        <Block title="Как это оценивает банк" collapsible={compact} className="insight-block-bank">
           <ClaimList claims={card.bank_view} />
           <BankReport card={card} />
         </Block>

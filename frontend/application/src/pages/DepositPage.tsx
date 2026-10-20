@@ -1,10 +1,9 @@
 import { useId, useState } from "react";
 import { DEPOSIT_RATES } from "../data/depositRates";
 import { DEPOSIT_TERMS, type DepositTerm, depositIncome } from "../deposit/calc";
-import { parseAmount } from "../payment/paymentContext";
+import { parseAmount, RUB } from "../money";
 
 const DEFAULT_TERM: DepositTerm = 6;
-const RUB = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", minimumFractionDigits: 2 });
 const RATE = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 
 export function DepositPage() {
@@ -52,7 +51,7 @@ export function DepositPage() {
           {amount === null ? (
             <p className="empty">Введите сумму — посчитаю доход за выбранный срок</p>
           ) : (
-            <strong className="deposit-income" data-testid="deposit-income">
+            <strong className="amount-lg" data-testid="deposit-income">
               {RUB.format(depositIncome(amount, term, rate))}
             </strong>
           )}

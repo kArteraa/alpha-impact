@@ -1,9 +1,9 @@
 import { InsightPanel, useInterpret } from "@alpha-impact/plugin";
-import { type FormEvent, useId, useMemo, useState } from "react";
+import { type FormEvent, useId, useState } from "react";
 import { COUNTERPARTIES } from "../data/counterparties";
-import { formatRub } from "../payment/amount";
+import { formatRub, parseAmount } from "../money";
 import { mockInterpret } from "../payment/mockInterpret";
-import { type PaymentForm, parseAmount, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
+import { type PaymentForm, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
 
 const EMPTY_FORM: PaymentForm = { beneficiaryId: "", amount: "", purpose: "" };
 
@@ -13,7 +13,7 @@ export function PaymentPage() {
   const [form, setForm] = useState<PaymentForm>(EMPTY_FORM);
   const [heldAmount, setHeldAmount] = useState<number | null>(null);
   const paymentContext = toPaymentContext(form);
-  const panelContext = useMemo(() => paymentContextOf(form.beneficiaryId, heldAmount), [form.beneficiaryId, heldAmount]);
+  const panelContext = paymentContextOf(form.beneficiaryId, heldAmount);
   const insight = useInterpret(panelContext, mockInterpret);
   const recipient = COUNTERPARTIES.find((counterparty) => counterparty.id === form.beneficiaryId);
   const amountInvalid = form.amount.trim() !== "" && parseAmount(form.amount) === null;
@@ -100,7 +100,7 @@ export function PaymentPage() {
               actionContext={panelContext}
               role="cfo"
               response={insight.response}
-              pending={insight.pending && insight.response !== undefined}
+              pending={insight.pending}
               failed={insight.failed}
               onRetry={insight.retry}
             />

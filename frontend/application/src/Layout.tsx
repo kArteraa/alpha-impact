@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router";
 import { Brand } from "./Brand";
 import { CompanyProvider } from "./company/CompanyContext";
 import { useCompany } from "./company/context";
+import { COMPANIES } from "./data/companies";
 
 const NAV = [
   ["/", "Главная"],
@@ -12,8 +13,8 @@ const NAV = [
 ] as const;
 
 function CompanySwitcher() {
-  const { company, companies, select } = useCompany();
-  if (companies.length === 1) {
+  const { company, select } = useCompany();
+  if (COMPANIES.length === 1) {
     return <span className="company-name">{company.name}</span>;
   }
   return (
@@ -23,7 +24,7 @@ function CompanySwitcher() {
       value={company.id}
       onChange={(event) => select(event.target.value)}
     >
-      {companies.map((candidate) => (
+      {COMPANIES.map((candidate) => (
         <option key={candidate.id} value={candidate.id}>
           {candidate.name}
         </option>

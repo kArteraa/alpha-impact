@@ -112,6 +112,18 @@ describe("useInterpret", () => {
     expect(result.current.response).toBe(mockResponses.cards);
   });
 
+  it("does not restart the delay when the fetcher is a new function on every render", async () => {
+    const answerWith = vi.fn().mockResolvedValue(mockResponses.cards);
+    const { rerender } = renderHook(() => useInterpret(first, (context, signal) => answerWith(context, signal)));
+
+    act(() => vi.advanceTimersByTime(INTERPRET_DELAY_MS / 2));
+    rerender();
+    act(() => vi.advanceTimersByTime(INTERPRET_DELAY_MS / 2));
+    await flush();
+
+    expect(answerWith).toHaveBeenCalledTimes(1);
+  });
+
   it("does not ask without a context and keeps the last response", async () => {
     const fetcher = vi.fn<InterpretFetcher>().mockResolvedValue(mockResponses.cards);
     const { result, rerender } = renderHook(({ context }) => useInterpret(context, fetcher), {

@@ -1,21 +1,10 @@
 import type { SourceRef } from "../types";
 import { SOURCE_KINDS, sourceTitle } from "./labels";
-
-function SourceTitle({ source }: { source: SourceRef }) {
-  const title = sourceTitle(source);
-  if (source.url) {
-    return (
-      <a href={source.url} target="_blank" rel="noreferrer">
-        {title}
-      </a>
-    );
-  }
-  return <span>{title}</span>;
-}
+import { SourceLink } from "./SourceLink";
 
 export function SourceList({ sources }: { sources: SourceRef[] }) {
   return (
-    <ul className="sources">
+    <ul className="insight-sources">
       {sources.map((source) => {
         const kind = SOURCE_KINDS[source.kind];
         return (
@@ -23,7 +12,7 @@ export function SourceList({ sources }: { sources: SourceRef[] }) {
             <span className="source-icon" role="img" aria-label={kind.label} title={kind.label}>
               {kind.icon}
             </span>
-            <SourceTitle source={source} />
+            <SourceLink source={source}>{sourceTitle(source)}</SourceLink>
           </li>
         );
       })}

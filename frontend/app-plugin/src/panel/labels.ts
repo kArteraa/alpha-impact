@@ -6,17 +6,17 @@ export const CLAIM_BADGES: Record<ClaimType, { label: string; icon: string }> = 
   ai: { label: "AI", icon: "✦" },
 };
 
-export const SOURCE_KINDS: Record<SourceRef["kind"], { label: string; icon: string }> = {
-  news: { label: "новость", icon: "≡" },
-  house_view: { label: "отчёт банка", icon: "◆" },
-  profile: { label: "данные компании", icon: "▣" },
-  graph: { label: "данные компании", icon: "▣" },
-  calc: { label: "расчёт", icon: "∑" },
+export const SOURCE_KINDS: Record<SourceRef["kind"], { label: string; icon: string; trait: boolean }> = {
+  news: { label: "новость", icon: "≡", trait: false },
+  house_view: { label: "отчёт банка", icon: "◆", trait: false },
+  profile: { label: "данные компании", icon: "▣", trait: true },
+  graph: { label: "данные компании", icon: "▣", trait: true },
+  calc: { label: "расчёт", icon: "∑", trait: false },
 };
 
-export const TRAIT_SOURCES: ReadonlySet<SourceRef["kind"]> = new Set(["profile", "graph"]);
-
 export const SIGNIFICANCE_LEVELS = 3;
+
+const DATE = new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC" });
 
 export function significanceLevel(significance: number): number {
   return Math.min(SIGNIFICANCE_LEVELS, Math.max(1, Math.ceil(significance * SIGNIFICANCE_LEVELS)));
@@ -27,5 +27,5 @@ export function sourceTitle(source: SourceRef): string {
 }
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ru-RU", { timeZone: "UTC" });
+  return DATE.format(new Date(iso));
 }

@@ -1,0 +1,58 @@
+.significance {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  height: var(--lh-24);
+}
+
+.insight-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+}
+
+.insight-dot-on {
+  background: var(--text-secondary);
+}
+
+.insight-dot-off {
+  background: var(--bg-neutral-strong);
+}
+
+.claim-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-11);
+  line-height: var(--lh-16);
+  font-weight: var(--fw-medium);
+}
+
+.insight-panel a.claim-badge:hover {
+  text-decoration: none;
+  filter: brightness(0.96);
+}
+
+.claim-badge-icon {
+  font-size: 8px;
+}
+
+.claim-badge[data-claim-type="fact"] {
+  background: var(--bg-neutral);
+  color: var(--text-primary);
+}
+
+.claim-badge[data-claim-type="bank"] {
+  background: var(--bg-bank);
+  color: var(--bank);
+}
+
+.claim-badge[data-claim-type="ai"] {
+  background: var(--bg-ai);
+  color: var(--info);
+}

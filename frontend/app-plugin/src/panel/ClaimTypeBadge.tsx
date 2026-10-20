@@ -1,3 +1,4 @@
+import "../styles/badges.css";
 import type { ClaimType } from "../types";
 import { CLAIM_BADGES } from "./labels";
 

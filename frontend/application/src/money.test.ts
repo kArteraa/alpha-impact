@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRub } from "./amount";
-import { parseAmount } from "./paymentContext";
+import { formatRub, parseAmount } from "./money";
 
 describe("formatRub", () => {
   it.each([
