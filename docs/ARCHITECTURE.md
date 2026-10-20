@@ -29,12 +29,14 @@ alpha-impact/
         openapi/               экспорт схем в JSON Schema для фронта (генерируется, коммитится)
       db/
         engine.py session.py   SQLAlchemy 2 async
-        models/                таблицы по сервисам (profiles, counterparties, news, house_view, traces, feedback, users, llm_cache, llm_usage)
+        models/                таблицы по сервисам (profiles, profile_corrections, counterparty_cards, client_graphs, news, house_view, traces, feedback, users, llm_cache, llm_usage)
         migrations/            Alembic
       di/
-        container.py           Container: register(port, factory) / resolve(port); scope per request
+        container.py           Container: register(port, factory) / resolve(port); scope per request; on_close / aclose — закрытие ресурсов при остановке
       config/
         settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, LLM_BUDGET_RESERVE_SHARE, LLM_TIMEOUT_SECONDS, LLM_CALL_RESERVE_RUB, LLM_CACHE_TTL_SECONDS, MODEL_* (включая MODEL_EMBED), RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
+        industries.py          справочник отраслей: ОКВЭД → отраслевой класс по industries.yaml, общий для profile и counterparty
+        clients.py             какие клиенты обслуживаются: файл компаний и порог выручки крупного клиента (clients.yaml), общий для profile и counterparty
     scripts/                   gen_schemas.py, seed.py
     data/
       raw/                     три csv (не коммитятся, .gitignore) + PDF/DOCX отчётов
@@ -54,9 +56,10 @@ alpha-impact/
   docs/
     CONCEPT.md ARCHITECTURE.md CONTRACTS.md DEMO.md   продукт, устройство, контракты, демо
     PIPELINE.md                процесс задачи для любого агента
-    BACKLOG.md TEAM.md         задачи AH-1…AH-51; кто и в каком порядке их делает
+    BACKLOG.md TEAM.md         задачи AH-1…AH-53; кто и в каком порядке их делает
     DECISIONS.md DATA.md       правила и оглавление журнала решений; факты о данных
     decisions/                 журнал решений: по файлу на участника
+    design/                    дизайн: токены, принципы, скриншоты экранов и панели
     SUMMARY.md                 суть, цели и текущее состояние на одной странице
   AGENTS.md                    правила для всех агентов — единственный источник
   CLAUDE.md  GEMINI.md         только импорт AGENTS.md

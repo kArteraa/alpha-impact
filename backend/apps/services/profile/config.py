@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Any
 
 import yaml
 from pydantic import BaseModel
@@ -24,8 +23,6 @@ class ExposureRule(BaseModel):
 
 
 class ProfileConfig(BaseModel):
-    companies_file: str
-    min_revenue_rub: float
     confidence: Confidence
     products: dict[str, str]
     foreign_ownership: frozenset[str]
@@ -33,15 +30,9 @@ class ProfileConfig(BaseModel):
     workers_scale: dict[str, float]
     countries_cap: int
     exposures: dict[str, ExposureRule]
-    industries: dict[str, str]
-
-
-def read_yaml(name: str) -> dict[str, Any]:
-    content: dict[str, Any] = yaml.safe_load((CONFIG_DIR / name).read_text(encoding="utf-8"))
-    return content
 
 
 def load_config() -> ProfileConfig:
     return ProfileConfig.model_validate(
-        {**read_yaml("config.yaml"), "industries": read_yaml("industries.yaml")}
+        yaml.safe_load((CONFIG_DIR / "config.yaml").read_text(encoding="utf-8"))
     )

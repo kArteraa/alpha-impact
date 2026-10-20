@@ -1,0 +1,76 @@
+import type { Trace } from "@alpha-impact/plugin";
+import { mockResponses } from "@alpha-impact/plugin";
+
+export const TRACES: Record<string, Trace> = {
+  "trace-mock-1": {
+    id: "trace-mock-1",
+    created_at: "2026-10-20T10:15:00Z",
+    request: {
+      action_context: { type: "payment", amount: 1_500_000, beneficiary_id: "cp_logistics_spb" },
+      client_id: "client_wholesale",
+      role: "cfo",
+      user_id: "user_cfo_wholesale",
+    },
+    result: mockResponses.cards,
+    critic_verdicts: ["Каждый тезис со ссылкой на источник", "Позиция банка — действующая версия отчёта"],
+    steps: [
+      {
+        step: "prefilter",
+        name: "Предфильтр",
+        started_at: "2026-10-20T10:15:00.000Z",
+        duration_ms: 40,
+        input_summary: "Платёж 1,5 млн ₽ перевозчику",
+        output_summary: "Отрасль контрагента под давлением — нужен разбор",
+      },
+      {
+        step: "plan",
+        name: "План",
+        started_at: "2026-10-20T10:15:00.040Z",
+        duration_ms: 820,
+        model: "Qwen3.6 35B A3B",
+        tokens_in: 1_240,
+        tokens_out: 180,
+        input_summary: "Профиль компании и контекст платежа",
+        output_summary: "Проверить новости логистики, позицию банка и долю отрасли в платежах",
+      },
+      {
+        step: "tool",
+        name: "Поиск новостей и позиции банка",
+        started_at: "2026-10-20T10:15:00.860Z",
+        duration_ms: 310,
+        input_summary: "логистика, склады, перевозчики",
+        output_summary: "2 новости, 1 утверждение из обзора отраслей",
+      },
+      {
+        step: "draft",
+        name: "Черновик",
+        started_at: "2026-10-20T10:15:01.170Z",
+        duration_ms: 1_640,
+        model: "Qwen3.6 35B A3B",
+        tokens_in: 2_980,
+        tokens_out: 520,
+        input_summary: "Найденные факты и признаки компании",
+        output_summary: "Карточка из шести блоков",
+      },
+      {
+        step: "critic",
+        name: "Критик",
+        started_at: "2026-10-20T10:15:02.810Z",
+        duration_ms: 690,
+        model: "GLM-5.3-Flash",
+        tokens_in: 1_610,
+        tokens_out: 90,
+        input_summary: "Черновик карточки",
+        output_summary: "Все тезисы с источниками, пересказа нет",
+      },
+      {
+        step: "final",
+        name: "Итог",
+        started_at: "2026-10-20T10:15:03.500Z",
+        duration_ms: 10,
+        input_summary: "Одобренная карточка",
+        output_summary: "Карточка показана в панели",
+      },
+    ],
+  },
+};

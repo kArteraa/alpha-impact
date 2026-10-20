@@ -33,13 +33,22 @@ CHECKED_EXPOSURES = {
 @pytest.fixture(scope="module")
 def profiles() -> dict[str, Payload]:
     config = load_config()
-    return build_profiles(load_companies(COMPANIES_CSV, config), config)
+    return build_profiles(load_companies(COMPANIES_CSV, config), config, frozenset())
 
 
 def test_only_large_companies_and_placeholders_get_profiles(
     profiles: dict[str, Payload],
 ) -> None:
     assert set(profiles) == set(CHECKED_EXPOSURES) | {"U_428697"}
+
+
+def test_linked_small_company_gets_profile() -> None:
+    config = load_config()
+    companies = load_companies(COMPANIES_CSV, config)
+    profiles = build_profiles(companies, config, frozenset({"U_85511"}))
+
+    assert set(profiles) == set(CHECKED_EXPOSURES) | {"U_428697", "U_85511"}
+    assert profiles["U_85511"]["features"]["industry_class"]["value"] == "construction"
 
 
 @pytest.mark.parametrize("client_id", sorted(CHECKED_EXPOSURES))
