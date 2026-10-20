@@ -23,7 +23,7 @@ class Extraction(BaseModel):
     claims: Sequence[ExtractedClaim]
 
 
-def extraction_schema(subjects: list[str]) -> type[Extraction]:
+def extraction_schema(subjects: list[str], max_claims: int) -> type[Extraction]:
     allowed = frozenset(subjects)
 
     class Claim(ExtractedClaim):
@@ -37,7 +37,7 @@ def extraction_schema(subjects: list[str]) -> type[Extraction]:
             return value
 
     class SubjectExtraction(Extraction):
-        claims: list[Claim]
+        claims: list[Claim] = Field(max_length=max_claims)
 
     return SubjectExtraction
 

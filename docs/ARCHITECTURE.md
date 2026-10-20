@@ -96,7 +96,7 @@ interpreter.interpret():
 
 ## Пакетный контур
 
-`scripts.seed` запускает по порядку: пользователи → загрузка csv → чистка → профили и агрегаты графа → парсинг RSS и разметка. OCR отчётов банка и извлечение утверждений — отдельная команда `scripts.ingest_reports` (`docker compose --profile seed run --rm seed python -m scripts.ingest_reports`): ей нужны tesseract (есть в образе backend) и ключ LLM; страницы распознаются один раз (кэш по хэшу картинки в `report_pages`), утверждения пишутся черновиками `draft` в `house_view_claims` (отчёт по стали — `expired`), подтверждение — в `data/seed/house_view_approved.json` (AH-14). Повторный запуск идемпотентен.
+`scripts.seed` запускает по порядку: пользователи → загрузка csv → чистка → профили и агрегаты графа → парсинг RSS и разметка. OCR отчётов банка и извлечение утверждений — отдельная команда `scripts.ingest_reports` (`docker compose --profile seed run --rm -e LLM_TIMEOUT_SECONDS=120 seed python -m scripts.ingest_reports` — пакетному извлечению нужен таймаут больше интерактивного): ей нужны tesseract (есть в образе backend) и ключ LLM; страницы распознаются один раз (кэш по хэшу картинки в `report_pages`), утверждения пишутся черновиками `draft` в `house_view_claims` (отчёт по стали — `expired`), подтверждение — в `data/seed/house_view_approved.json` (AH-14). Повторный запуск идемпотентен.
 
 ## Фронтенд
 
