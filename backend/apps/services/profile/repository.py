@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from datetime import datetime
+from itertools import batched
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -9,22 +10,22 @@ from apps.services.profile.builder import Payload
 from shared.db.models import ProfileCorrectionRow, ProfileRow, UserClientRow
 
 FIRST_VERSION = 1
+UPSERT_BATCH = 1000
 
 
 async def upsert_profiles(
     session: AsyncSession, profiles: dict[str, Payload], built_at: datetime
 ) -> None:
-    statement = insert(ProfileRow).values(
-        [
-            {
-                "client_id": client_id,
-                "payload": payload,
-                "version": FIRST_VERSION,
-                "built_at": built_at,
-            }
-            for client_id, payload in profiles.items()
-        ]
-    )
+    rows = [
+        {"client_id": client_id, "payload": payload, "version": FIRST_VERSION, "built_at": built_at}
+        for client_id, payload in profiles.items()
+    ]
+    for batch in batched(rows, UPSERT_BATCH):
+        await upsert_batch(session, list(batch))
+
+
+async def upsert_batch(session: AsyncSession, rows: list[dict[str, object]]) -> None:
+    statement = insert(ProfileRow).values(rows)
     await session.execute(
         statement.on_conflict_do_update(
             index_elements=[ProfileRow.client_id],

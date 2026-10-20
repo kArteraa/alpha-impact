@@ -1,11 +1,13 @@
 import pytest
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from apps.services.profile import repository
 from apps.services.profile.batch import rebuild_profiles
 from apps.services.profile.config import load_config
 from apps.services.profile.service import Profiler
 from shared.contracts.errors import AccessDenied, NotFound
-from shared.db.models import UserClientRow, UserRow
+from shared.db.models import ProfileRow, UserClientRow, UserRow
 from tests.unit.profile.fixtures import FIXTURES_DIR
 
 USER = "user_cfo_construction"
@@ -128,3 +130,18 @@ async def test_placeholder_profile_is_flagged(profiler: Profiler) -> None:
 
     assert placeholder.flags["placeholder"] is True
     assert placeholder.features == {}
+
+
+async def test_rebuild_upserts_in_batches(
+    profiler: Profiler,
+    sessions: async_sessionmaker[AsyncSession],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(repository, "UPSERT_BATCH", 3)
+    async with sessions() as session:
+        await session.execute(delete(ProfileRow))
+        await session.commit()
+
+    assert await rebuild_profiles(sessions, FIXTURES_DIR, CONFIG) == 11
+    async with sessions() as session:
+        assert len((await session.scalars(select(ProfileRow.client_id))).all()) == 11
