@@ -8,6 +8,10 @@ from apps.services.products.service import ProductCatalog
 from tests.unit.products.profiles import make_profile
 
 CATALOG = """
+vocabulary:
+  features: {cl_type: Тип клиента}
+  flags: {tenders: Участвует в тендерах}
+  claims: {tender_found: Найден подходящий тендер}
 exclude:
   features: {cl_type: CLOSE_CLIENT}
 rules:
@@ -45,6 +49,9 @@ async def test_rules_are_loaded_from_file(tmp_path: Path) -> None:
         CATALOG.replace("    product: Банковская гарантия\n", ""),
         CATALOG.replace("action_types: [page]", "action_types: [paymnet]"),
         CATALOG + CATALOG.split("rules:\n")[1],
+        CATALOG.replace("flags: [tenders]", "flags: [tender]"),
+        CATALOG.replace("claims: [tender_found]", "claims: [tender_find]"),
+        CATALOG.replace("features: {cl_type: CLOSE_CLIENT}", "features: {CL_TYPE: CLOSE_CLIENT}"),
     ],
 )
 def test_malformed_catalog_is_rejected(tmp_path: Path, broken: str) -> None:
