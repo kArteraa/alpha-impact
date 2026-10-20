@@ -141,6 +141,7 @@ npm run build
 
 - Сервис импортирует только разрешённое в `AGENTS.md` (`uv run lint-imports` зелёный)
 - Контракт не изменён или изменён задачей типа contract
+- Новые решения — строками в файле автора в `docs/decisions/`, а не в `docs/DECISIONS.md`
 - Каждый `Claim` имеет `source_ref`; `CounterpartyContext` без чужих идентификаторов; `silent` обработан в UI
 - Новая зависимость → строка в `THIRD_PARTY_NOTICES.md`; lock-файл обновлён
 - LLM вызывается только через `apps/services/llm`
