@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import { ApiError, api } from "../api/client";
+import { Brand } from "../Brand";
 
 export function LoginPage() {
   const [userId, setUserId] = useState("");
@@ -21,13 +22,10 @@ export function LoginPage() {
   return (
     <main className="login-screen">
       <form className="login card form" onSubmit={submit}>
-        <span className="brand">
-          <span className="brand-mark" aria-hidden="true" />
-          Бизнес · Alpha Impact
-        </span>
+        <Brand />
         <h1>Вход</h1>
         <label className="field">
-          <span>Тестовый пользователь</span>
+          <span className="muted">Тестовый пользователь</span>
           <input
             name="user_id"
             value={userId}
@@ -36,7 +34,7 @@ export function LoginPage() {
             required
           />
         </label>
-        <button className="button button-primary" type="submit">
+        <button className="button" type="submit">
           Войти
         </button>
         {error && (

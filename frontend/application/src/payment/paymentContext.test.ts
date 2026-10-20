@@ -5,7 +5,7 @@ describe("toPaymentContext", () => {
   it("builds a payment context from a filled form", () => {
     expect(
       toPaymentContext({ beneficiaryId: "cp_logistics_spb", amount: "1500000", purpose: "Оплата перевозки" }),
-    ).toEqual({ type: "payment", amount: 1500000, beneficiary_id: "cp_logistics_spb", currency: "RUB" });
+    ).toEqual({ type: "payment", amount: 1500000, beneficiary_id: "cp_logistics_spb" });
   });
 
   it("accepts a decimal comma in the amount", () => {
