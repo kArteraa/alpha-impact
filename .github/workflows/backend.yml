@@ -38,6 +38,8 @@ jobs:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
 
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-rus
+
       - run: cp .env.example .env
         working-directory: .
       - run: uv sync --frozen
