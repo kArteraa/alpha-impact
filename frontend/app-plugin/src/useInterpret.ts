@@ -12,9 +12,14 @@ export interface InterpretState {
   retry: () => void;
 }
 
-interface Settled {
-  key: string;
+interface Run {
+  key: string | null;
   attempt: number;
+  id: number;
+}
+
+interface Settled {
+  id: number;
   failed: boolean;
 }
 
@@ -23,20 +28,26 @@ export function useInterpret(context: ActionContext | null, fetcher: InterpretFe
   const [response, setResponse] = useState<InterpretResponse>();
   const [settled, setSettled] = useState<Settled | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [run, setRun] = useState<Run>({ key, attempt, id: 0 });
   const fetcherRef = useRef(fetcher);
+
+  if (run.key !== key || run.attempt !== attempt) {
+    setRun({ key, attempt, id: run.id + 1 });
+  }
 
   useEffect(() => {
     fetcherRef.current = fetcher;
   }, [fetcher]);
 
   useEffect(() => {
-    if (key === null) {
+    if (run.key === null) {
       return;
     }
     const controller = new AbortController();
-    const settle = (failed: boolean) => setSettled({ key, attempt, failed });
+    const settle = (failed: boolean) => setSettled({ id: run.id, failed });
+    const runContext = JSON.parse(run.key) as ActionContext;
     const timer = setTimeout(() => {
-      fetcherRef.current(JSON.parse(key) as ActionContext, controller.signal).then(
+      fetcherRef.current(runContext, controller.signal).then(
         (next) => {
           if (!controller.signal.aborted) {
             setResponse(next);
@@ -54,14 +65,9 @@ export function useInterpret(context: ActionContext | null, fetcher: InterpretFe
       clearTimeout(timer);
       controller.abort();
     };
-  }, [key, attempt]);
+  }, [run]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  const current = key !== null && settled?.key === key && settled.attempt === attempt;
-  return {
-    response,
-    pending: key !== null && !current,
-    failed: current && settled.failed,
-    retry,
-  };
+  const current = key !== null && settled?.id === run.id;
+  return { response, pending: key !== null && !current, failed: current && settled.failed, retry };
 }

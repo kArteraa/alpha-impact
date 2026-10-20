@@ -128,11 +128,11 @@ describe("PaymentPage", () => {
     expect(amountField().value.replace(/\s/g, " ")).toBe("1 500 000");
   });
 
-  it("explains an amount it cannot accept", () => {
+  it.each(["1500.555", "0"])("explains an amount it cannot accept: %s", (amount) => {
     render(<PaymentPage />);
-    setAmount("1500.555");
+    setAmount(amount);
 
-    expect(screen.getByText("Сумма — число, не больше двух знаков после запятой")).toBeTruthy();
+    expect(screen.getByText("Сумма — положительное число, не больше двух знаков после запятой")).toBeTruthy();
     expect(amountField().getAttribute("aria-invalid")).toBe("true");
   });
 

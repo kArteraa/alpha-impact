@@ -92,6 +92,7 @@ describe("InsightPanel card", () => {
     expect(screen.getAllByLabelText(/^AI — источник: /).length).toBeGreaterThan(0);
     const newsBadge = screen.getByLabelText("Факт — источник: Склады маркетплейсов и перевозчики ушли в убыток");
     expect(newsBadge.getAttribute("href")).toBe("https://example.com/news/logistics");
+    expect(screen.getByRole("img", { name: "Банк — источник: Обзор отраслей Альфа-Банка, стр. 4" })).toBeTruthy();
   });
 
   it("never turns a non-http source url into a link", () => {

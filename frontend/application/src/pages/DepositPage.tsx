@@ -33,15 +33,15 @@ export function DepositPage() {
             </span>
             <div className="segmented" role="radiogroup" aria-labelledby={termLabelId}>
               {DEPOSIT_TERMS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  role="radio"
-                  aria-checked={option === term}
-                  onClick={() => setTerm(option)}
-                >
-                  {option} мес.
-                </button>
+                <label key={option}>
+                  <input
+                    type="radio"
+                    name={termLabelId}
+                    checked={option === term}
+                    onChange={() => setTerm(option)}
+                  />
+                  <span>{option} мес.</span>
+                </label>
               ))}
             </div>
           </div>

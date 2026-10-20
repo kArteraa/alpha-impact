@@ -309,7 +309,9 @@ details.insight-block[open] > summary::after {
 
 @media (prefers-reduced-motion: reduce) {
   .insight-panel,
-  .insight-panel * {
+  .insight-panel *,
+  .insight-panel *::before,
+  .insight-panel *::after {
     animation: none;
   }
 }
