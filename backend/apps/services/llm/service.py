@@ -1,6 +1,6 @@
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import date
 from typing import Any
 
@@ -8,7 +8,7 @@ from pydantic import BaseModel, ValidationError
 
 from apps.services.llm.catalog import ModelCatalog
 from apps.services.llm.client import ModelClient
-from apps.services.llm.errors import ModelOutputInvalid
+from apps.services.llm.errors import ModelOutputInvalid, ModelUnavailable
 from apps.services.llm.store import Usage, UsageStore
 from shared.contracts.errors import BudgetExceeded
 
@@ -71,7 +71,9 @@ class ModelGateway:
         if cached is not None:
             return parse(cached, output_schema), 0, 0
         await self._ensure_budget()
-        completion = await self._client.chat(model, system, user, output_format)
+        completion = await self._charged(
+            task, model, lambda: self._client.chat(model, system, user, output_format)
+        )
         await self._spend(task, model, completion.tokens_in, completion.tokens_out)
         if not completion.content:
             raise ModelOutputInvalid(f"model {model} returned an empty answer")
@@ -87,7 +89,7 @@ class ModelGateway:
             vector: list[float] = json.loads(cached)
             return vector
         await self._ensure_budget()
-        embedding = await self._client.embed(model, text)
+        embedding = await self._charged(EMBED_TASK, model, lambda: self._client.embed(model, text))
         await self._spend(EMBED_TASK, model, embedding.tokens, 0)
         await self._store.remember(key, json.dumps(embedding.vector))
         return embedding.vector
@@ -95,6 +97,14 @@ class ModelGateway:
     async def budget_left_rub(self) -> float:
         spent = await self._store.spent_rub(self._today())
         return max(0.0, self._spendable_rub - spent)
+
+    async def _charged[T](self, task: str, model: str, call: Callable[[], Awaitable[T]]) -> T:
+        try:
+            return await call()
+        except ModelUnavailable as error:
+            if error.tokens_in or error.tokens_out:
+                await self._spend(task, model, error.tokens_in, error.tokens_out)
+            raise
 
     async def _ensure_budget(self) -> None:
         if await self.budget_left_rub() <= 0:

@@ -49,9 +49,15 @@ class ModelClient:
         try:
             response = await self._http.post(path, json=body)
             response.raise_for_status()
-            return read(response.json())
-        except (httpx.HTTPError, *MALFORMED_RESPONSE) as error:
+            data = response.json()
+        except (httpx.HTTPError, ValueError) as error:
             raise ModelUnavailable(f"model API {path} failed: {error!r}") from error
+        try:
+            return read(data)
+        except MALFORMED_RESPONSE as error:
+            tokens_in, tokens_out = read_usage(data)
+            message = f"model API {path} returned a malformed body: {error!r}"
+            raise ModelUnavailable(message, tokens_in, tokens_out) from error
 
 
 def read_completion(data: Any) -> Completion:
@@ -61,6 +67,14 @@ def read_completion(data: Any) -> Completion:
         tokens_in=usage["prompt_tokens"],
         tokens_out=usage["completion_tokens"],
     )
+
+
+def read_usage(data: Any) -> tuple[int, int]:
+    try:
+        usage = data["usage"]
+        return int(usage["prompt_tokens"]), int(usage.get("completion_tokens", 0))
+    except MALFORMED_RESPONSE:
+        return 0, 0
 
 
 def read_embedding(data: Any) -> Embedding:

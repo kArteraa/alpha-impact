@@ -111,7 +111,7 @@ interpreter.interpret():
 | Критик | GLM-5.3-Flash, другой промпт |
 | Уточняющий вопрос | Qwen3.6 35B A3B |
 
-Онлайн- и пакетные вызовы тратят общий дневной пул `LLM_DAILY_BUDGET_RUB × (1 − LLM_BUDGET_RESERVE_SHARE)`; 10% — резерв, не тратится; деление на онлайн и пакет пока не делается. При исчерпании шлюз поднимает `BudgetExceeded`, ответы из кэша отдаются и дальше, вызывающий отвечает `needs_review`. Ошибки шлюза — `BudgetExceeded`, `ModelUnavailable` (HTTP-ошибка или таймаут), `ModelOutputInvalid` (пустой ответ или не по схеме) — подклассы `DomainError`.
+Онлайн- и пакетные вызовы тратят общий дневной пул `LLM_DAILY_BUDGET_RUB × (1 − LLM_BUDGET_RESERVE_SHARE)`; 10% — резерв, не тратится; деление на онлайн и пакет пока не делается. При исчерпании шлюз поднимает `BudgetExceeded`, ответы из кэша отдаются и дальше, вызывающий отвечает `needs_review`. Ошибки шлюза — `BudgetExceeded`, `ModelUnavailable` (HTTP-ошибка, таймаут, обрыв соединения или битое тело ответа 200 — не JSON, нет `choices` / `usage` / `data`; расход учитывается, если в теле есть `usage`), `ModelOutputInvalid` (пустой ответ или не по схеме) — подклассы `DomainError`.
 
 ## Безопасность
 
