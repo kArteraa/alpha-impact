@@ -1,9 +1,8 @@
-import pytest
-
 from apps.services import products
 from shared.contracts.ports import ProductRulesService
-from shared.contracts.schemas import ClientProfile
+from shared.contracts.schemas import ProductOffer
 from shared.di.container import Container
+from tests.unit.products.profiles import make_profile
 
 
 def resolve() -> ProductRulesService:
@@ -16,15 +15,7 @@ def test_implements_port() -> None:
     assert isinstance(resolve(), ProductRulesService)
 
 
-async def test_match_points_to_task() -> None:
-    profile = ClientProfile(
-        client_id="c",
-        group_id=None,
-        group_members=[],
-        features={},
-        exposures={},
-        flags={},
-        version=1,
-    )
-    with pytest.raises(NotImplementedError, match="AH-25"):
-        await resolve().match(profile, "payment", [])
+async def test_match_returns_offer_through_port() -> None:
+    offer = await resolve().match(make_profile({"imports": True}), "fx", ["ruble_weakening"])
+
+    assert isinstance(offer, ProductOffer)
