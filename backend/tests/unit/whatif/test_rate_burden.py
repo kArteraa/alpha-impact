@@ -31,3 +31,19 @@ def test_value_rounded_to_kopecks() -> None:
 def test_rejects_non_positive_input(amount: float, months: int) -> None:
     with pytest.raises(ValueError):
         rate_burden(amount, 14.0, 13.5, months)
+
+
+@pytest.mark.parametrize(
+    ("amount", "rate_now", "rate_expected"),
+    [
+        (float("nan"), 14.0, 13.5),
+        (float("inf"), 14.0, 13.5),
+        (1_000_000.0, float("nan"), 13.5),
+        (1_000_000.0, 14.0, -13.5),
+    ],
+)
+def test_rejects_non_finite_or_negative_values(
+    amount: float, rate_now: float, rate_expected: float
+) -> None:
+    with pytest.raises(ValueError):
+        rate_burden(amount, rate_now, rate_expected, 12)
