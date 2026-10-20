@@ -116,7 +116,7 @@ EXAMPLES: dict[type[BaseModel], BaseModel] = {
         kind="rate_burden",
         value=1_200_000.0,
         unit="RUB",
-        formula="amount * (rate_now - rate_expected) / 12 * months",
+        formula="amount * (rate_expected - rate_now) / 100 * months / 12",
         assumptions=["ставка меняется сразу"],
     ),
     s.TraceStep: STEP,
