@@ -128,9 +128,10 @@ def make_gateway(
     call_reserve_rub: float = 1.0,
     prices: dict[str, ModelPrice] = PRICES,
     today: Callable[[], date] = lambda: TODAY,
+    reasoning_off: frozenset[str] = frozenset(),
 ) -> ModelGateway:
     return ModelGateway(
-        catalog=ModelCatalog(prices, ROUTES, EMBEDDING_MODEL),
+        catalog=ModelCatalog(prices, ROUTES, EMBEDDING_MODEL, reasoning_off),
         client=ModelClient(http),
         store=store,
         daily_budget_rub=daily_budget_rub,
