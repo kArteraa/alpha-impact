@@ -23,8 +23,6 @@ class ExposureRule(BaseModel):
 
 
 class ProfileConfig(BaseModel):
-    companies_file: str
-    min_revenue_rub: float
     confidence: Confidence
     products: dict[str, str]
     foreign_ownership: frozenset[str]

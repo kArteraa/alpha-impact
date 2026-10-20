@@ -2,7 +2,7 @@ import pytest
 
 from apps.services.counterparty.config import load_config
 from apps.services.counterparty.graph import ClientGraph, Payload, build_graphs, served_clients
-from apps.services.counterparty.loader import Card, load_cards, read_payments
+from apps.services.counterparty.loader import Card, Payment, load_cards, read_payments
 from tests.unit.counterparty.fixtures import CLIENT, COMPANIES_CSV, PAYMENTS_CSV
 
 CONFIG = load_config()
@@ -76,6 +76,15 @@ def test_summary_holds_no_identifiers(graph: Payload) -> None:
     assert "U_" not in str(graph)
 
 
+def test_dependence_is_coarsened_to_configured_digits(cards: dict[str, Card]) -> None:
+    payments = [Payment(CLIENT, "U_902", 1.0, 1), Payment("U_905", "U_902", 2.0, 1)]
+
+    graph = build_graphs(payments, cards, {CLIENT}, CONFIG)[CLIENT]
+
+    assert graph.dependence == {"U_902": round(1 / 3, CONFIG.inflow_share_digits)}
+    assert CONFIG.inflow_share_digits <= 2
+
+
 def test_self_payment_is_not_part_of_flows(client: ClientGraph) -> None:
     assert CLIENT not in client.dependence
     assert sum(client.summary["outflow_segments"].values()) == pytest.approx(1.0)
@@ -98,4 +107,4 @@ def test_client_without_flows_has_empty_graph(cards: dict[str, Card]) -> None:
 
 
 def test_served_clients_are_large_companies_and_linked_ones(cards: dict[str, Card]) -> None:
-    assert served_clients(cards, {"U_950"}, CONFIG) == {CLIENT, "U_950"}
+    assert served_clients(cards, {"U_950"}) == {CLIENT, "U_950"}

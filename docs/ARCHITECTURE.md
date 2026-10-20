@@ -36,6 +36,7 @@ alpha-impact/
       config/
         settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, MODEL_*, RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
         industries.py          справочник отраслей: ОКВЭД → отраслевой класс по industries.yaml, общий для profile и counterparty
+        clients.py             какие клиенты обслуживаются: файл компаний и порог выручки крупного клиента (clients.yaml), общий для profile и counterparty
     scripts/                   gen_schemas.py, seed.py
     data/
       raw/                     три csv (не коммитятся, .gitignore) + PDF/DOCX отчётов

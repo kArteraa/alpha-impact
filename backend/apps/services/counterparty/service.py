@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from apps.services.counterparty.config import CounterpartyConfig
-from apps.services.counterparty.graph import CardFields, card_aggregates, segment
-from apps.services.counterparty.repository import find_card, find_flows
+from apps.services.counterparty.graph import card_aggregates, segment
+from apps.services.counterparty.repository import Found, find_counterparty
 from shared.contracts.schemas import CounterpartyContext
 
 
@@ -16,17 +16,14 @@ class CounterpartyAggregates:
     async def context(
         self, client_id: str, beneficiary_id: str | None, inn: str | None
     ) -> CounterpartyContext:
-        card: CardFields | None = None
-        flows: tuple[float, float | None] | None = None
-        if beneficiary_id is not None:
+        found: Found | None = None
+        if beneficiary_id is not None and beneficiary_id != client_id:
             async with self._sessions() as session:
-                card = await find_card(session, beneficiary_id)
-                flows = await find_flows(
-                    session, client_id, beneficiary_id, segment(card, self._config)
-                )
-        segment_share, dependence = flows if flows else (None, None)
-        if card is None and dependence is None:
-            segment_share = None
+                found = await find_counterparty(session, client_id, beneficiary_id)
+        card, segments, dependence = found if found else (None, None, None)
+        segment_share = None
+        if segments is not None and (card is not None or dependence is not None):
+            segment_share = segments.get(segment(card, self._config), 0.0)
         return CounterpartyContext(
             **card_aggregates(card),
             share_of_client_outflow=segment_share,
