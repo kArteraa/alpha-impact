@@ -24,6 +24,7 @@ def upgrade() -> None:
         sa.Column("page", sa.Integer(), primary_key=True),
         sa.Column("image_sha256", sa.String(length=64), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
+        sa.Column("extracted", sa.Boolean(), server_default=sa.false(), nullable=False),
     )
     op.create_table(
         "house_view_claims",

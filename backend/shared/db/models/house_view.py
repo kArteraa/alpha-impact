@@ -1,6 +1,6 @@
 import datetime as dt
 
-from sqlalchemy import Date, Integer, String, Text
+from sqlalchemy import Boolean, Date, Integer, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.db.models.base import Base
@@ -13,6 +13,7 @@ class ReportPageRow(Base):
     page: Mapped[int] = mapped_column(Integer, primary_key=True)
     image_sha256: Mapped[str] = mapped_column(String(64))
     text: Mapped[str] = mapped_column(Text)
+    extracted: Mapped[bool] = mapped_column(Boolean, server_default=false())
 
 
 class HouseViewClaimRow(Base):

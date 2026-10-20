@@ -14,10 +14,10 @@ def dominant(image: bytes) -> tuple[int, ...]:
     with Image.open(BytesIO(image)) as picture:
         pixel = picture.convert("RGB").getpixel((5, 5))
     assert isinstance(pixel, tuple)
-    return tuple(round(channel / 50) for channel in pixel)
+    return expected(pixel)
 
 
-def expected(color: tuple[int, int, int]) -> tuple[int, ...]:
+def expected(color: tuple[int, ...]) -> tuple[int, ...]:
     return tuple(round(channel / 50) for channel in color)
 
 

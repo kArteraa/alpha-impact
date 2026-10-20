@@ -1,18 +1,11 @@
 ocr_languages: rus+eng
 max_page_chars: 8000
 llm_task: extract
-subjects:
-  - key_rate
-  - fx_rate
+extra_subjects:
   - inflation
   - gdp
-  - consumer_demand
-  - labor_market
   - corporate_credit
   - debt_market
-  - commodity_prices
-  - construction_demand
-  - trade_logistics
   - gold
   - steel
   - other

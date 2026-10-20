@@ -93,6 +93,7 @@ async def test_rerun_skips_ocr_and_adds_no_duplicates(
     await ingest_reports(sessions, llm, ocr, tmp_path, config)
 
     assert ocr.calls == 3
+    assert llm.calls == ["extract"] * 3
     assert await count(sessions, ReportPageRow) == 3
     assert await count(sessions, HouseViewClaimRow) == 3
 
