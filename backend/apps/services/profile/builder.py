@@ -24,7 +24,8 @@ BANK_FEATURES = (
     "products",
     "import_countries",
 )
-FEATURES = (*BANK_FEATURES, "industry_class")
+INDUSTRY = "industry_class"
+FEATURES = (*BANK_FEATURES, INDUSTRY)
 
 
 def flags(
@@ -63,37 +64,43 @@ def bank_value(company: Company, name: str) -> object:
     return list(value) if isinstance(value, tuple) else value
 
 
-def exposure(
-    rule: ExposureRule, company: Company, industry: str, foreign: bool, config: ProfileConfig
-) -> float:
-    total = sum(rule.products.get(product, 0.0) for product in company.products)
-    total += rule.industries.get(industry, 0.0)
-    total += rule.importer if company.importer else 0.0
-    total += rule.per_country * min(len(company.import_countries), config.countries_cap)
-    total += rule.foreign_owned if foreign else 0.0
-    total += rule.state_owned if company.ownership in config.state_ownership else 0.0
-    total += rule.workers * config.workers_scale[company.workers]
+def value_of(features: Payload, name: str) -> Any:
+    return features[name]["value"]
+
+
+def exposure(rule: ExposureRule, features: Payload, imports: bool, config: ProfileConfig) -> float:
+    ownership = value_of(features, "ownership")
+    countries = len(value_of(features, "import_countries"))
+    total = sum(rule.products.get(product, 0.0) for product in value_of(features, "products"))
+    total += rule.industries.get(value_of(features, INDUSTRY), 0.0)
+    total += rule.importer if imports else 0.0
+    total += rule.per_country * min(countries, config.countries_cap)
+    total += rule.foreign_owned if ownership in config.foreign_ownership else 0.0
+    total += rule.state_owned if ownership in config.state_ownership else 0.0
+    total += rule.workers * config.workers_scale[value_of(features, "workers")]
     return round(min(total, MAX_EXPOSURE), EXPOSURE_DIGITS)
+
+
+def exposures(features: Payload, imports: bool, config: ProfileConfig) -> dict[str, float]:
+    return {
+        name: exposure(rule, features, imports, config) for name, rule in config.exposures.items()
+    }
 
 
 def company_payload(company: Company, members: list[str], config: ProfileConfig) -> Payload:
     industry = industry_class(company.okved_code, config.industries)
-    foreign = company.ownership in config.foreign_ownership
     bank = config.confidence.bank
     features = {name: feature(bank_value(company, name), "bank", bank) for name in BANK_FEATURES}
-    features["industry_class"] = feature(industry, "inferred", config.confidence.inferred)
+    features[INDUSTRY] = feature(industry, "inferred", config.confidence.inferred)
     return {
         "group_id": company.group_id,
         "group_members": members,
         "features": features,
-        "exposures": {
-            name: exposure(rule, company, industry, foreign, config)
-            for name, rule in config.exposures.items()
-        },
+        "exposures": exposures(features, company.importer, config),
         "flags": flags(
             imports=company.importer,
             negative_mark=company.negative_mark,
-            foreign_owned=foreign,
+            foreign_owned=company.ownership in config.foreign_ownership,
         ),
     }
 
@@ -105,7 +112,9 @@ def group_index(companies: Companies) -> dict[str, list[str]]:
     return groups
 
 
-def build_profiles(companies: Companies, config: ProfileConfig) -> dict[str, Payload]:
+def build_profiles(
+    companies: Companies, config: ProfileConfig, linked: frozenset[str]
+) -> dict[str, Payload]:
     groups = group_index(companies)
     profiles = {
         company.client_id: company_payload(
@@ -114,7 +123,7 @@ def build_profiles(companies: Companies, config: ProfileConfig) -> dict[str, Pay
             config,
         )
         for company in companies.by_id.values()
-        if company.revenue_rub > config.min_revenue_rub
+        if company.revenue_rub > config.min_revenue_rub or company.client_id in linked
     }
     for client_id in companies.placeholders:
         profiles[client_id] = blank_payload(placeholder=True, no_card=False)

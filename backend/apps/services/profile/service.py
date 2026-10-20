@@ -2,8 +2,9 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.profile.builder import FEATURES, Payload, blank_payload
+from apps.services.profile.builder import FEATURES, INDUSTRY, Payload, blank_payload, exposures
 from apps.services.profile.config import ProfileConfig
+from apps.services.profile.okved import OTHER
 from apps.services.profile.repository import (
     find_corrections,
     find_profile,
@@ -23,6 +24,7 @@ class Profiler:
     def __init__(self, sessions: async_sessionmaker[AsyncSession], config: ProfileConfig) -> None:
         self._sessions = sessions
         self._config = config
+        self._industries = frozenset(config.industries.values()) | {OTHER}
 
     async def get_profile(self, user_id: str, client_id: str) -> ClientProfile:
         async with self._sessions() as session:
@@ -40,6 +42,8 @@ class Profiler:
             await self._authorize(session, user_id, client_id)
             if feature not in FEATURES:
                 raise NotFound(f"Unknown profile feature: {feature}")
+            if feature == INDUSTRY and not (isinstance(value, str) and value in self._industries):
+                raise NotFound(f"Unknown industry class: {value}")
             row = await find_profile(session, client_id)
             if row is not None and is_bank_fact(row.payload, feature):
                 raise AccessDenied(f"Bank fact {feature} of client {client_id} is read-only")
@@ -56,6 +60,13 @@ class Profiler:
                 "updated_at": updated_at,
             }
         )
+
+    def _exposures(self, payload: Payload, features: dict[str, Feature]) -> dict[str, float]:
+        industry = features.get(INDUSTRY)
+        if not payload["features"] or industry is None or industry.source != "user":
+            return dict(payload["exposures"])
+        corrected = {**payload["features"], INDUSTRY: industry.model_dump()}
+        return exposures(corrected, payload["flags"]["imports"], self._config)
 
     async def _authorize(self, session: AsyncSession, user_id: str, client_id: str) -> None:
         if not await is_linked(session, user_id, client_id):
@@ -83,7 +94,7 @@ class Profiler:
             group_id=payload["group_id"],
             group_members=payload["group_members"],
             features=features,
-            exposures=payload["exposures"],
+            exposures=self._exposures(payload, features),
             flags=payload["flags"],
             version=version + sum(correction.revision for correction in corrections),
         )
