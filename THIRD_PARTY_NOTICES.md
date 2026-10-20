@@ -41,7 +41,6 @@ Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), my
 | PostgreSQL 16 | PostgreSQL License | хранилище |
 | pgvector (расширение, образ `pgvector/pgvector:pg16`) | PostgreSQL License | индекс новостей |
 | uv (образ `ghcr.io/astral-sh/uv`) | MIT / Apache-2.0 | установка зависимостей в Docker |
-| GNU make | GPL-3.0 (только как инструмент) | команды `make up` / `make check` |
 | Docker Compose | Apache-2.0 | запуск одной командой |
 | tesseract (rus+eng) | Apache-2.0 | OCR отчётов банка (задача AH-9) |
 

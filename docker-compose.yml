@@ -35,7 +35,10 @@ services:
   api:
     build:
       context: ./backend
-    env_file: .env
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
     environment:
       DB_URL: postgresql+asyncpg://alfa:alfa@db:5432/alfa
     command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
@@ -65,7 +68,10 @@ services:
     build:
       context: ./backend
     profiles: ["seed"]
-    env_file: .env
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
     environment:
       DB_URL: postgresql+asyncpg://alfa:alfa@db:5432/alfa
     command: python -m scripts.seed

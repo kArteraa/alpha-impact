@@ -49,7 +49,6 @@ alfa-insight/
     app-plugin/                React + Vite: библиотека InsightPanel + сборка расширения MV3 (content script, service worker, side panel, popup)
     tests/e2e/                 Playwright: сквозной сценарий демо
   docker-compose.yml           api, db (postgres+pgvector), front, seed
-  Makefile                     up / down / seed / check / test / lint / e2e
   .env.example
   THIRD_PARTY_NOTICES.md
   README.md
@@ -93,7 +92,7 @@ interpreter.interpret():
 
 ## Пакетный контур
 
-`make seed` запускает по порядку: загрузка csv → чистка → профили и агрегаты графа → OCR отчётов → извлечение утверждений (черновики в статусе `draft`, подтверждение в `data/seed/house_view_approved.json`) → парсинг RSS и разметка. Повторный запуск идемпотентен.
+`scripts.seed` запускает по порядку: загрузка csv → чистка → профили и агрегаты графа → OCR отчётов → извлечение утверждений (черновики в статусе `draft`, подтверждение в `data/seed/house_view_approved.json`) → парсинг RSS и разметка. Повторный запуск идемпотентен.
 
 ## Фронтенд
 
