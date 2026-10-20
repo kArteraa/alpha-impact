@@ -24,7 +24,7 @@ Read what the task needs, not everything up front.
 
 - Backend: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 + Alembic, PostgreSQL 16 + pgvector, httpx, `uv` (`uv.lock` is the lock file), pytest + pytest-asyncio, ruff, mypy (strict for `shared/`), import-linter
 - Frontend: React 18 + Vite + TypeScript, npm workspaces, Vitest, Playwright for e2e; browser extension on Manifest V3
-- LLM: only models from the case allow-list via `apps/services/llm` (Gemma 4 26B A4B, GLM-5.3-Flash, Qwen3.6 35B A3B, DeepSeek-V4.1-Flash, Qwen3-VL-30B-A3B, Kimi-K2.6). No other model, no external AI service, no agent framework. Daily budget ≈ 500 RUB — every LLM call goes through the gateway's token counter and cache.
+- LLM: only models from the case allow-list via `apps/services/llm` (Gemma 4 26B A4B, GLM-5.3-Flash, Qwen3.6 35B A3B, DeepSeek-V4.1-Flash, Qwen3-VL-30B-A3B, Kimi-K2.6). No other model, no external AI service, no agent framework. Exception: embeddings come from a local `multilingual-e5` model inside `apps/services/llm` (the case key has no embedding model); it is used only for `embed`, never for generation, and spends no LLM budget. Daily budget ≈ 500 RUB — every LLM call goes through the gateway's token counter and cache.
 - Infra: Docker Compose, GitHub Actions; one command runs everything: `docker compose up -d --build`
 
 ## Layout (fixed)
