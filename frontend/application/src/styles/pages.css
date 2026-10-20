@@ -186,6 +186,7 @@
 .feature-actions {
   display: flex;
   gap: var(--s-2);
+  margin-left: calc(-1 * var(--s-2));
 }
 
 .feature input {
