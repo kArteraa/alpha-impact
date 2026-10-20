@@ -24,7 +24,7 @@ class Company:
     company_age: str
     eco_stage: str | None
     ownership: str
-    client_type: str
+    cl_type: str
     products: tuple[str, ...]
     import_countries: tuple[str, ...]
     importer: bool
@@ -54,7 +54,7 @@ def parse_row(row: dict[str, str], config: ProfileConfig) -> Company:
         company_age=row["COMPANY_AGE_YEARS_GRADATION"],
         eco_stage=row["ECO_MARK_LABEL"] or None,
         ownership=row["OKFS_NAME"],
-        client_type=row["CL_TYPE"],
+        cl_type=row["CL_TYPE"],
         products=tuple(name for column, name in config.products.items() if row[column] == MARK_ON),
         import_countries=parse_countries(row["FTS_COUNTRY_NAME"]),
         importer=row["FTS_FLAG"] == MARK_ON,

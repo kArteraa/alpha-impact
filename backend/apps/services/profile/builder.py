@@ -20,7 +20,7 @@ BANK_FEATURES = (
     "company_age",
     "eco_stage",
     "ownership",
-    "client_type",
+    "cl_type",
     "products",
     "import_countries",
 )
@@ -31,14 +31,14 @@ def flags(
     *,
     placeholder: bool = False,
     no_card: bool = False,
-    importer: bool = False,
+    imports: bool = False,
     negative_mark: bool = False,
     foreign_owned: bool = False,
 ) -> dict[str, bool]:
     return {
         "placeholder": placeholder,
         "no_card": no_card,
-        "importer": importer,
+        "imports": imports,
         "negative_mark": negative_mark,
         "foreign_owned": foreign_owned,
     }
@@ -91,7 +91,7 @@ def company_payload(company: Company, members: list[str], config: ProfileConfig)
             for name, rule in config.exposures.items()
         },
         "flags": flags(
-            importer=company.importer,
+            imports=company.importer,
             negative_mark=company.negative_mark,
             foreign_owned=foreign,
         ),

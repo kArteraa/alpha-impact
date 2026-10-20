@@ -69,7 +69,7 @@ def test_flags_describe_the_company(profiles: dict[str, Payload]) -> None:
     assert profiles["U_1941"]["flags"] == {
         "placeholder": False,
         "no_card": False,
-        "importer": True,
+        "imports": True,
         "negative_mark": True,
         "foreign_owned": False,
     }
@@ -94,7 +94,7 @@ def test_placeholder_has_no_features_and_no_group(
     assert placeholder["flags"] == {
         "placeholder": True,
         "no_card": False,
-        "importer": False,
+        "imports": False,
         "negative_mark": False,
         "foreign_owned": False,
     }
