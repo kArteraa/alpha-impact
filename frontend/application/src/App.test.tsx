@@ -10,7 +10,9 @@ const ROUTES: Array<[string, string]> = [
   ["/deposits/new", "Новый депозит"],
   ["/loans", "Кредиты"],
   ["/profile", "Профиль компании"],
-  ["/trace/trace-1", "Трасса trace-1"],
+  ["/trace/trace-mock-1", "Трасса trace-mock-1"],
+  ["/events", "Все события"],
+  ["/showcase", "Витрина InsightPanel"],
 ];
 
 describe("routing", () => {
