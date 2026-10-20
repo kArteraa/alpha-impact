@@ -60,25 +60,48 @@ class ModelClient:
             raise ModelUnavailable(message, tokens_in, tokens_out) from error
 
 
+def token_count(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise TypeError(f"token count must be a non-negative integer, got {value!r}")
+    return value
+
+
+def text_content(value: Any) -> str | None:
+    if value is not None and not isinstance(value, str):
+        raise TypeError(f"message content must be a string, got {type(value).__name__}")
+    return value
+
+
+def number_vector(value: Any) -> list[float]:
+    if not isinstance(value, list) or not value:
+        raise TypeError("embedding must be a non-empty list of numbers")
+    if any(isinstance(item, bool) or not isinstance(item, int | float) for item in value):
+        raise TypeError("embedding must contain only numbers")
+    return value
+
+
 def read_completion(data: Any) -> Completion:
     usage = data["usage"]
     return Completion(
-        content=data["choices"][0]["message"]["content"],
-        tokens_in=usage["prompt_tokens"],
-        tokens_out=usage["completion_tokens"],
+        content=text_content(data["choices"][0]["message"]["content"]),
+        tokens_in=token_count(usage["prompt_tokens"]),
+        tokens_out=token_count(usage["completion_tokens"]),
     )
 
 
 def read_usage(data: Any) -> tuple[int, int]:
     try:
         usage = data["usage"]
-        return int(usage["prompt_tokens"]), int(usage.get("completion_tokens", 0))
+        return token_count(usage["prompt_tokens"]), token_count(usage.get("completion_tokens", 0))
     except MALFORMED_RESPONSE:
         return 0, 0
 
 
 def read_embedding(data: Any) -> Embedding:
-    return Embedding(vector=data["data"][0]["embedding"], tokens=data["usage"]["prompt_tokens"])
+    return Embedding(
+        vector=number_vector(data["data"][0]["embedding"]),
+        tokens=token_count(data["usage"]["prompt_tokens"]),
+    )
 
 
 def build_http_client(settings: Settings) -> httpx.AsyncClient:
