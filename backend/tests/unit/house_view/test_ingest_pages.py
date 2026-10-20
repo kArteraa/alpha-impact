@@ -44,6 +44,7 @@ def test_docx_media_comes_out_in_natural_order(tmp_path: Path) -> None:
         archive.writestr("word/media/image10.png", png(COLORS[2]))
         archive.writestr("word/media/image2.png", png(COLORS[1]))
         archive.writestr("word/media/image1.png", png(COLORS[0]))
+        archive.writestr("word/media/image3.emf", b"emf")
 
     images = page_images(path)
 

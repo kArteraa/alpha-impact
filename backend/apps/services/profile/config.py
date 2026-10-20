@@ -35,8 +35,8 @@ class ProfileConfig(BaseModel):
 
     @model_validator(mode="after")
     def exposures_cover_factors(self) -> "ProfileConfig":
-        if tuple(self.exposures) != FACTORS:
-            raise ValueError(f"exposures must list the shared factors in order: {FACTORS}")
+        if set(self.exposures) != set(FACTORS):
+            raise ValueError(f"exposures must list exactly the shared factors: {FACTORS}")
         return self
 
 

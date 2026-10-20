@@ -17,6 +17,8 @@ class TesseractOcr:
             [TESSERACT, "stdin", "stdout", "-l", self._languages],
             input=image,
             capture_output=True,
-            check=True,
+            check=False,
         )
+        if result.returncode != 0:
+            raise RuntimeError(f"tesseract failed: {result.stderr.decode('utf-8', 'replace')}")
         return result.stdout.decode("utf-8")
