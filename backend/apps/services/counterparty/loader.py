@@ -1,5 +1,4 @@
 import csv
-from collections import Counter
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,20 +32,26 @@ def size_bucket(revenue_rub: float, config: CounterpartyConfig) -> str:
     return config.largest_bucket
 
 
+def parse_card(row: dict[str, str], config: CounterpartyConfig) -> Card:
+    revenue = float(row["REVENUE_COMPANY"])
+    return Card(
+        industry_class=industry_class(normalize_okved(row["MAINOKVED_CODE"]), INDUSTRIES),
+        region=row["REGION"],
+        size_bucket=size_bucket(revenue, config),
+        revenue_rub=revenue,
+    )
+
+
 def load_cards(path: Path, config: CounterpartyConfig) -> dict[str, Card]:
+    cards: dict[str, Card] = {}
+    repeated: set[str] = set()
     with path.open(encoding="utf-8", newline="") as file:
-        rows = list(csv.DictReader(file, delimiter=CSV_DELIMITER))
-    counts = Counter(row["SYNTHETIC_U"] for row in rows)
-    return {
-        row["SYNTHETIC_U"]: Card(
-            industry_class=industry_class(normalize_okved(row["MAINOKVED_CODE"]), INDUSTRIES),
-            region=row["REGION"],
-            size_bucket=size_bucket(float(row["REVENUE_COMPANY"]), config),
-            revenue_rub=float(row["REVENUE_COMPANY"]),
-        )
-        for row in rows
-        if counts[row["SYNTHETIC_U"]] == 1
-    }
+        for row in csv.DictReader(file, delimiter=CSV_DELIMITER):
+            company_id = row["SYNTHETIC_U"]
+            if company_id in cards:
+                repeated.add(company_id)
+            cards[company_id] = parse_card(row, config)
+    return {company_id: card for company_id, card in cards.items() if company_id not in repeated}
 
 
 def read_payments(path: Path) -> Iterator[Payment]:

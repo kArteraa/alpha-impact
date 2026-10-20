@@ -1,7 +1,7 @@
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 
 from apps.services.counterparty.config import CounterpartyConfig
 from apps.services.counterparty.loader import Card, Payment
@@ -9,6 +9,15 @@ from apps.services.counterparty.loader import Card, Payment
 Payload = dict[str, Any]
 
 SHARE_DIGITS = 4
+
+
+class CardFields(Protocol):
+    @property
+    def industry_class(self) -> str: ...
+    @property
+    def region(self) -> str: ...
+    @property
+    def size_bucket(self) -> str: ...
 
 
 @dataclass
@@ -20,53 +29,56 @@ class Flow:
 Flows = dict[str, Flow]
 
 
+@dataclass(frozen=True)
+class ClientGraph:
+    summary: Payload
+    dependence: dict[str, float]
+
+
 def share(part: float, total: float) -> float:
     return round(part / total, SHARE_DIGITS)
 
 
-def segment(counterparty: str, cards: Mapping[str, Card], config: CounterpartyConfig) -> str:
-    card = cards.get(counterparty)
+def segment(card: CardFields | None, config: CounterpartyConfig) -> str:
     return card.industry_class if card else config.no_card_segment
 
 
+def card_aggregates(card: CardFields | None) -> Payload:
+    return {
+        "industry_class": card.industry_class if card else None,
+        "region": card.region if card else None,
+        "size_bucket": card.size_bucket if card else None,
+    }
+
+
 def segments(
-    flows: Flows, cards: Mapping[str, Card], config: CounterpartyConfig
+    flows: Flows, total: float, cards: Mapping[str, Card], config: CounterpartyConfig
 ) -> dict[str, float]:
-    total = sum(flow.amount for flow in flows.values())
     sums: defaultdict[str, float] = defaultdict(float)
     for counterparty, flow in flows.items():
-        sums[segment(counterparty, cards, config)] += flow.amount
+        sums[segment(cards.get(counterparty), config)] += flow.amount
     return {name: share(amount, total) for name, amount in sums.items()}
 
 
-def top(flows: Flows, cards: Mapping[str, Card], config: CounterpartyConfig) -> list[Payload]:
-    total = sum(flow.amount for flow in flows.values())
+def top(
+    flows: Flows, total: float, cards: Mapping[str, Card], config: CounterpartyConfig
+) -> list[Payload]:
     ranked = sorted(flows.items(), key=lambda item: (-item[1].amount, item[0]))
     return [
         {
-            "industry_class": card.industry_class if card else None,
-            "region": card.region if card else None,
-            "size_bucket": card.size_bucket if card else None,
+            **card_aggregates(cards.get(counterparty)),
             "share": share(flow.amount, total),
             "frequency": flow.count,
         }
         for counterparty, flow in ranked[: config.top_size]
-        for card in [cards.get(counterparty)]
     ]
 
 
-def hhi(flows: Flows) -> float | None:
-    total = sum(flow.amount for flow in flows.values())
+def concentration(flows: Flows, total: float) -> tuple[float | None, float | None]:
     if not total:
-        return None
-    return round(sum((flow.amount / total) ** 2 for flow in flows.values()), SHARE_DIGITS)
-
-
-def top_share(flows: Flows) -> float | None:
-    total = sum(flow.amount for flow in flows.values())
-    if not total:
-        return None
-    return share(max(flow.amount for flow in flows.values()), total)
+        return None, None
+    hhi = round(sum((flow.amount / total) ** 2 for flow in flows.values()), SHARE_DIGITS)
+    return hhi, share(max(flow.amount for flow in flows.values()), total)
 
 
 def client_graph(
@@ -75,26 +87,28 @@ def client_graph(
     received: Mapping[str, float],
     cards: Mapping[str, Card],
     config: CounterpartyConfig,
-) -> Payload:
-    outflow_segments = segments(outflow, cards, config)
-    return {
-        "outflow_segments": outflow_segments,
-        "no_card_outflow_share": (
-            outflow_segments.get(config.no_card_segment, 0.0) if outflow_segments else None
-        ),
-        "suppliers": top(outflow, cards, config),
-        "buyers": top(inflow, cards, config),
-        "concentration": {
-            "outflow_hhi": hhi(outflow),
-            "outflow_top_share": top_share(outflow),
-            "inflow_hhi": hhi(inflow),
-            "inflow_top_share": top_share(inflow),
+) -> ClientGraph:
+    out_total = sum(flow.amount for flow in outflow.values())
+    in_total = sum(flow.amount for flow in inflow.values())
+    outflow_hhi, outflow_top = concentration(outflow, out_total)
+    inflow_hhi, inflow_top = concentration(inflow, in_total)
+    return ClientGraph(
+        summary={
+            "outflow_segments": segments(outflow, out_total, cards, config),
+            "suppliers": top(outflow, out_total, cards, config),
+            "buyers": top(inflow, in_total, cards, config),
+            "concentration": {
+                "outflow_hhi": outflow_hhi,
+                "outflow_top_share": outflow_top,
+                "inflow_hhi": inflow_hhi,
+                "inflow_top_share": inflow_top,
+            },
         },
-        "dependence": {
+        dependence={
             counterparty: share(flow.amount, received[counterparty])
             for counterparty, flow in outflow.items()
         },
-    }
+    )
 
 
 def build_graphs(
@@ -102,7 +116,7 @@ def build_graphs(
     cards: Mapping[str, Card],
     clients: Iterable[str],
     config: CounterpartyConfig,
-) -> dict[str, Payload]:
+) -> dict[str, ClientGraph]:
     outflows: dict[str, Flows] = {client: defaultdict(Flow) for client in clients}
     inflows: dict[str, Flows] = {client: defaultdict(Flow) for client in outflows}
     received: defaultdict[str, float] = defaultdict(float)

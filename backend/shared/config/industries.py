@@ -5,14 +5,7 @@ import yaml
 
 OTHER = "other"
 INDUSTRIES_FILE = Path(__file__).resolve().parent / "industries.yaml"
-
-
-def load_industries() -> dict[str, str]:
-    industries: dict[str, str] = yaml.safe_load(INDUSTRIES_FILE.read_text(encoding="utf-8"))
-    return industries
-
-
-INDUSTRIES = load_industries()
+INDUSTRIES: dict[str, str] = yaml.safe_load(INDUSTRIES_FILE.read_text(encoding="utf-8"))
 INDUSTRY_CLASSES = frozenset(INDUSTRIES.values()) | {OTHER}
 
 
