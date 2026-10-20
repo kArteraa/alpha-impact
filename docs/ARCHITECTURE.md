@@ -7,7 +7,7 @@
 ```
 alpha-impact/
   backend/                     Python-монолит; uv, pytest, alembic запускаются из этой папки
-    main.py                    composition root (FastAPI app factory + DI wiring)
+    main.py                    composition root: FastAPI, DI-контейнер, сервисы из apps/services находятся сами
     pyproject.toml  uv.lock    зависимости бэкенда
     alembic.ini  Dockerfile
     apps/services/
@@ -33,7 +33,6 @@ alpha-impact/
         migrations/            Alembic
       di/
         container.py           Container: register(port, factory) / resolve(port); scope per request
-        wiring.py              порядок регистрации сервисов
       config/
         settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, MODEL_*, RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
     scripts/                   gen_schemas.py, seed.py
@@ -55,8 +54,9 @@ alpha-impact/
   docs/
     CONCEPT.md ARCHITECTURE.md CONTRACTS.md DEMO.md   продукт, устройство, контракты, демо
     PIPELINE.md                процесс задачи для любого агента
-    BACKLOG.md TEAM.md         задачи AH-1…AH-50; кто и в каком порядке их делает
-    DECISIONS.md DATA.md       журнал решений команды; факты о данных
+    BACKLOG.md TEAM.md         задачи AH-1…AH-51; кто и в каком порядке их делает
+    DECISIONS.md DATA.md       правила и оглавление журнала решений; факты о данных
+    decisions/                 журнал решений: по файлу на участника
     SUMMARY.md                 суть, цели и текущее состояние на одной странице
   AGENTS.md                    правила для всех агентов — единственный источник
   CLAUDE.md  GEMINI.md         только импорт AGENTS.md
@@ -74,8 +74,8 @@ alpha-impact/
 Сами правила — в `AGENTS.md`, раздел «Service isolation»; здесь — как они устроены.
 
 - Зависимость между сервисами выражается портом из `shared/contracts/ports.py` и разрешается из DI-контейнера. Пример: `interpreter` получает `ProfileService`, `CounterpartyService`, `NewsService`, `HouseViewService`, `WhatIfService`, `ProductRulesService`, `LLMGateway`, `TraceStore` в конструктор.
-- Сервис экспортирует только `register(container: Container) -> None`.
-- Проверка — `tests/unit/test_import_boundaries.py` запускает `import-linter` с контрактами из `backend/pyproject.toml`: `independence` между `apps.services.*`, `forbidden` на `shared.di.wiring` и `shared.db.migrations`, `layers` — `shared` не зависит от сервисов.
+- Сервис экспортирует только `register(container: Container) -> None`. Сервис — пакет в `apps/services/`: `main.py` находит его сам и вызывает `register` с контейнером, где уже есть `Settings`, `AsyncEngine` и `async_sessionmaker`; общие файлы при добавлении сервиса не правятся.
+- Проверка — `tests/unit/test_import_boundaries.py` запускает `import-linter` с контрактами из `backend/pyproject.toml`: `independence` между `apps.services.*`, `forbidden` на `shared.db.migrations`, `layers` — `shared` не зависит от сервисов.
 
 ## Поток запроса
 
