@@ -38,3 +38,7 @@ def test_format_rate(value: float, expected: str) -> None:
 def test_format_rate_hides_float_noise() -> None:
     assert format_rate(0.1 + 0.2) == "0,3"
     assert format_rate(13.5 + 0.1 + 0.2) == "13,8"
+
+
+def test_format_rate_sign_follows_rounded_value() -> None:
+    assert format_rate(-1e-12) == "0"
