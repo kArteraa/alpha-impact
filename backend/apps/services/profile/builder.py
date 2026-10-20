@@ -24,7 +24,8 @@ BANK_FEATURES = (
     "products",
     "import_countries",
 )
-FEATURES = (*BANK_FEATURES, "industry_class")
+INDUSTRY = "industry_class"
+FEATURES = (*BANK_FEATURES, INDUSTRY)
 
 
 def flags(
@@ -67,13 +68,11 @@ def value_of(features: Payload, name: str) -> Any:
     return features[name]["value"]
 
 
-def exposure(
-    rule: ExposureRule, features: Payload, imports: bool, industry: str, config: ProfileConfig
-) -> float:
+def exposure(rule: ExposureRule, features: Payload, imports: bool, config: ProfileConfig) -> float:
     ownership = value_of(features, "ownership")
     countries = len(value_of(features, "import_countries"))
     total = sum(rule.products.get(product, 0.0) for product in value_of(features, "products"))
-    total += rule.industries.get(industry, 0.0)
+    total += rule.industries.get(value_of(features, INDUSTRY), 0.0)
     total += rule.importer if imports else 0.0
     total += rule.per_country * min(countries, config.countries_cap)
     total += rule.foreign_owned if ownership in config.foreign_ownership else 0.0
@@ -82,12 +81,9 @@ def exposure(
     return round(min(total, MAX_EXPOSURE), EXPOSURE_DIGITS)
 
 
-def exposures(
-    features: Payload, imports: bool, industry: str, config: ProfileConfig
-) -> dict[str, float]:
+def exposures(features: Payload, imports: bool, config: ProfileConfig) -> dict[str, float]:
     return {
-        name: exposure(rule, features, imports, industry, config)
-        for name, rule in config.exposures.items()
+        name: exposure(rule, features, imports, config) for name, rule in config.exposures.items()
     }
 
 
@@ -95,12 +91,12 @@ def company_payload(company: Company, members: list[str], config: ProfileConfig)
     industry = industry_class(company.okved_code, config.industries)
     bank = config.confidence.bank
     features = {name: feature(bank_value(company, name), "bank", bank) for name in BANK_FEATURES}
-    features["industry_class"] = feature(industry, "inferred", config.confidence.inferred)
+    features[INDUSTRY] = feature(industry, "inferred", config.confidence.inferred)
     return {
         "group_id": company.group_id,
         "group_members": members,
         "features": features,
-        "exposures": exposures(features, company.importer, industry, config),
+        "exposures": exposures(features, company.importer, config),
         "flags": flags(
             imports=company.importer,
             negative_mark=company.negative_mark,

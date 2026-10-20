@@ -13,7 +13,9 @@ async def rebuild_profiles(
     sessions: async_sessionmaker[AsyncSession], raw_dir: Path, config: ProfileConfig
 ) -> int:
     companies = load_companies(raw_dir / config.companies_file, config)
+    async with sessions() as session:
+        linked = await all_linked_clients(session)
+    profiles = build_profiles(companies, config, linked)
     async with sessions() as session, session.begin():
-        profiles = build_profiles(companies, config, await all_linked_clients(session))
         await upsert_profiles(session, profiles, datetime.now(UTC))
     return len(profiles)
