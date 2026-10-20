@@ -40,14 +40,27 @@ class MemoryStore:
 
 
 class ModelServer:
-    def __init__(self, content: str = "ok", tokens_in: int = 1000, tokens_out: int = 500) -> None:
+    def __init__(
+        self,
+        content: str | None = "ok",
+        tokens_in: int = 1000,
+        tokens_out: int = 500,
+        status: int = 200,
+        failure: httpx.HTTPError | None = None,
+    ) -> None:
         self.content = content
+        self.status = status
+        self.failure = failure
         self.tokens_in = tokens_in
         self.tokens_out = tokens_out
         self.requests: list[httpx.Request] = []
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
+        if self.failure is not None:
+            raise self.failure
+        if self.status != 200:
+            return httpx.Response(self.status, json={"error": "unavailable"})
         usage = {"prompt_tokens": self.tokens_in, "completion_tokens": self.tokens_out}
         if request.url.path.endswith("/embeddings"):
             body: dict[str, Any] = {
