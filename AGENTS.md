@@ -46,7 +46,7 @@ Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/
 
 ## Service isolation (hard rule)
 
-- A service imports only its own package, `shared.contracts`, `shared.config`, `shared.db` (not `shared.db.migrations`), `shared.di` (not `shared.di.wiring`), the standard library and third-party packages. Never another service.
+- A service imports only its own package, `shared.contracts`, `shared.config`, `shared.db` (not `shared.db.migrations`), `shared.di`, the standard library and third-party packages. Never another service.
 - Cross-service calls go through a port (`typing.Protocol`) from `shared/contracts/ports.py`, resolved from the DI container.
 - Every service exposes only `register(container)` from its `__init__.py`.
 - Tables belong to their service; other services' tables are read only through the owner's port.

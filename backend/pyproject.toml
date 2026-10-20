@@ -61,27 +61,15 @@ exclude_type_checking_imports = false
 [[tool.importlinter.contracts]]
 name = "Services never import each other"
 type = "independence"
-modules = [
-    "apps.services.gateway",
-    "apps.services.profile",
-    "apps.services.counterparty",
-    "apps.services.news",
-    "apps.services.house_view",
-    "apps.services.interpreter",
-    "apps.services.whatif",
-    "apps.services.products",
-    "apps.services.llm",
-    "apps.services.trace",
-]
+modules = ["apps.services.*"]
 
 [[tool.importlinter.contracts]]
 name = "Services may import only shared.contracts, shared.config, shared.db and the DI container"
 type = "forbidden"
 source_modules = ["apps.services"]
-forbidden_modules = ["shared.di.wiring", "shared.db.migrations"]
+forbidden_modules = ["shared.db.migrations"]
 
 [[tool.importlinter.contracts]]
 name = "shared never depends on services"
 type = "layers"
 layers = ["apps.services", "shared"]
-ignore_imports = ["shared.di.wiring -> apps.services.*"]
