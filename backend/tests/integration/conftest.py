@@ -16,7 +16,10 @@ from sqlalchemy.pool import NullPool
 
 from shared.db.session import make_session_factory
 
-TABLES = ("feedback", "traces", "user_clients", "users")
+MIGRATED_TABLES = text(
+    "SELECT tablename FROM pg_tables "
+    "WHERE schemaname = current_schema() AND tablename <> 'alembic_version'"
+)
 
 
 def run_alembic(action: str, revision: str) -> None:
@@ -43,7 +46,8 @@ def migrated_db() -> Iterator[str]:
 async def engine(migrated_db: str) -> AsyncIterator[AsyncEngine]:
     engine = create_async_engine(migrated_db, poolclass=NullPool)
     async with engine.begin() as connection:
-        await connection.execute(text(f"TRUNCATE {', '.join(TABLES)} CASCADE"))
+        tables = (await connection.scalars(MIGRATED_TABLES)).all()
+        await connection.execute(text(f"TRUNCATE {', '.join(tables)} CASCADE"))
     yield engine
     await engine.dispose()
 
