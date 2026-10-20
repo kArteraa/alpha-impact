@@ -1,0 +1,113 @@
+import json
+
+import pytest
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from apps.services.counterparty.batch import rebuild_graph
+from apps.services.counterparty.config import load_config
+from apps.services.counterparty.service import CounterpartyAggregates
+from shared.contracts.schemas import CounterpartyContext
+from shared.db.models import ClientGraphRow, CounterpartyCardRow
+from tests.unit.counterparty.fixtures import AMOUNTS, CLIENT, FIXTURES_DIR
+
+CONFIG = load_config()
+LOW = CONFIG.confidence.low
+
+
+@pytest.fixture
+async def service(sessions: async_sessionmaker[AsyncSession]) -> CounterpartyAggregates:
+    await rebuild_graph(sessions, FIXTURES_DIR, CONFIG)
+    return CounterpartyAggregates(sessions, CONFIG)
+
+
+def assert_no_leak(context: CounterpartyContext) -> None:
+    dumped = context.model_dump(mode="json")
+    text = json.dumps(dumped, ensure_ascii=False)
+    assert set(dumped) == set(CounterpartyContext.model_fields)
+    assert "U_" not in text
+    for amount in AMOUNTS:
+        assert str(int(amount)) not in text
+    for share in (context.share_of_client_outflow, context.share_of_counterparty_inflow):
+        assert share is None or 0 <= share <= 1
+
+
+async def test_paid_logistics_carrier_returns_only_aggregates(
+    service: CounterpartyAggregates,
+) -> None:
+    context = await service.context(CLIENT, "U_902", None)
+
+    assert context == CounterpartyContext(
+        industry_class="logistics",
+        region="Санкт-Петербург",
+        size_bucket="small",
+        share_of_client_outflow=0.4,
+        share_of_counterparty_inflow=0.75,
+        confidence=CONFIG.confidence.linked,
+    )
+    assert_no_leak(context)
+
+
+async def test_counterparty_without_card_has_low_confidence(
+    service: CounterpartyAggregates,
+) -> None:
+    context = await service.context(CLIENT, "U_950", None)
+
+    assert context.industry_class is None
+    assert context.region is None
+    assert context.size_bucket is None
+    assert context.share_of_client_outflow == 0.4
+    assert context.share_of_counterparty_inflow == 1.0
+    assert context.confidence == LOW
+    assert_no_leak(context)
+
+
+async def test_card_without_payments_has_medium_confidence(
+    service: CounterpartyAggregates,
+) -> None:
+    context = await service.context(CLIENT, "U_905", None)
+
+    assert context.industry_class == "retail"
+    assert context.size_bucket == "medium"
+    assert context.share_of_client_outflow == 0.0
+    assert context.share_of_counterparty_inflow is None
+    assert context.confidence == CONFIG.confidence.card_only
+    assert_no_leak(context)
+
+
+@pytest.mark.parametrize(
+    ("beneficiary_id", "inn"), [(None, "7707083893"), (None, None), ("U_999", None)]
+)
+async def test_unknown_counterparty_returns_nothing_but_low_confidence(
+    service: CounterpartyAggregates, beneficiary_id: str | None, inn: str | None
+) -> None:
+    context = await service.context(CLIENT, beneficiary_id, inn)
+
+    assert context.industry_class is None
+    assert context.share_of_counterparty_inflow is None
+    assert context.confidence == LOW
+    assert_no_leak(context)
+
+
+async def test_client_without_graph_still_gets_card_aggregates(
+    service: CounterpartyAggregates,
+) -> None:
+    context = await service.context("U_904", "U_902", None)
+
+    assert context.industry_class == "logistics"
+    assert context.share_of_client_outflow is None
+    assert context.share_of_counterparty_inflow is None
+    assert context.confidence == CONFIG.confidence.card_only
+
+
+async def test_rebuild_is_idempotent(
+    service: CounterpartyAggregates, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    before = await service.context(CLIENT, "U_902", None)
+    await rebuild_graph(sessions, FIXTURES_DIR, CONFIG)
+
+    async with sessions() as session:
+        cards = await session.scalar(select(func.count()).select_from(CounterpartyCardRow))
+        graphs = await session.scalar(select(func.count()).select_from(ClientGraphRow))
+    assert (cards, graphs) == (5, 1)
+    assert await service.context(CLIENT, "U_902", None) == before

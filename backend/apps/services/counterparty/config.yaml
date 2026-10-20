@@ -1,0 +1,21 @@
+companies_file: df_Uid_data_hack.csv
+payments_file: df_Uid_payment_hack.csv
+min_revenue_rub: 15000000000
+top_size: 10
+no_card_segment: no_card
+
+size_buckets:
+  - name: micro
+    max_revenue_rub: 120000000
+  - name: small
+    max_revenue_rub: 800000000
+  - name: medium
+    max_revenue_rub: 2000000000
+  - name: large
+    max_revenue_rub: 15000000000
+largest_bucket: largest
+
+confidence:
+  linked: 0.9
+  card_only: 0.6
+  low: 0.2
