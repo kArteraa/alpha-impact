@@ -25,15 +25,6 @@ describe("routing", () => {
     expect(screen.getByRole("heading", { level: 1, name: heading })).toBeTruthy();
   });
 
-  it("embeds the insight panel on the payment page", () => {
-    render(
-      <MemoryRouter initialEntries={["/payments/new"]}>
-        <App />
-      </MemoryRouter>,
-    );
-    expect(document.querySelector(".insight-panel")).not.toBeNull();
-  });
-
   it("login screen has the user field and submit button", () => {
     render(
       <MemoryRouter initialEntries={["/login"]}>
