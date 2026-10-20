@@ -2,7 +2,7 @@
 
 This file is the single source of rules for every agent: Codex reads it directly, Claude Code and Gemini CLI through the one-line imports in `CLAUDE.md` and `GEMINI.md`. Never add rules to those two files and never restate these rules elsewhere — link here.
 
-alfa-insight — «Аналитика в момент действия», Alfa-Bank hackathon (case «Новостная аналитика для принятия бизнес-решений»). Team of 3, Jira Kanban `AH`, 5-day deadline. Docs, commits, PRs and Jira: Russian. Code, identifiers and tests: English.
+alfa-insight — «Аналитика в момент действия», Alfa-Bank hackathon (case «Новостная аналитика для принятия бизнес-решений»). Team of 3, Jira Kanban `KAN` (each issue title starts with its backlog number `AH-<n>`), 5-day deadline. Docs, commits, PRs and Jira: Russian. Code, identifiers and tests: English.
 
 ## Where to look
 
