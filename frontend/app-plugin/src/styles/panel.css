@@ -4,8 +4,8 @@
   gap: var(--s-4);
   min-width: 0;
   font-family: var(--font-family);
-  font-size: var(--fs-14);
-  line-height: var(--lh-20);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
   color: var(--text-primary);
 }
 
@@ -69,16 +69,16 @@
 
 .panel-note {
   color: var(--text-secondary);
-  font-size: var(--fs-14);
-  line-height: var(--lh-20);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
 }
 
 .panel-silent {
   display: flex;
   align-items: center;
   gap: var(--s-2);
-  font-size: var(--fs-16);
-  line-height: var(--lh-20);
+  font-size: var(--fs-18);
+  line-height: var(--lh-26);
   font-weight: var(--fw-medium);
 }
 
@@ -150,8 +150,8 @@
 }
 
 .card-header h3 {
-  font-size: var(--fs-18);
-  line-height: var(--lh-24);
+  font-size: var(--fs-22);
+  line-height: var(--lh-26);
   font-weight: var(--fw-bold);
 }
 
@@ -161,8 +161,8 @@
 }
 
 .insight-block h4 {
-  font-size: var(--fs-12);
-  line-height: var(--lh-16);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
   font-weight: var(--fw-medium);
   color: var(--text-secondary);
 }
@@ -212,8 +212,8 @@ details.insight-block[open] > summary::after {
   padding: 0 var(--s-2);
   border-radius: var(--r-pill);
   background: var(--bg-neutral);
-  font-size: var(--fs-12);
-  line-height: var(--lh-20);
+  font-size: var(--fs-14);
+  line-height: var(--lh-24);
   font-weight: var(--fw-medium);
   white-space: nowrap;
 }
@@ -230,8 +230,8 @@ details.insight-block[open] > summary::after {
 
 .bank-report {
   color: var(--text-primary);
-  font-size: var(--fs-12);
-  line-height: var(--lh-16);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
 }
 
 .insight-sources {
@@ -239,8 +239,8 @@ details.insight-block[open] > summary::after {
   gap: var(--s-1);
   padding: 0;
   list-style: none;
-  font-size: var(--fs-13);
-  line-height: var(--lh-18);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
 }
 
 .insight-sources li {
@@ -260,7 +260,7 @@ details.insight-block[open] > summary::after {
   padding: var(--s-2) var(--s-3);
   border-radius: var(--r-sm);
   background: var(--bg-warning);
-  font-size: var(--fs-13);
+  font-size: var(--fs-14);
 }
 
 .product-offer {
@@ -272,15 +272,15 @@ details.insight-block[open] > summary::after {
 }
 
 .product-offer h4 {
-  font-size: var(--fs-12);
-  line-height: var(--lh-16);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
   font-weight: var(--fw-medium);
   color: var(--text-primary);
 }
 
 .product-reason {
-  font-size: var(--fs-13);
-  line-height: var(--lh-18);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
 }
 
 .product-offer .button-secondary {

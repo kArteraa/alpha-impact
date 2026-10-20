@@ -40,8 +40,8 @@
 
 .field-hint {
   color: var(--text-secondary);
-  font-size: var(--fs-12);
-  line-height: var(--lh-16);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
 }
 
 .segmented {
@@ -65,10 +65,10 @@
 .segmented span {
   display: inline-grid;
   place-items: center;
-  min-width: 96px;
+  min-width: 120px;
   height: var(--control-h-sm);
   border-radius: var(--r-sm);
-  font-size: var(--fs-14);
+  font-size: var(--fs-16);
   cursor: pointer;
   transition: background var(--t-fast);
 }

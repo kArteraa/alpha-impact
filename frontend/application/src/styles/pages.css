@@ -45,8 +45,8 @@
 
 .event h3 {
   margin: 0;
-  font-size: var(--fs-16);
-  line-height: var(--lh-24);
+  font-size: var(--fs-20);
+  line-height: var(--lh-26);
   font-weight: var(--fw-medium);
 }
 
@@ -86,7 +86,7 @@
 
 .page-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  grid-template-columns: minmax(0, 3fr) minmax(440px, 2fr);
   gap: var(--s-6);
   align-items: start;
 }
@@ -112,8 +112,8 @@
 .portfolio {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--fs-14);
-  line-height: var(--lh-20);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
 }
 
 .portfolio th {
@@ -135,7 +135,7 @@
 
 .features {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: var(--s-4);
   margin: 0;
   padding: 0;
@@ -150,8 +150,8 @@
 }
 
 .feature-value {
-  font-size: var(--fs-18);
-  line-height: var(--lh-24);
+  font-size: var(--fs-22);
+  line-height: var(--lh-26);
   font-weight: var(--fw-medium);
 }
 
@@ -160,8 +160,8 @@
   padding: 0 var(--s-2);
   border-radius: var(--r-sm);
   background: var(--bg-neutral);
-  font-size: var(--fs-11);
-  line-height: var(--lh-16);
+  font-size: var(--fs-13);
+  line-height: var(--lh-18);
 }
 
 .feature-source[data-source="bank"] {
@@ -237,8 +237,8 @@
 
 .trace-step-meta {
   color: var(--text-secondary);
-  font-size: var(--fs-12);
-  line-height: var(--lh-16);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
 }
 
 .trace-step dl {
@@ -246,7 +246,7 @@
   grid-template-columns: max-content minmax(0, 1fr);
   gap: var(--s-1) var(--s-3);
   margin: var(--s-2) 0 0;
-  font-size: var(--fs-14);
+  font-size: var(--fs-16);
 }
 
 .trace-step dt {
@@ -266,7 +266,7 @@
 
 .login {
   width: 100%;
-  max-width: 400px;
+  max-width: 480px;
 }
 
 .login h1 {

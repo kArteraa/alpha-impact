@@ -9,22 +9,22 @@ body {
   background: var(--bg-page);
   color: var(--text-primary);
   font-family: var(--font-family);
-  font-size: var(--fs-16);
-  line-height: var(--lh-20);
+  font-size: var(--fs-18);
+  line-height: var(--lh-26);
   font-weight: var(--fw-regular);
 }
 
 h1 {
   margin: 0 0 var(--s-6);
-  font-size: var(--fs-30);
-  line-height: var(--lh-36);
+  font-size: var(--fs-40);
+  line-height: var(--lh-48);
   font-weight: var(--fw-bold);
 }
 
 .card h2 {
   margin: 0 0 var(--s-4);
-  font-size: var(--fs-22);
-  line-height: var(--lh-26);
+  font-size: var(--fs-30);
+  line-height: var(--lh-36);
   font-weight: var(--fw-bold);
 }
 
@@ -51,8 +51,8 @@ a:hover {
 
 .muted {
   color: var(--text-secondary);
-  font-size: var(--fs-14);
-  line-height: var(--lh-20);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
 }
 
 .button {
@@ -85,7 +85,7 @@ a:hover {
 .empty {
   margin: 0;
   color: var(--text-secondary);
-  font-size: var(--fs-14);
+  font-size: var(--fs-16);
 }
 
 .error {
@@ -94,7 +94,7 @@ a:hover {
   padding: var(--s-2) var(--s-3);
   border-radius: var(--r-sm);
   background: var(--bg-danger);
-  font-size: var(--fs-14);
+  font-size: var(--fs-16);
 }
 
 .appear {
@@ -113,8 +113,8 @@ a:hover {
 }
 
 .amount-lg {
-  font-size: var(--fs-30);
-  line-height: var(--lh-36);
+  font-size: var(--fs-40);
+  line-height: var(--lh-48);
   font-weight: var(--fw-bold);
 }
 

@@ -21,6 +21,7 @@
   --lh-24: 24px;
   --lh-26: 26px;
   --lh-36: 36px;
+  --lh-48: 48px;
 
   --accent: #ef3124;
   --accent-hover: #e32a17;
@@ -68,9 +69,8 @@
   --s-6: 24px;
   --s-7: 28px;
   --s-8: 32px;
-  --container: 1140px;
-  --control-h: 48px;
-  --control-h-sm: 40px;
+  --control-h: 56px;
+  --control-h-sm: 44px;
 
   --t-fast: 150ms ease;
   --t-base: 200ms ease;
