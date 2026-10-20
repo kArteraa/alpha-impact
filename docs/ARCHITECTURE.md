@@ -55,15 +55,15 @@ alpha-impact/
   docs/
     CONCEPT.md ARCHITECTURE.md CONTRACTS.md DEMO.md   продукт, устройство, контракты, демо
     PIPELINE.md                процесс задачи для любого агента
-    BACKLOG.md TEAM.md         задачи AH-1…AH-47; кто и в каком порядке их делает
+    BACKLOG.md TEAM.md         задачи AH-1…AH-50; кто и в каком порядке их делает
     DECISIONS.md DATA.md       журнал решений команды; факты о данных
     SUMMARY.md                 суть, цели и текущее состояние на одной странице
   AGENTS.md                    правила для всех агентов — единственный источник
   CLAUDE.md  GEMINI.md         только импорт AGENTS.md
-  .claude/skills/task/SKILL.md  /task в Claude Code → docs/PIPELINE.md
+  .claude/skills/{task,setup}/  /task и /setup в Claude Code → docs/PIPELINE.md
   .claude/settings.json        разрешённые команды для Claude Code
-  .agents/skills/task/SKILL.md  $task в Codex → docs/PIPELINE.md
-  .gemini/commands/task.toml    /task в Gemini CLI → docs/PIPELINE.md
+  .agents/skills/{task,setup}/  $task и $setup в Codex → docs/PIPELINE.md
+  .gemini/commands/             /task и /setup в Gemini CLI → docs/PIPELINE.md
   .github/workflows/           backend.yml (ruff, mypy, import-linter, pytest), frontend.yml (gen:types, vitest, npm run build)
 ```
 
