@@ -1,5 +1,7 @@
 import math
 import re
+from itertools import groupby
+from operator import itemgetter
 
 from apps.services.whatif.formatting import MINUS, format_amount, format_rate
 from shared.contracts.schemas import WhatIfResult
@@ -107,13 +109,10 @@ def _interest(amount: float, rate: float, days: int) -> float:
 
 
 def _collapse(periods: list[tuple[float, int]]) -> list[tuple[float, int]]:
-    collapsed: list[tuple[float, int]] = []
-    for rate, days in periods:
-        if collapsed and collapsed[-1][0] == rate:
-            collapsed[-1] = (rate, collapsed[-1][1] + days)
-        else:
-            collapsed.append((rate, days))
-    return collapsed
+    return [
+        (rate, sum(days for _, days in group))
+        for rate, group in groupby(periods, key=itemgetter(0))
+    ]
 
 
 def _require_positive(name: str, value: float) -> None:

@@ -11,9 +11,7 @@ def format_amount(value: float) -> str:
 
 
 def format_rate(value: float) -> str:
-    whole, _, fraction = format(Decimal(repr(abs(value))).normalize(), "f").partition(".")
-    digits = f"{int(whole):,}" + (f".{fraction}" if fraction else "")
-    return _signed(value, digits)
+    return _signed(value, format(Decimal(repr(abs(value))).normalize(), ",f"))
 
 
 def _signed(value: float, digits: str) -> str:
