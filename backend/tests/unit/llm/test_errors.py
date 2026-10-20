@@ -71,3 +71,48 @@ async def test_retry_after_invalid_answer_calls_the_model_again() -> None:
         with pytest.raises(ModelOutputInvalid):
             await gateway.complete("critic", "sys", "usr", Verdict)
     assert len(server.requests) == 2
+
+
+NOT_JSON = "<html>502 bad gateway</html>"
+USAGE = {"prompt_tokens": 1, "completion_tokens": 1}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        NOT_JSON,
+        {"choices": [{"message": {"content": "ok"}}]},
+        {"choices": [], "usage": USAGE},
+        {"choices": [{"message": {}}], "usage": USAGE},
+        {"usage": USAGE},
+        ["not", "an", "object"],
+    ],
+)
+async def test_malformed_completion_envelope_is_model_unavailable(payload: object) -> None:
+    store = MemoryStore()
+    gateway = make_gateway(ModelServer(payload=payload).http_client(), store)
+    with pytest.raises(ModelUnavailable) as raised:
+        await gateway.complete("interpret", "sys", "usr")
+    assert isinstance(raised.value, DomainError)
+    assert store.usages == []
+    assert store.cache == {}
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        NOT_JSON,
+        {"usage": {"prompt_tokens": 1}},
+        {"data": [], "usage": {"prompt_tokens": 1}},
+        {"data": [{"embedding": [0.1]}]},
+        {"data": [{}], "usage": {"prompt_tokens": 1}},
+    ],
+)
+async def test_malformed_embedding_envelope_is_model_unavailable(payload: object) -> None:
+    store = MemoryStore()
+    gateway = make_gateway(ModelServer(payload=payload).http_client(), store)
+    with pytest.raises(ModelUnavailable) as raised:
+        await gateway.embed("text")
+    assert isinstance(raised.value, DomainError)
+    assert store.usages == []
+    assert store.cache == {}
