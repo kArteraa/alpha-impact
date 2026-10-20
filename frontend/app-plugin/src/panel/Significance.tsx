@@ -1,3 +1,4 @@
+import "../styles/badges.css";
 import { SIGNIFICANCE_LEVELS, significanceLevel } from "./labels";
 
 export function Significance({ value }: { value: number }) {
@@ -10,7 +11,7 @@ export function Significance({ value }: { value: number }) {
       title={`Значимость ${level} из ${SIGNIFICANCE_LEVELS}`}
     >
       {Array.from({ length: SIGNIFICANCE_LEVELS }, (_, index) => (
-        <span key={index} className={index < level ? "dot dot-on" : "dot dot-off"} />
+        <span key={index} className={index < level ? "insight-dot insight-dot-on" : "insight-dot insight-dot-off"} />
       ))}
     </span>
   );

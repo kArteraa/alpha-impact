@@ -69,6 +69,8 @@
   --s-7: 28px;
   --s-8: 32px;
   --container: 1140px;
+  --control-h: 48px;
+  --control-h-sm: 40px;
 
   --t-fast: 150ms ease;
   --t-base: 200ms ease;
@@ -80,12 +82,5 @@
   :root {
     --t-fast: 0ms linear;
     --t-base: 0ms linear;
-  }
-
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0ms !important;
-    transition-duration: 0ms !important;
   }
 }

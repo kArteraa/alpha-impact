@@ -12,7 +12,7 @@
 .field select,
 .field textarea {
   width: 100%;
-  min-height: 48px;
+  min-height: var(--control-h);
   padding: var(--s-3) var(--s-4);
   border: 1px solid transparent;
   border-radius: var(--r-md);
@@ -49,7 +49,7 @@
 
 .segmented button {
   min-width: 96px;
-  height: 40px;
+  height: var(--control-h-sm);
   border: 0;
   border-radius: var(--r-sm);
   background: transparent;

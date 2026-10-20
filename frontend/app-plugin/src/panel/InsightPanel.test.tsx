@@ -21,7 +21,7 @@ describe("InsightPanel states", () => {
 
     expect(state()).toBe("checking");
     expect(document.querySelector(".insight-panel")?.getAttribute("aria-busy")).toBe("true");
-    expect(document.querySelectorAll(".skeleton-line").length).toBe(3);
+    expect(document.querySelectorAll(".insight-skeleton").length).toBe(3);
     expect(screen.getByText("Смотрю новости и позицию банка по этому действию")).toBeTruthy();
   });
 
@@ -52,6 +52,12 @@ describe("InsightPanel states", () => {
     expect(document.querySelector(".insight-card")).toBe(shown);
     expect(screen.getByRole("progressbar")).toBeTruthy();
   });
+  it("shows progress over silence too", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.silent} pending />);
+
+    expect(state()).toBe("silent");
+    expect(screen.getByRole("progressbar")).toBeTruthy();
+  });
 });
 
 describe("InsightPanel card", () => {
@@ -75,7 +81,7 @@ describe("InsightPanel card", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
 
     const dots = screen.getByLabelText("Значимость 3 из 3");
-    expect(dots.querySelectorAll(".dot-on").length).toBe(3);
+    expect(dots.querySelectorAll(".insight-dot-on").length).toBe(3);
   });
 
   it("marks every claim with a labelled badge that leads to its source", () => {

@@ -1,7 +1,7 @@
 import { useId } from "react";
 import { LOANS } from "../data/loans";
+import { RUB_WHOLE } from "../money";
 
-const RUB = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 });
 const DATE = new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC" });
 
 export function LoansPage() {
@@ -31,7 +31,7 @@ export function LoansPage() {
             {LOANS.map((loan) => (
               <tr key={loan.id}>
                 <td>{loan.product}</td>
-                <td className="number">{RUB.format(loan.amount)}</td>
+                <td className="number">{RUB_WHOLE.format(loan.amount)}</td>
                 <td>{loan.rate}</td>
                 <td>{DATE.format(new Date(loan.maturity))}</td>
               </tr>

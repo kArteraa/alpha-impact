@@ -21,8 +21,7 @@ h1 {
   font-weight: var(--fw-bold);
 }
 
-.card > h2,
-.feed-head h2 {
+.card h2 {
   margin: 0 0 var(--s-4);
   font-size: var(--fs-22);
   line-height: var(--lh-26);
@@ -57,7 +56,7 @@ a:hover {
 }
 
 .button {
-  height: 48px;
+  height: var(--control-h);
   padding: 0 var(--s-6);
   border: 0;
   border-radius: var(--r-md);
@@ -110,5 +109,17 @@ a:hover {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+.amount-lg {
+  font-size: var(--fs-30);
+  line-height: var(--lh-36);
+  font-weight: var(--fw-bold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appear {
+    animation: none;
   }
 }

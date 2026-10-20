@@ -31,7 +31,7 @@
 }
 
 .company-switcher {
-  height: 36px;
+  height: var(--control-h-sm);
   padding: 0 var(--s-3);
   border: 0;
   border-radius: var(--r-sm);

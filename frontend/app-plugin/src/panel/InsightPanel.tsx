@@ -1,3 +1,4 @@
+import "../styles/controls.css";
 import "../styles/panel.css";
 import type { ActionContext, InterpretResponse, Role } from "../types";
 import { Card } from "./Card";
@@ -47,15 +48,17 @@ export function InsightPanel({
     return (
       <section {...base} data-state="checking" aria-busy="true">
         {Array.from({ length: SKELETON_LINES }, (_, index) => (
-          <span key={index} className="skeleton-line" />
+          <span key={index} className="insight-skeleton" />
         ))}
         <p className="panel-note">Смотрю новости и позицию банка по этому действию</p>
       </section>
     );
   }
+  const progress = pending && <div className="insight-progress" role="progressbar" aria-label="Обновляю вывод" />;
   if (response.silent) {
     return (
-      <section {...base} data-state="silent">
+      <section {...base} data-state="silent" aria-busy={pending}>
+        {progress}
         <p className="panel-silent" role="status">
           <CheckIcon />
           Ничего важного по этому действию
@@ -66,7 +69,7 @@ export function InsightPanel({
   }
   return (
     <section {...base} data-state="cards" aria-busy={pending}>
-      {pending && <div className="progress" role="progressbar" aria-label="Обновляю вывод" />}
+      {progress}
       {(response.cards ?? []).map((card) => (
         <Card key={card.id} card={card} compact={compact} onFollowup={onFollowup} />
       ))}
