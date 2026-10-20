@@ -15,7 +15,7 @@
 ### AH-2 · Репозиторий, структура, инструменты
 - Эпик: AH-1 · День: 1 · Тип: chore · Зависит от: —
 - Ответственный: Участник 1
-- Что сделать: создать дерево из `docs/ARCHITECTURE.md`, `pyproject.toml` с `uv`, ruff, mypy, pytest, pytest-asyncio, import-linter; npm workspaces для `apps/front/*`; `Makefile` (`up`, `down`, `seed`, `check`, `test`, `lint`, `e2e`); `docker-compose.yml` (api, db postgres+pgvector, front, seed); `Dockerfile`; `.env.example`; GitHub Actions `ci.yml`.
+- Что сделать: создать дерево из `docs/ARCHITECTURE.md`, `pyproject.toml` с `uv`, ruff, mypy, pytest, pytest-asyncio, import-linter; npm workspaces для `apps/front/*`; `Makefile` (`up`, `down`, `seed`, `check`, `test`, `lint`, `e2e`); `docker-compose.yml` (api, db postgres+pgvector, front, seed); `Dockerfile`; `.env.example`; GitHub Actions `backend.yml` и `frontend.yml`.
 - Готово, когда: `make up` поднимает api и db на чистом клоне; `make check` проходит на пустом проекте; CI зелёный на PR.
 
 ### AH-3 · Контракты
@@ -63,13 +63,13 @@
 ### AH-10 · Макет Альфа-Бизнеса: каркас, главный экран, форма платежа
 - Эпик: AH-1 · День: 1 · Тип: feat · Зависит от: AH-2
 - Ответственный: Участник 4
-- Что сделать: `apps/front/application`: Vite + React + TS, роутинг (`/`, `/payments/new`, `/deposits/new`, `/loans`, `/profile`, `/trace/:id`), API-клиент с cookie-сессией, экран входа за тестового пользователя (`POST /auth/mock`), главный экран с местом под виджет, форма платежа (получатель из списка seed-контрагентов, сумма, назначение) со слотом под `InsightPanel`; стиль — сдержанный, узнаваемый как интернет-банк, без копирования брендинга.
+- Что сделать: `frontend/application`: Vite + React + TS, роутинг (`/`, `/payments/new`, `/deposits/new`, `/loans`, `/profile`, `/trace/:id`), API-клиент с cookie-сессией, экран входа за тестового пользователя (`POST /auth/mock`), главный экран с местом под виджет, форма платежа (получатель из списка seed-контрагентов, сумма, назначение) со слотом под `InsightPanel`; стиль — сдержанный, узнаваемый как интернет-банк, без копирования брендинга.
 - Готово, когда: `npm run build` зелёный; Vitest render-тесты страниц; форма платежа отдаёт `PaymentContext` в консоль/мок.
 
 ### AH-11 · InsightPanel: каркас и состояния
 - Эпик: AH-1 · День: 1 · Тип: feat · Зависит от: AH-3
 - Ответственный: Участник 4
-- Что сделать: `apps/front/app-plugin`: библиотека `@alfa-insight/plugin` с `InsightPanel({actionContext, role})`, хук `useInterpret` (дебаунс 500 мс, отмена предыдущего запроса), состояния «проверяю» → «ничего важного по этому действию» (явно, одной строкой) → карточки; карточка из шести блоков; каждый тезис с пометкой `факт / позиция банка / вывод AI` и ссылкой на источник; `product_offer` как отдельный блок; кнопка «как получен вывод» → `/trace/:id`; типы из JSON Schema.
+- Что сделать: `frontend/app-plugin`: библиотека `@alfa-insight/plugin` с `InsightPanel({actionContext, role})`, хук `useInterpret` (дебаунс 500 мс, отмена предыдущего запроса), состояния «проверяю» → «ничего важного по этому действию» (явно, одной строкой) → карточки; карточка из шести блоков; каждый тезис с пометкой `факт / позиция банка / вывод AI` и ссылкой на источник; `product_offer` как отдельный блок; кнопка «как получен вывод» → `/trace/:id`; типы из JSON Schema.
 - Готово, когда: Storybook-подобная страница или Vitest-тесты на все три состояния и на три типа тезисов; панель собирается как библиотека и подключается в application как workspace-зависимость.
 
 
@@ -246,7 +246,7 @@
 ### AH-42 · E2E Playwright: сценарий демо
 - Эпик: AH-34 · День: 4 · Тип: test · Зависит от: AH-20, AH-31, AH-32, AH-33, AH-41
 - Ответственный: Участник 2
-- Что сделать: `tests/e2e/demo.spec.ts` по `docs/DEMO.md`: вход → профиль → виджет → платёж с карточкой → платёж с молчанием → депозит → смена роли → живая новость → трасса; запускается `make e2e` против compose.
+- Что сделать: `frontend/tests/e2e/demo.spec.ts` по `docs/DEMO.md`: вход → профиль → виджет → платёж с карточкой → платёж с молчанием → депозит → смена роли → живая новость → трасса; запускается `make e2e` против compose.
 - Готово, когда: сценарий зелёный локально и в CI (против поднятого compose с seed и прогретым кэшем).
 
 

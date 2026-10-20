@@ -46,7 +46,7 @@ python_version = "3.12"
 plugins = ["pydantic.mypy"]
 disable_error_code = ["type-abstract"]
 warn_unused_configs = true
-exclude = ['^\.venv/', '^node_modules/', '^apps/front/']
+exclude = ['^\.venv/']
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

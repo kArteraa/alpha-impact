@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { compileFromFile } from "json-schema-to-typescript";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const schemasDir = resolve(here, "../../../../shared/contracts/openapi");
+const schemasDir = resolve(here, "../../../backend/shared/contracts/openapi");
 const outDir = resolve(here, "../src/types");
 
 await mkdir(outDir, { recursive: true });

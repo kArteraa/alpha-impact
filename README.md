@@ -7,9 +7,9 @@
 ## Запуск
 
 ```
-make up        # db (postgres + pgvector) и api; http://localhost:8000/health, фронт http://localhost:5173
+make up        # db (postgres + pgvector), api и front: http://localhost:8000/health, http://localhost:5173
 make check     # ruff, mypy, import-linter, pytest (нужен Docker: тестовая БД — профиль test), vitest, npm run build
-make seed      # тестовые пользователи из data/seed
+make seed      # тестовые пользователи из backend/data/seed
 ```
 
-Переменные окружения — `.env.example` (`make up` копирует его в `.env`, если файла нет). Структура и правила — `docs/ARCHITECTURE.md`, задачи — `docs/tasks/BACKLOG.md`.
+Репозиторий разделён на `backend/` (Python-монолит: `uv`, `pytest`, `alembic` запускаются оттуда) и `frontend/` (npm workspace: `application`, `app-plugin`, Playwright). Переменные окружения — `.env.example` в корне (`make up` копирует его в `.env`, если файла нет). Структура и правила — `docs/ARCHITECTURE.md`, задачи — `docs/tasks/BACKLOG.md`.

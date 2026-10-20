@@ -10,33 +10,30 @@ down:
 	docker compose down
 
 seed: .env
-	uv run --env-file .env python -m scripts.seed
+	cd backend && uv run --env-file ../.env python -m scripts.seed
 
 check: lint typecheck test front\:test front\:build
 
 lint:
-	uv run ruff check .
-	uv run ruff format --check .
+	cd backend && uv run ruff check . && uv run ruff format --check .
 
 typecheck:
-	uv run mypy --strict shared
-	uv run mypy apps main.py scripts tests
-	uv run lint-imports
+	cd backend && uv run mypy --strict shared && uv run mypy apps main.py scripts tests && uv run lint-imports
 
 test: .env
 	docker compose --profile test up -d --wait db_test
-	uv run --env-file .env pytest
+	cd backend && uv run --env-file ../.env pytest
 
 e2e: .env
 	docker compose up -d --build --wait
-	npx playwright test
+	cd frontend && npx playwright test
 
 gen\:schemas:
-	uv run python -m scripts.gen_schemas
-	npm run gen:types
+	cd backend && uv run python -m scripts.gen_schemas
+	cd frontend && npm run gen:types
 
 front\:test:
-	npm test
+	cd frontend && npm test
 
 front\:build:
-	npm run build
+	cd frontend && npm run build

@@ -52,19 +52,23 @@ Everything else (web search, other MCPs, other plugins) requires a direct reques
 ## Project structure (fixed)
 
 ```
-main.py                      composition root: builds the DI container, registers every service by its contract, mounts the gateway router
-apps/
-  services/<name>/           one isolated service per business capability (see docs/ARCHITECTURE.md)
-  front/application/         React + Vite: mock of Alfa-Business (main screen, payment, deposit, loan) that embeds InsightPanel
-  front/app-plugin/          React + Vite: InsightPanel library + browser extension (MV3) built from the same component
-shared/
-  contracts/                 Pydantic schemas and `typing.Protocol` ports — the ONLY thing services may import from each other
-  db/                        SQLAlchemy engine, session factory, Alembic migrations, table models
-  di/                        DI container, registration helpers
-  config/                    pydantic-settings, env parsing
+backend/                     Python monolith; run uv, pytest and alembic from this folder
+  main.py                    composition root: builds the DI container, registers every service by its contract, mounts the gateway router
+  apps/services/<name>/      one isolated service per business capability (see docs/ARCHITECTURE.md)
+  shared/
+    contracts/               Pydantic schemas and `typing.Protocol` ports — the ONLY thing services may import from each other
+    db/                      SQLAlchemy engine, session factory, Alembic migrations, table models
+    di/                      DI container, registration helpers
+    config/                  pydantic-settings, env parsing
+  scripts/ data/ tests/unit tests/integration
+frontend/                    npm workspace; run npm from this folder
+  application/               React + Vite: mock of Alfa-Business (main screen, payment, deposit, loan) that embeds InsightPanel
+  app-plugin/                React + Vite: InsightPanel library + browser extension (MV3) built from the same component
+  tests/e2e/                 Playwright
 docs/                        CONCEPT, ARCHITECTURE, CONTRACTS, PIPELINE, TEAM, ECC-SETUP, DEMO, tasks/BACKLOG
-tests/unit tests/integration tests/e2e
 ```
+
+Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/integration` in docs and the backlog are relative to `backend/`; `application/`, `app-plugin/`, `tests/e2e` are relative to `frontend/`.
 
 ## Service isolation (hard rule)
 

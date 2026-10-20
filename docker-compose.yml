@@ -34,8 +34,7 @@ services:
 
   api:
     build:
-      context: .
-      target: api
+      context: ./backend
     env_file: .env
     environment:
       DB_URL: postgresql+asyncpg://alfa:alfa@db:5432/alfa
@@ -53,8 +52,7 @@ services:
 
   front:
     build:
-      context: .
-      target: front
+      context: ./frontend
     environment:
       API_PROXY_TARGET: http://api:8000
     ports:
@@ -65,8 +63,7 @@ services:
 
   seed:
     build:
-      context: .
-      target: api
+      context: ./backend
     profiles: ["seed"]
     env_file: .env
     environment:

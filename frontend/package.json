@@ -1,13 +1,14 @@
 {
-  "name": "alfa-insight",
+  "name": "alfa-insight-frontend",
   "private": true,
   "workspaces": [
-    "apps/front/*"
+    "application",
+    "app-plugin"
   ],
   "scripts": {
     "build": "npm run build --workspace @alfa-insight/plugin && npm run build --workspace @alfa-insight/application",
     "test": "npm run test --workspaces",
-    "gen:types": "node apps/front/app-plugin/scripts/gen-types.mjs",
+    "gen:types": "node app-plugin/scripts/gen-types.mjs",
     "e2e": "playwright test"
   },
   "devDependencies": {
