@@ -1,81 +1,56 @@
-# Project Instructions (AGENTS.md — mirror of CLAUDE.md for Codex)
+# alfa-insight — rules for coding agents
 
-Project: **alfa-insight** — "Аналитика в момент действия" for Alfa-Bank hackathon (case "Новостная аналитика для принятия бизнес-решений").
-Read `docs/CONCEPT.md`, `docs/ARCHITECTURE.md`, `docs/CONTRACTS.md` before any task. The single backlog is `docs/tasks/BACKLOG.md`; who does what and in which order is `docs/TEAM.md`; the agent-neutral pipeline with checklists is `docs/PIPELINE.md`. This file is mirrored in `AGENTS.md` (Codex) and `GEMINI.md` (Gemini CLI) — change all three together.
-Team: 4 people, Jira Kanban (project key `AH`), 5-day deadline. Language of docs, commits and Jira: Russian. Language of code, identifiers and tests: English.
+This file is the single source of rules for every agent: Codex reads it directly, Claude Code and Gemini CLI through the one-line imports in `CLAUDE.md` and `GEMINI.md`. Never add rules to those two files and never restate these rules elsewhere — link here.
 
-## Development Workflow
+alfa-insight — «Аналитика в момент действия», Alfa-Bank hackathon (case «Новостная аналитика для принятия бизнес-решений»). Team of 4, Jira Kanban `AH`, 5-day deadline. Docs, commits, PRs and Jira: Russian. Code, identifiers and tests: English.
 
-- Enter plan mode before any action: new feature, bugfix, debugging
-- Never implement functionality that wasn't explicitly planned
-- Never stop until feature/fix is verified done by tests
-- Commit only after task is verified by tests
-- Review written code at each checkpoint
+## Where to look
 
-## Code Quality
+Read what the task needs, not everything up front.
 
-- Clean Architecture, SOLID principles
-- Maximum 500 lines per file
-- No comments in code
-- Simplest solution that satisfies requirements — never overcomplicate
-
-## Testing
-
-- Unit, integration, and e2e tests required
-- All tests must pass before committing
-
-## Git
-
-- Natural language commit messages, simple lists
-- No feat:, fix:, or conventional commit prefixes
-- No Co-Authored-By lines
-
-## Restrictions
-
-- Do not use skills, MCPs, or plugins unless explicitly asked
-- Do not add functionality beyond what was planned
-- Do not add defaults or fallbacks without explicit approval
-
-The explicit allow-list for this project (counts as "explicitly asked"):
-- the `task` skill; ECC for Codex is optional — steps 2, 4, 6, 8 are done by hand with the checklists in `docs/PIPELINE.md`
-- GitHub CLI `gh` — only for branch, PR and branch-protection operations named in a plan step
-Everything else (web search, other MCPs, other plugins) requires a direct request from the user in the current session.
+| Need | File |
+|---|---|
+| Task text and acceptance criteria («Готово, когда») | `docs/BACKLOG.md`, block `AH-<n>` (wins over Jira) |
+| How to run any task: steps, stops, checklists, check commands | `docs/PIPELINE.md` |
+| Product idea and demo flow | `docs/CONCEPT.md`, `docs/DEMO.md` |
+| Services, request flow, layout, security | `docs/ARCHITECTURE.md`, the section you touch |
+| Schemas and ports | `backend/shared/contracts/` (code is the source); `docs/CONTRACTS.md` before touching them |
+| Team decisions not visible in code | `docs/DECISIONS.md` |
+| Dataset and bank report facts | `docs/DATA.md` |
+| Who owns what and in which order | `docs/TEAM.md` |
 
 ## Stack (fixed, do not change)
 
-- Backend: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 + Alembic, PostgreSQL 16 + pgvector, httpx, `uv` for dependencies (`uv.lock` is the lock file), pytest + pytest-asyncio, ruff, mypy (strict for `shared/`)
+- Backend: Python 3.12, FastAPI, Pydantic v2, SQLAlchemy 2 + Alembic, PostgreSQL 16 + pgvector, httpx, `uv` (`uv.lock` is the lock file), pytest + pytest-asyncio, ruff, mypy (strict for `shared/`), import-linter
 - Frontend: React 18 + Vite + TypeScript, npm workspaces, Vitest, Playwright for e2e; browser extension on Manifest V3
 - LLM: only models from the case allow-list via `apps/services/llm` (Gemma 4 26B A4B, GLM-5.3-Flash, Qwen3.6 35B A3B, DeepSeek-V4.1-Flash, Qwen3-VL-30B-A3B, Kimi-K2.6). No other model, no external AI service, no agent framework. Daily budget ≈ 500 RUB — every LLM call goes through the gateway's token counter and cache.
-- Infra: Docker Compose, GitHub Actions, one command to run everything (`make up`)
+- Infra: Docker Compose, GitHub Actions; one command runs everything: `docker compose up -d --build`
 
-## Project structure (fixed)
+## Layout (fixed)
 
 ```
-backend/                     Python monolith; run uv, pytest and alembic from this folder
-  main.py                    composition root: builds the DI container, registers every service by its contract, mounts the gateway router
-  apps/services/<name>/      one isolated service per business capability (see docs/ARCHITECTURE.md)
-  shared/
-    contracts/               Pydantic schemas and `typing.Protocol` ports — the ONLY thing services may import from each other
-    db/                      SQLAlchemy engine, session factory, Alembic migrations, table models
-    di/                      DI container, registration helpers
-    config/                  pydantic-settings, env parsing
-  scripts/ data/ tests/unit tests/integration
-frontend/                    npm workspace; run npm from this folder
-  application/               React + Vite: mock of Alfa-Business (main screen, payment, deposit, loan) that embeds InsightPanel
-  app-plugin/                React + Vite: InsightPanel library + browser extension (MV3) built from the same component
-  tests/e2e/                 Playwright
-docs/                        CONCEPT, ARCHITECTURE, CONTRACTS, PIPELINE, TEAM, ECC-SETUP, DEMO, tasks/BACKLOG
+backend/                  Python monolith; run uv, pytest and alembic from here; .env lives in the repo root (--env-file ../.env)
+  main.py                 composition root: DI container, service registration, gateway router
+  apps/services/<name>/   one isolated service per business capability
+  shared/                 contracts/ (schemas and ports — the only thing services share), db/, di/, config/
+  scripts/ data/ tests/unit/ tests/integration/
+frontend/                 npm workspace; run npm from here
+  application/            React + Vite mock of Alfa-Business that embeds InsightPanel
+  app-plugin/             InsightPanel library + MV3 browser extension
+  tests/e2e/              Playwright
+docs/                     CONCEPT, ARCHITECTURE, CONTRACTS, PIPELINE, BACKLOG, TEAM, DEMO, DECISIONS, DATA
 ```
 
-Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/integration` in docs and the backlog are relative to `backend/`; `application/`, `app-plugin/`, `tests/e2e` are relative to `frontend/`.
+Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/integration` in docs are relative to `backend/`; `application/`, `app-plugin/`, `tests/e2e` are relative to `frontend/`.
 
 ## Service isolation (hard rule)
 
-- A service may import only its own package, `shared.contracts`, `shared.config`, `shared.db` (for its own repositories) and the standard library / third-party packages.
-- A service never imports another service. Cross-service calls go through a port (`typing.Protocol`) from `shared/contracts/ports.py`, resolved from the DI container.
-- Every service exposes `register(container)` in its `__init__.py` and nothing else public.
-- Changing a contract is a separate task: update `shared/contracts`, update every implementation, update `docs/CONTRACTS.md`, add a contract test in `tests/integration/contracts/`.
-- Import rules are enforced by `tests/unit/test_import_boundaries.py` (grimp/import-linter); the test must stay green.
+- A service imports only its own package, `shared.contracts`, `shared.config`, `shared.db` (not `shared.db.migrations`), `shared.di` (not `shared.di.wiring`), the standard library and third-party packages. Never another service.
+- Cross-service calls go through a port (`typing.Protocol`) from `shared/contracts/ports.py`, resolved from the DI container.
+- Every service exposes only `register(container)` from its `__init__.py`.
+- Tables belong to their service; other services' tables are read only through the owner's port.
+- Enforced by import-linter (`backend/pyproject.toml`) through `tests/unit/test_import_boundaries.py`; it stays green.
+- Contracts (`shared/contracts`, `docs/CONTRACTS.md`) change only in a task of type `contract`. If your task needs a contract change, stop and tell the user.
 
 ## Domain rules that tests must enforce
 
@@ -86,53 +61,48 @@ Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/
 - Prompts receive features and aggregates, never raw table rows and never anything from `df_Fid_Uid_link` (persons).
 - The agent only reads and computes. No tool mutates bank data or forms.
 
-## Task pipeline (mandatory for every task in this project)
+## Code and tests
 
-The user starts a task with `$task Выполни задачу AH-<n>` (skill in `.agents/skills/task/`, copy in `.codex/skills/task/`) or just describes it — either way follow this pipeline. The task text and its acceptance criteria ("Готово, когда") come from `docs/tasks/BACKLOG.md`.
+- Clean Architecture, SOLID; the simplest solution that satisfies the task — never overcomplicate
+- Maximum 500 lines per file; no comments in code
+- Implement only what the approved plan says; no defaults or fallbacks without explicit approval
+- Unit, integration and e2e tests are required; all tests pass before committing
+- No secrets in code: configuration comes from `.env` (never committed; the template is `.env.example`)
+- A new dependency needs a line in `THIRD_PARTY_NOTICES.md` and an updated lock file (`uv.lock`, `package-lock.json`)
+- Generated files are never edited by hand: `backend/shared/contracts/openapi/*.json` and `frontend/app-plugin/src/types/*.ts` except `index.ts` — regenerate them
 
-**Task types** (infer from the description; if unclear, ask one question before creating the branch):
+## Tools
 
-| Type | Branch | Step 2 (TDD) |
-|---|---|---|
-| New feature | `feat/AH-<n>-<name>` | write tests for the new behavior (RED), then implement (GREEN) |
-| Bug | `fix/AH-<n>-<name>` | first a regression test that reproduces the bug and fails, then the fix |
-| Change existing behavior | `feat/` or `fix/` by meaning | update existing tests to the new spec first, then change the code |
-| Refactor | `refactor/AH-<n>-<name>` | no new tests; suite is green before and after, behavior unchanged |
-| Contract change | `feat/AH-<n>-contract-<name>` | contract test first, then every implementation |
-| Docs / config only | `docs/…` or `chore/…` | skip TDD; still commit + verification |
-
-TDD applies to services, `shared/` and front-end logic (hooks, state, API client). For pure JSX layout, step 2 is: Vitest render test + `npm run build` green.
-
-**Steps:**
-0. Branch from an up-to-date `dev` (`git switch dev && git pull && git switch -c <prefix>/AH-<n>-<name>`). Jira status is moved by the human in the Kanban.
-1. Write the plan (files, tests, contracts, risks, acceptance criteria). **Stop — wait for the user to approve the plan.**
-2. TDD by hand: tests first, show them failing, then implement until green.
-3. Commit.
-4. Cleanup by the checklist in `docs/PIPELINE.md`.
-5. Commit (skip if nothing changed).
-6. Verification: `make check` (ruff + mypy + import-linter + pytest + npm test + npm run build) until green.
-7. Commit (only if verification required fixes).
-8. Review by the checklist in `docs/PIPELINE.md` → apply fixes → `make check` again. **Stop — ask the user for a manual check** of anything a test cannot verify (UI feel, demo flow, LLM output quality).
-9. Commit.
-10. **Stop — ask before pushing.** On "yes": push the branch and open a PR into `dev` with the Jira key in the title; the human moves the Jira task to "Review".
-
-Commit messages: natural-language list format, never agent attribution.
+- Allowed: git, uv, npm and npx, docker compose; `gh` only for the branch and PR operations of the pipeline
+- Built-in agent features named in `docs/PIPELINE.md`: Claude Code plan mode, `/simplify`, `/code-review` without flags, `/security-review`; Codex `/review`, typed by the user
+- The task entry point: `/task` in Claude Code and Gemini CLI, `$task` in Codex
+- Jira through the Atlassian MCP: only if it is connected and the user asked — to read a task or move its status
+- Everything else — web search, other MCPs, plugins, skills — only on the user's direct request in the current session
 
 ## Git
 
-- **Never add `Co-Authored-By` trailers or any agent attribution to commits or PR descriptions.** The commit author is the user only.
-- `main` and `dev` are protected — never commit or push to them directly. Each task gets its own branch from an up-to-date `dev` (`feat/…`, `fix/…`, `refactor/…`, `test/…`, `docs/…`, `chore/…`), PRs go into `dev`. `dev` → `main` only by a release PR before the deadline; the release commit gets the tag the jury receives.
-- Commit only when the user asks or a plan step says so.
-- Branch and PR titles start with the Jira key (`AH-12`).
+- `main` is production, `dev` is integration. Never commit or push to them, never delete, force-push or rebase them. GitHub does not enforce this on our plan — you are the guard.
+- One task = one branch from an up-to-date `dev`: `<prefix>/AH-<n>-<slug>` (prefixes per task type in `docs/PIPELINE.md`). PR into `dev`, title `AH-<n> · <название>`, description in Russian: what was done / how to verify / risks.
+- `dev` → `main` only by a release PR on the owner's command; the release commit gets the tag the jury receives.
+- Commit only at pipeline steps or when the user asks. Commit messages: Russian natural-language list (`- Добавить …`), no `feat:` or `fix:` prefixes, no `Co-Authored-By`, no agent attribution.
+- Never force-push and never merge a PR. Ask before pushing, deleting a branch or rewriting history.
 
-## Persistent Memory
+## Workflow
 
-Project memory lives in the repo at `.claude/memory/` (committed, travels across machines; Codex and Gemini users read the same folder). At the start of a session read `.claude/memory/MEMORY.md` — the index. Each memory file has YAML frontmatter (`name`, `description`, `metadata.type` ∈ {project, feedback, reference, user}); `feedback`/`project` bodies end with `**Why:**` and `**How to apply:**` lines. Don't store what code or git history already records.
+- Every change follows `docs/PIPELINE.md`, whether the user runs `/task`, `$task` or just describes the task.
+- Hard stops: after the plan (wait for approval), before the manual check, before push.
+- A task is done only when the checks in `docs/PIPELINE.md` are green.
+- Checks fail in code outside your task → don't fix it in your branch; stop and tell the user.
 
-## Definition of done for any task
+## Knowledge
 
-- Plan approved, tests written first, `make check` green
-- Contract unchanged, or changed through the contract-change pipeline
+- A new team decision → one dated line appended to `docs/DECISIONS.md`; old lines are never rewritten. A new dataset fact → `docs/DATA.md`.
+- Machine-specific notes (ports, local tools) stay in your agent's personal memory outside git: Claude auto-memory or `CLAUDE.local.md`, `~/.codex/AGENTS.md`, `~/.gemini/GEMINI.md`. Never create `AGENTS.override.md`: Codex would ignore this file.
+
+## Definition of done
+
+- Plan approved; tests written first where `docs/PIPELINE.md` requires TDD; the checks are green
+- Contracts unchanged, or changed in a `contract` task
 - No new dependency without a line in `THIRD_PARTY_NOTICES.md`
-- README run instructions still valid (`make up` from a clean clone)
-- Jira task has the PR link in a comment (when Jira updates were requested)
+- README instructions still work: `docker compose up -d --build` on a clean clone
+- PR into `dev` is open; a human adds its link to Jira unless an agent was asked

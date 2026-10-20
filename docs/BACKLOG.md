@@ -240,8 +240,8 @@
 ### AH-38 · Тест утечек и security review
 - Эпик: AH-34 · День: 4 · Тип: test · Зависит от: AH-8, AH-19
 - Ответственный: Участник 1
-- Что сделать: `tests/integration/test_counterparty_no_leak.py`: ответ `CounterpartyContext` и любая карточка не содержат идентификаторов, сумм и продуктов чужих компаний; `/ecc:security-scan` по проекту; исправления.
-- Готово, когда: тест зелёный на всех seed-клиентах; отчёт security-scan без критичных пунктов.
+- Что сделать: `tests/integration/test_counterparty_no_leak.py`: ответ `CounterpartyContext` и любая карточка не содержат идентификаторов, сумм и продуктов чужих компаний; security review по разделу «Безопасность» в `docs/ARCHITECTURE.md` (в Claude Code — `/security-review`); исправления.
+- Готово, когда: тест зелёный на всех seed-клиентах; отчёт security review без критичных пунктов.
 
 ### AH-39 · Прогон регрессии, промпты, роли
 - Эпик: AH-34 · День: 4 · Тип: feat · Зависит от: AH-22, AH-27

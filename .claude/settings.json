@@ -1,9 +1,4 @@
 {
-  "env": {
-    "ECC_HOOK_PROFILE": "standard",
-    "ECC_DISABLED_HOOKS": "pre:bash:tmux-reminder",
-    "ECC_SESSION_START_MAX_CHARS": "6000"
-  },
   "permissions": {
     "allow": [
       "Bash(make:*)",
