@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
     preview: { proxy, allowedHosts: true },
     test: {
       environment: "happy-dom",
-      include: ["src/**/*.test.tsx"],
+      include: ["src/**/*.test.{ts,tsx}"],
     },
   };
 });

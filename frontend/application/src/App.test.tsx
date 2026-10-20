@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
 import { App } from "./App";
@@ -25,12 +25,14 @@ describe("routing", () => {
     expect(screen.getByRole("heading", { level: 1, name: heading })).toBeTruthy();
   });
 
-  it("embeds the insight panel on the payment page", () => {
+  it("embeds the insight panel on the payment page once the form is filled", () => {
     render(
       <MemoryRouter initialEntries={["/payments/new"]}>
         <App />
       </MemoryRouter>,
     );
+    fireEvent.change(screen.getByLabelText("Получатель"), { target: { value: "cp_logistics_spb" } });
+    fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "1500000" } });
     expect(document.querySelector(".insight-panel")).not.toBeNull();
   });
 
