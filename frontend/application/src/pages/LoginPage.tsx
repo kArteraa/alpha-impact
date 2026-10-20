@@ -34,7 +34,7 @@ export function LoginPage() {
             required
           />
         </label>
-        <button className="button" type="submit">
+        <button className="button" type="submit" disabled={userId.trim() === ""}>
           Войти
         </button>
         {error && (
