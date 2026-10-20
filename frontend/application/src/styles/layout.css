@@ -1,7 +1,7 @@
 .shell {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
-  grid-template-rows: 64px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: 72px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -19,14 +19,14 @@
 }
 
 .brand {
-  font-size: var(--fs-18);
-  line-height: var(--lh-24);
+  font-size: var(--fs-22);
+  line-height: var(--lh-26);
   font-weight: var(--fw-medium);
 }
 
 .company-name,
 .company-switcher {
-  font-size: var(--fs-14);
+  font-size: var(--fs-16);
   font-weight: var(--fw-medium);
 }
 
@@ -46,8 +46,8 @@
   padding: var(--s-1) var(--s-3);
   border-radius: var(--r-pill);
   background: var(--bg-neutral);
-  font-size: var(--fs-12);
-  line-height: var(--lh-16);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
 }
 
 .shell-nav {
@@ -58,11 +58,11 @@
 }
 
 .shell-nav a {
-  padding: var(--s-2) var(--s-4);
+  padding: var(--s-3) var(--s-4);
   border-radius: var(--r-md);
   color: var(--text-primary);
-  font-size: var(--fs-14);
-  line-height: var(--lh-20);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
 }
 
 .shell-nav a:hover {
@@ -78,7 +78,6 @@
 
 .shell-main {
   width: 100%;
-  max-width: var(--container);
   padding: var(--s-8);
 }
 

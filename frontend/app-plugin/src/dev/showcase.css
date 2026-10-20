@@ -1,7 +1,6 @@
 .showcase {
   display: grid;
   gap: var(--s-8);
-  max-width: var(--container);
   margin: 0 auto;
   padding: var(--s-8);
   font-family: var(--font-family);

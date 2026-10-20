@@ -28,8 +28,8 @@
   margin-top: 2px;
   padding: 0 var(--s-2);
   border-radius: var(--r-sm);
-  font-size: var(--fs-11);
-  line-height: var(--lh-16);
+  font-size: var(--fs-13);
+  line-height: var(--lh-18);
   font-weight: var(--fw-medium);
 }
 
@@ -39,7 +39,7 @@
 }
 
 .claim-badge-icon {
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .claim-badge[data-claim-type="fact"] {

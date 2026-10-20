@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import path from "node:path";
 
 const OUTPUT = path.join(__dirname, "..", "..", "..", "docs", "design");
-const VIEWPORT = { width: 1280, height: 900 };
+const VIEWPORT = { width: 1600, height: 1000 };
 
 test.use({ viewport: VIEWPORT });
 
