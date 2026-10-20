@@ -14,3 +14,7 @@ class ModelOutputInvalid(DomainError):
 
 class UsageNotRecorded(DomainError):
     pass
+
+
+class CacheNotWritten(DomainError):
+    pass

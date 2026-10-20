@@ -8,7 +8,12 @@ from pydantic import BaseModel, ValidationError
 
 from apps.services.llm.catalog import ModelCatalog
 from apps.services.llm.client import ModelClient
-from apps.services.llm.errors import ModelOutputInvalid, ModelUnavailable, UsageNotRecorded
+from apps.services.llm.errors import (
+    CacheNotWritten,
+    ModelOutputInvalid,
+    ModelUnavailable,
+    UsageNotRecorded,
+)
 from apps.services.llm.store import UsageStore
 from shared.contracts.errors import BudgetExceeded
 
@@ -89,8 +94,7 @@ class ModelGateway:
         except ModelOutputInvalid:
             await self._record(reservation, model, *tokens)
             raise
-        await self._store.remember(key, content)
-        await self._record(reservation, model, *tokens)
+        await self._remembered(reservation, model, key, content, tokens)
         return result, *tokens
 
     async def embed(self, text: str) -> list[float]:
@@ -102,8 +106,8 @@ class ModelGateway:
             return vector
         reservation = await self._reserve(EMBED_TASK, model)
         embedding = await self._called(reservation, model, lambda: self._client.embed(model, text))
-        await self._store.remember(key, json.dumps(embedding.vector))
-        await self._record(reservation, model, embedding.tokens, 0)
+        tokens = (embedding.tokens, 0)
+        await self._remembered(reservation, model, key, json.dumps(embedding.vector), tokens)
         return embedding.vector
 
     async def budget_left_rub(self) -> float:
@@ -127,6 +131,16 @@ class ModelGateway:
         except BaseException:
             await self._store.settle(reservation, 0, 0, 0.0)
             raise
+
+    async def _remembered(
+        self, reservation: int, model: str, key: str, content: str, tokens: tuple[int, int]
+    ) -> None:
+        try:
+            await self._store.remember(key, content)
+        except Exception as error:
+            await self._record(reservation, model, *tokens)
+            raise CacheNotWritten(f"answer of reservation {reservation} is not cached") from error
+        await self._record(reservation, model, *tokens)
 
     async def _record(self, reservation: int, model: str, tokens_in: int, tokens_out: int) -> None:
         cost = self._catalog.cost_rub(model, tokens_in, tokens_out)
