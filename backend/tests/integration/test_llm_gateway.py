@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -9,21 +8,13 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.llm.catalog import MODELS_PATH, ModelCatalog, load_prices
-from apps.services.llm.client import ModelClient
+from apps.services.llm import utc_today
+from apps.services.llm.catalog import MODELS_PATH, load_prices
 from apps.services.llm.service import ModelGateway
 from apps.services.llm.store import SqlUsageStore
 from shared.contracts.errors import BudgetExceeded
 from shared.db.models import LlmCacheRow, LlmUsageRow
-
-ROUTES = {
-    "annotate": "gemma-4-26b-a4b",
-    "extract": "qwen3.6-35b-a3b",
-    "interpret": "glm-5.3-flash",
-    "critic": "glm-5.3-flash",
-    "followup": "qwen3.6-35b-a3b",
-}
-EMBEDDING_MODEL = "tbd-embedding-model"
+from tests.unit.llm import fakes
 
 
 class Factor(BaseModel):
@@ -50,10 +41,9 @@ class MockModelServer:
         self.calls += 1
         return {"data": [{"embedding": [0.5, 0.25]}], "usage": {"prompt_tokens": 10}}
 
-    def client_factory(self) -> Callable[[], httpx.AsyncClient]:
-        transport = httpx.ASGITransport(app=self.app)
-        return lambda: httpx.AsyncClient(
-            transport=transport,
+    def http_client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=self.app),
             base_url="http://llm.test/v1",
             headers={"Authorization": "Bearer test-key"},
         )
@@ -67,15 +57,14 @@ def server() -> MockModelServer:
 @pytest.fixture
 def make_gateway(
     server: MockModelServer, sessions: async_sessionmaker[AsyncSession]
-) -> Callable[[float], ModelGateway]:
+) -> Callable[..., ModelGateway]:
     def build(daily_budget_rub: float = 500.0) -> ModelGateway:
-        return ModelGateway(
-            catalog=ModelCatalog(load_prices(MODELS_PATH), ROUTES, EMBEDDING_MODEL),
-            client=ModelClient(server.client_factory()),
-            store=SqlUsageStore(sessions),
+        return fakes.make_gateway(
+            server.http_client(),
+            SqlUsageStore(sessions),
             daily_budget_rub=daily_budget_rub,
-            reserve_share=0.1,
-            today=lambda: datetime.now(UTC).date(),
+            prices=load_prices(MODELS_PATH),
+            today=utc_today,
         )
 
     return build

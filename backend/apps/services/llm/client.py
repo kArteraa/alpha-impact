@@ -1,12 +1,9 @@
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
 
 from shared.config.settings import Settings
-
-ClientFactory = Callable[[], httpx.AsyncClient]
 
 
 @dataclass(frozen=True)
@@ -23,8 +20,8 @@ class Embedding:
 
 
 class ModelClient:
-    def __init__(self, client_factory: ClientFactory) -> None:
-        self._client_factory = client_factory
+    def __init__(self, http: httpx.AsyncClient) -> None:
+        self._http = http
 
     async def chat(
         self, model: str, system: str, user: str, response_format: dict[str, Any] | None
@@ -52,15 +49,14 @@ class ModelClient:
         return Embedding(vector=data["data"][0]["embedding"], tokens=data["usage"]["prompt_tokens"])
 
     async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
-        async with self._client_factory() as client:
-            response = await client.post(path, json=body)
+        response = await self._http.post(path, json=body)
         response.raise_for_status()
         data: dict[str, Any] = response.json()
         return data
 
 
-def http_client_factory(settings: Settings) -> ClientFactory:
-    return lambda: httpx.AsyncClient(
+def build_http_client(settings: Settings) -> httpx.AsyncClient:
+    return httpx.AsyncClient(
         base_url=settings.LLM_API_BASE,
         headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
         timeout=settings.LLM_TIMEOUT_SECONDS,

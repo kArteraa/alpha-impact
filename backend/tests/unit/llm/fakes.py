@@ -8,18 +8,16 @@ import httpx
 from apps.services.llm.catalog import ModelCatalog, ModelPrice
 from apps.services.llm.client import ModelClient
 from apps.services.llm.service import ModelGateway
-from apps.services.llm.store import Usage
+from apps.services.llm.store import Usage, UsageStore
+from tests.unit.conftest import SETTINGS_ENV
 
 TODAY = date(2026, 10, 20)
 PRICE = ModelPrice(input_rub_per_1m=100.0, output_rub_per_1m=300.0)
 ROUTES = {
-    "annotate": "gemma-4-26b-a4b",
-    "extract": "qwen3.6-35b-a3b",
-    "interpret": "glm-5.3-flash",
-    "critic": "glm-5.3-flash",
-    "followup": "qwen3.6-35b-a3b",
+    task: SETTINGS_ENV[f"MODEL_{task.upper()}"]
+    for task in ("annotate", "extract", "interpret", "critic", "followup")
 }
-EMBEDDING_MODEL = "tbd-embedding-model"
+EMBEDDING_MODEL = SETTINGS_ENV["MODEL_EMBED"]
 PRICES = {model: PRICE for model in [*ROUTES.values(), EMBEDDING_MODEL]}
 
 
@@ -31,7 +29,7 @@ class MemoryStore:
     async def cached(self, key: str) -> str | None:
         return self.cache.get(key)
 
-    async def remember(self, key: str, model: str, content: str) -> None:
+    async def remember(self, key: str, content: str) -> None:
         self.cache[key] = content
 
     async def record(self, usage: Usage) -> None:
@@ -54,7 +52,7 @@ class ModelServer:
         if request.url.path.endswith("/embeddings"):
             body: dict[str, Any] = {
                 "data": [{"embedding": [0.1, 0.2, 0.3]}],
-                "usage": {"prompt_tokens": self.tokens_in, "total_tokens": self.tokens_in},
+                "usage": {"prompt_tokens": self.tokens_in},
             }
         else:
             body = {"choices": [{"message": {"content": self.content}}], "usage": usage}
@@ -64,22 +62,25 @@ class ModelServer:
         loaded: dict[str, Any] = json.loads(self.requests[index].content)
         return loaded
 
-    def client_factory(self) -> Callable[[], httpx.AsyncClient]:
+    def http_client(self) -> httpx.AsyncClient:
         transport = httpx.MockTransport(self.handle)
-        return lambda: httpx.AsyncClient(transport=transport, base_url="https://llm.example/v1")
+        return httpx.AsyncClient(transport=transport, base_url="https://llm.example/v1")
 
 
 def make_gateway(
-    server: ModelServer,
-    store: MemoryStore,
+    http: httpx.AsyncClient | ModelServer,
+    store: UsageStore,
     daily_budget_rub: float = 500.0,
     reserve_share: float = 0.1,
+    prices: dict[str, ModelPrice] = PRICES,
+    today: Callable[[], date] = lambda: TODAY,
 ) -> ModelGateway:
+    client = http.http_client() if isinstance(http, ModelServer) else http
     return ModelGateway(
-        catalog=ModelCatalog(PRICES, ROUTES, EMBEDDING_MODEL),
-        client=ModelClient(server.client_factory()),
+        catalog=ModelCatalog(prices, ROUTES, EMBEDDING_MODEL),
+        client=ModelClient(client),
         store=store,
         daily_budget_rub=daily_budget_rub,
         reserve_share=reserve_share,
-        today=lambda: TODAY,
+        today=today,
     )
