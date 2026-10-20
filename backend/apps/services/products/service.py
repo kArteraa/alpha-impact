@@ -21,7 +21,7 @@ class ProductCatalog:
 
     def _is_excluded(self, profile: ClientProfile) -> bool:
         return any(
-            name in profile.features and profile.features[name].value == value
+            name not in profile.features or profile.features[name].value in (None, "", value)
             for name, value in self._catalog.exclude.features.items()
         )
 

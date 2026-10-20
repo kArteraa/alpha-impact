@@ -5,7 +5,7 @@ from shared.contracts.schemas import ClientProfile, Feature
 UPDATED_AT = dt.datetime(2026, 10, 20, tzinfo=dt.UTC)
 
 
-def make_profile(flags: dict[str, bool], cl_type: str = "CLIENT") -> ClientProfile:
+def make_profile(flags: dict[str, bool], cl_type: str | None = "CLIENT") -> ClientProfile:
     return ClientProfile(
         client_id="client",
         group_id=None,
