@@ -1,3 +1,15 @@
+vocabulary:
+  features:
+    cl_type: Тип клиента из столбца CL_TYPE без переименования значений (CLIENT, CLOSE_CLIENT, …)
+  flags:
+    imports: Компания ведёт импорт (ВЭД)
+    buyer_concentration: Выручка сосредоточена у немногих покупателей
+    free_balances: На счетах есть свободные остатки
+  claims:
+    ruble_weakening: Ожидается ослабление рубля
+    industry_stress: Отрасль клиента под давлением
+    counterparty_industry_stress: Отрасль контрагента под давлением
+    high_rate: Ставка высокая
 exclude:
   features:
     cl_type: CLOSE_CLIENT

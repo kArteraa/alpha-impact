@@ -7,4 +7,5 @@ __all__ = ["register"]
 
 
 def register(container: Container) -> None:
-    container.register(ProductRulesService, lambda _: ProductCatalog(load_catalog(RULES_PATH)))
+    catalog = ProductCatalog(load_catalog(RULES_PATH))
+    container.register(ProductRulesService, lambda _: catalog)
