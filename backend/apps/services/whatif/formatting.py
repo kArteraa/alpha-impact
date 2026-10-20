@@ -12,7 +12,9 @@ def format_amount(value: float) -> str:
 
 
 def format_rate(value: float) -> str:
-    return _signed(value, format(Decimal(repr(round(abs(value), RATE_DECIMALS))).normalize(), ",f"))
+    rounded = round(value, RATE_DECIMALS)
+    digits = Decimal(repr(abs(rounded))).normalize()
+    return _signed(rounded, format(digits, ",f"))
 
 
 def _signed(value: float, digits: str) -> str:
