@@ -1,4 +1,5 @@
 import hashlib
+from collections.abc import Sequence
 from datetime import date
 from typing import Literal
 
@@ -18,7 +19,11 @@ class ExtractedClaim(BaseModel):
     valid_until: date | None
 
 
-def extraction_schema(subjects: list[str]) -> type[BaseModel]:
+class Extraction(BaseModel):
+    claims: Sequence[ExtractedClaim]
+
+
+def extraction_schema(subjects: list[str]) -> type[Extraction]:
     allowed = frozenset(subjects)
 
     class Claim(ExtractedClaim):
@@ -31,10 +36,10 @@ def extraction_schema(subjects: list[str]) -> type[BaseModel]:
                 raise ValueError(f"unknown subject {value!r}")
             return value
 
-    class Extraction(BaseModel):
+    class SubjectExtraction(Extraction):
         claims: list[Claim]
 
-    return Extraction
+    return SubjectExtraction
 
 
 def claim_id(source_doc: str, page: int, text: str) -> str:
@@ -42,9 +47,9 @@ def claim_id(source_doc: str, page: int, text: str) -> str:
     return hashlib.sha256(key).hexdigest()[:ID_LENGTH]
 
 
-def to_claims(answer: BaseModel, document: Document, page: int) -> list[HouseViewClaim]:
-    items = answer.model_dump(mode="json")["claims"]
-    extracted = [ExtractedClaim.model_validate(item) for item in items]
+def to_claims(
+    extracted: Sequence[ExtractedClaim], document: Document, page: int
+) -> list[HouseViewClaim]:
     return [
         HouseViewClaim(
             id=claim_id(document.file, page, item.claim),
