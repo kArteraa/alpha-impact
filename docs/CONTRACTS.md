@@ -2,7 +2,7 @@
 
 Контракты — единственный способ взаимодействия сервисов. Схемы — Pydantic v2 в `shared/contracts/schemas.py`, порты — `typing.Protocol` в `shared/contracts/ports.py`. Фронт получает те же схемы как JSON Schema из `shared/contracts/openapi/` и генерирует из них TypeScript-типы.
 
-Изменение контракта = отдельная задача по пайплайну «Contract change»: схема → все реализации → контрактный тест → этот документ.
+Изменение контракта — только задача типа contract, порядок шагов — в `docs/PIPELINE.md`.
 
 ## Схемы
 
@@ -309,4 +309,4 @@ class Interpreter(Protocol):
 
 ## Контрактные тесты
 
-`tests/integration/contracts/test_<service>.py` для каждой реализации: соответствие порту (`isinstance`-проверка через `runtime_checkable`), round-trip схем, инварианты домена (у каждого Claim есть source_ref; CounterpartyContext не содержит чужих идентификаторов; `bank`-тезисы ссылаются на approved claims).
+Соответствие порту (`isinstance`-проверка через `runtime_checkable`) — `tests/unit/<service>/test_contract.py` для каждой реализации. Round-trip схем и инварианты домена (у каждого Claim есть source_ref; CounterpartyContext не содержит чужих идентификаторов; `bank`-тезисы ссылаются на approved claims) — `tests/integration/contracts/`.
