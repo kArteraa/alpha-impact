@@ -1,6 +1,6 @@
 # THIRD_PARTY_NOTICES
 
-Сторонние компоненты, модели и смоделированные интеграции проекта alfa-insight. Точные версии — в `uv.lock` и `package-lock.json`. Новая зависимость = строка здесь (см. «Definition of done» в `CLAUDE.md`).
+Сторонние компоненты, модели и смоделированные интеграции проекта alfa-insight. Точные версии — в `uv.lock` и `package-lock.json`. Новая зависимость = строка здесь (см. «Definition of done» в `AGENTS.md`).
 
 ## Бэкенд (Python, `backend/pyproject.toml`)
 
