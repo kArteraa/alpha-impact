@@ -20,7 +20,7 @@ function stepMeta(step: TraceStep): string {
 
 export function TracePage() {
   const { id = "" } = useParams();
-  const trace = TRACES[id];
+  const trace = Object.hasOwn(TRACES, id) ? TRACES[id] : undefined;
   return (
     <section>
       <h1>Трасса {id}</h1>

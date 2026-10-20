@@ -16,6 +16,12 @@ describe("formatRub", () => {
     expect(formatRub("1500000,5").replace(/\s/g, " ")).toBe("1 500 000,50");
   });
 
+  it("keeps the largest accepted amount valid after formatting", () => {
+    const formatted = formatRub("9999999999999,99");
+    expect(parseAmount(formatted)).toBe(9999999999999.99);
+    expect(parseAmount("99999999999999")).toBeNull();
+  });
+
   it("leaves invalid input untouched", () => {
     expect(formatRub("1500,")).toBe("1500,");
     expect(formatRub("")).toBe("");

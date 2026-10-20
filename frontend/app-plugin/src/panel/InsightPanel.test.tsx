@@ -52,6 +52,13 @@ describe("InsightPanel states", () => {
     expect(document.querySelector(".insight-card")).toBe(shown);
     expect(screen.getByRole("progressbar")).toBeTruthy();
   });
+  it("treats an answer without cards as silence", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={{ silent: false, cards: [] }} />);
+
+    expect(state()).toBe("silent");
+    expect(screen.getByRole("status").textContent).toContain("Ничего важного по этому действию");
+  });
+
   it("shows progress over silence too", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.silent} pending />);
 
@@ -86,6 +93,7 @@ describe("InsightPanel card", () => {
 
   it("marks every claim with a labelled badge that leads to its source", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
+    fireEvent.click(screen.getByRole("button", { name: "Что произошло" }));
 
     expect(screen.getAllByLabelText(/^Факт — источник: /).length).toBeGreaterThan(0);
     expect(screen.getAllByLabelText(/^Банк — источник: /).length).toBeGreaterThan(0);
@@ -114,14 +122,33 @@ describe("InsightPanel card", () => {
     expect(within(why).getByText("лизинг").className).toContain("chip");
   });
 
-  it("collapses what happened and dates the bank view", () => {
+  it("collapses what happened behind a heading button and dates the bank view", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
 
-    const details = document.querySelectorAll(".insight-card details");
-    expect(details.length).toBe(1);
-    expect(details[0].hasAttribute("open")).toBe(false);
+    const toggles = document.querySelectorAll(".insight-card [aria-expanded]");
+    expect(toggles.length).toBe(1);
+    const whatHappened = screen.getByRole("button", { name: "Что произошло" });
+    expect(whatHappened.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("heading", { level: 4, name: "Что произошло" })).toBeTruthy();
+    expect(screen.queryByText("Логистика и складской бизнес показали убыток по итогам квартала")).toBeNull();
+
+    fireEvent.click(whatHappened);
+
+    expect(whatHappened.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText("Логистика и складской бизнес показали убыток по итогам квартала")).toBeTruthy();
     const bank = screen.getByRole("region", { name: "Как это оценивает банк" });
     expect(within(bank).getByText(/07\.09\.2026/)).toBeTruthy();
+  });
+
+  it("skips a report date it cannot read", () => {
+    const card = mockResponses.cards.cards[0];
+    const report = { ...card.bank_view[0].source_ref, published_at: "не дата" };
+    const response = { ...mockResponses.cards, cards: [{ ...card, bank_view: [{ ...card.bank_view[0], source_ref: report }] }] };
+    render(<InsightPanel actionContext={context} role="cfo" response={response} />);
+
+    const bank = screen.getByRole("region", { name: "Как это оценивает банк" });
+    expect(within(bank).queryByText(/Отчёт от/)).toBeNull();
+    expect(within(bank).getByText("Обзор отраслей Альфа-Банка, стр. 4")).toBeTruthy();
   });
 
   it("names the type of every source", () => {
@@ -165,8 +192,9 @@ describe("InsightPanel card", () => {
   it("folds the detail blocks into an accordion when compact", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} compact />);
 
-    const details = document.querySelectorAll(".insight-card details");
-    expect(details.length).toBe(5);
-    expect(Array.from(details).some((block) => block.hasAttribute("open"))).toBe(false);
+    const toggles = document.querySelectorAll(".insight-card [aria-expanded]");
+    expect(toggles.length).toBe(5);
+    expect(Array.from(toggles).every((toggle) => toggle.getAttribute("aria-expanded") === "false")).toBe(true);
+    expect(document.querySelectorAll(".insight-card h4").length).toBe(6);
   });
 });

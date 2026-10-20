@@ -1,4 +1,4 @@
-const AMOUNT_PATTERN = /^\d{1,15}([.,]\d{1,2})?$/;
+const AMOUNT_PATTERN = /^\d{1,13}([.,]\d{1,2})?$/;
 
 export function parseAmount(raw: string): number | null {
   const compact = raw.replace(/\s/g, "");

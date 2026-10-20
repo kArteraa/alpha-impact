@@ -55,7 +55,8 @@ export function InsightPanel({
     );
   }
   const progress = pending && <div className="insight-progress" role="progressbar" aria-label="Обновляю вывод" />;
-  if (response.silent) {
+  const cards = response.cards ?? [];
+  if (response.silent || cards.length === 0) {
     return (
       <section {...base} data-state="silent" aria-busy={pending}>
         {progress}
@@ -70,7 +71,7 @@ export function InsightPanel({
   return (
     <section {...base} data-state="cards" aria-busy={pending}>
       {progress}
-      {(response.cards ?? []).map((card) => (
+      {cards.map((card) => (
         <Card key={card.id} card={card} compact={compact} onFollowup={onFollowup} />
       ))}
     </section>
