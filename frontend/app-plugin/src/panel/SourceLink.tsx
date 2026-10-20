@@ -6,8 +6,10 @@ interface SourceLinkProps extends HTMLAttributes<HTMLElement> {
   children: ReactNode;
 }
 
+const SAFE_URL = /^https?:\/\//i;
+
 export function SourceLink({ source, children, ...attributes }: SourceLinkProps) {
-  if (source.url) {
+  if (source.url && SAFE_URL.test(source.url)) {
     return (
       <a href={source.url} target="_blank" rel="noreferrer" {...attributes}>
         {children}
