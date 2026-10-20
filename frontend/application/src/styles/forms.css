@@ -33,6 +33,11 @@
   resize: vertical;
 }
 
+.field [aria-invalid="true"] {
+  border-color: var(--danger);
+  background: var(--bg-danger);
+}
+
 .field-hint {
   color: var(--text-secondary);
   font-size: var(--fs-12);
@@ -47,21 +52,33 @@
   background: var(--bg-neutral);
 }
 
-.segmented button {
+.segmented label {
+  position: relative;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented span {
+  display: inline-grid;
+  place-items: center;
   min-width: 96px;
   height: var(--control-h-sm);
-  border: 0;
   border-radius: var(--r-sm);
-  background: transparent;
-  color: var(--text-primary);
-  font: inherit;
   font-size: var(--fs-14);
   cursor: pointer;
   transition: background var(--t-fast);
 }
 
-.segmented button[aria-checked="true"] {
+.segmented input:checked + span {
   background: var(--bg-card);
   box-shadow: var(--shadow-card);
   font-weight: var(--fw-medium);
+}
+
+.segmented input:focus-visible + span {
+  box-shadow: var(--focus-ring);
 }

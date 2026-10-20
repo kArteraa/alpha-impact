@@ -30,7 +30,7 @@
 
 ## Скриншоты
 
-Снимает `frontend/tests/e2e/design.spec.ts` против запущенного стенда: `docker compose up -d --build`, затем `cd frontend && npx playwright test design.spec.ts`. Перед первым запуском — `npx playwright install chromium`.
+Снимает `frontend/tests/design/screenshots.spec.ts` против запущенного стенда: `docker compose up -d --build`, затем `cd frontend && npx playwright test -c playwright.design.config.ts`. Перед первым запуском — `npx playwright install chromium`. Обычный прогон e2e (`npm run e2e`) скриншоты не трогает.
 
 | Экран | Файл |
 |---|---|

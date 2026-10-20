@@ -82,7 +82,7 @@ export function PaymentPage() {
             />
             {amountInvalid && (
               <small id={amountHintId} className="field-hint">
-                Сумма — число, не больше двух знаков после запятой
+                Сумма — положительное число, не больше двух знаков после запятой
               </small>
             )}
           </div>

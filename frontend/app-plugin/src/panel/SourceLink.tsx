@@ -16,5 +16,9 @@ export function SourceLink({ source, children, ...attributes }: SourceLinkProps)
       </a>
     );
   }
-  return <span {...attributes}>{children}</span>;
+  return (
+    <span role={attributes["aria-label"] ? "img" : undefined} {...attributes}>
+      {children}
+    </span>
+  );
 }

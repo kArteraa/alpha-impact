@@ -12,9 +12,9 @@ describe("DepositPage", () => {
   it("offers the term as a segmented choice", () => {
     render(<DepositPage />);
 
-    const terms = screen.getAllByRole("radio").map((option) => option.textContent);
-    expect(terms).toEqual(["3 мес.", "6 мес.", "12 мес."]);
-    expect(screen.getByRole("radio", { name: "6 мес." }).getAttribute("aria-checked")).toBe("true");
+    const group = screen.getByRole("radiogroup", { name: "Срок" });
+    expect(group.textContent).toBe("3 мес.6 мес.12 мес.");
+    expect(screen.getByRole<HTMLInputElement>("radio", { name: "6 мес." }).checked).toBe(true);
   });
 
   it("recalculates the income next to the form", () => {
@@ -24,7 +24,7 @@ describe("DepositPage", () => {
 
     fireEvent.click(screen.getByRole("radio", { name: "3 мес." }));
 
-    expect(screen.getByRole("radio", { name: "3 мес." }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole<HTMLInputElement>("radio", { name: "3 мес." }).checked).toBe(true);
     expect(income()).toBe("36 250,00 ₽");
     expect(screen.getByText(/14,5% годовых/)).toBeTruthy();
   });
