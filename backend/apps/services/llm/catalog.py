@@ -31,15 +31,12 @@ class ModelsFile(BaseModel):
 
 
 class ModelCatalog:
-    def __init__(
-        self, prices: dict[str, ModelPrice], routes: dict[str, str], embedding_model: str
-    ) -> None:
-        foreign = sorted({*routes.values(), embedding_model} - set(prices))
+    def __init__(self, prices: dict[str, ModelPrice], routes: dict[str, str]) -> None:
+        foreign = sorted(set(routes.values()) - set(prices))
         if foreign:
             raise ModelNotAllowed(f"models outside the allow-list: {foreign}")
         self._prices = prices
         self._routes = routes
-        self.embedding_model = embedding_model
 
     def route(self, task: str) -> str:
         model = self._routes.get(task)
@@ -66,4 +63,4 @@ def build_catalog(settings: Settings, prices: dict[str, ModelPrice]) -> ModelCat
         "critic": settings.MODEL_CRITIC,
         "followup": settings.MODEL_FOLLOWUP,
     }
-    return ModelCatalog(prices, routes, settings.MODEL_EMBED)
+    return ModelCatalog(prices, routes)

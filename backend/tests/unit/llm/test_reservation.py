@@ -85,7 +85,7 @@ async def test_unexpected_failure_releases_the_reservation() -> None:
         transport=httpx.MockTransport(handle), base_url="https://llm.example/v1"
     )
     with pytest.raises(RuntimeError):
-        await make_gateway(http, store).embed("text")
+        await make_gateway(http, store).complete("interpret", "sys", "usr")
     assert store.usages == []
 
 

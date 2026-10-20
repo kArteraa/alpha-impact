@@ -26,13 +26,21 @@ docker compose up -d --build    # db (postgres + pgvector), api и front: http:/
 docker compose down
 ```
 
+Первая сборка образа скачивает модель эмбеддингов `multilingual-e5-small` (~0,5 ГБ); правка кода или зависимостей её не перекачивает.
+
 Настройки берутся из `.env.example`; свои значения (например, ключ LLM) — в `.env` в корне: `cp .env.example .env`. Этот же `.env` нужен командам, которые запускаются с хоста:
 
 ```
+cd backend && uv run python -m scripts.download_embedder                                    # модель эмбеддингов для тестов и запусков с хоста, один раз
 cd backend && uv run --env-file ../.env python -m scripts.seed                              # тестовые пользователи из backend/data/seed
 cd backend && uv run python -m scripts.gen_schemas && cd ../frontend && npm run gen:types   # JSON Schema и типы фронта из контрактов
 docker compose up -d --build --wait && cd frontend && npm run e2e                           # e2e (Playwright)
 ```
+
+Если `.env` создан раньше, сравните его с `.env.example` и перенесите недостающие строки, свой ключ оставьте:
+
+- после AH-16: `LLM_BUDGET_RESERVE_SHARE`, `LLM_TIMEOUT_SECONDS`, `LLM_CALL_RESERVE_RUB`, `LLM_CACHE_TTL_SECONDS`; `MODEL_*` — имена моделей с префиксом провайдера, как в `.env.example` (`google/gemma-4-26b-a4b-it`, `z-ai/glm-5.3-flash`, `qwen/qwen3.6-35b-a3b`);
+- после AH-54: `LLM_API_BASE` — адрес прокси кейса `https://changellenge.up.railway.app/v1` (старая строка в `.env` перекрывает его — замените или удалите), `LLM_API_KEY` — ключ кейса; `MODEL_EMBED` больше не используется.
 
 Проверка перед коммитом (ruff, mypy, import-linter, pytest, vitest, сборка) — раздел «Проверка» в [docs/PIPELINE.md](docs/PIPELINE.md).
 

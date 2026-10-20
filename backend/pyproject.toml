@@ -17,6 +17,9 @@ dependencies = [
     "httpx",
     "pyyaml",
     "python-multipart",
+    "onnxruntime>=1.31.0",
+    "tokenizers>=0.23.3",
+    "numpy>=2.5.4",
 ]
 
 [dependency-groups]
@@ -48,6 +51,10 @@ plugins = ["pydantic.mypy"]
 disable_error_code = ["type-abstract"]
 warn_unused_configs = true
 exclude = ['^\.venv/']
+
+[[tool.mypy.overrides]]
+module = ["onnxruntime", "tokenizers", "tokenizers.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

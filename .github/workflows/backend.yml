@@ -46,4 +46,9 @@ jobs:
       - run: uv run mypy --strict shared
       - run: uv run mypy apps main.py scripts tests
       - run: uv run lint-imports
+      - uses: actions/cache@v4
+        with:
+          path: backend/models
+          key: embedder-${{ hashFiles('backend/apps/services/llm/embedder.json') }}
+      - run: uv run python -m scripts.download_embedder
       - run: uv run pytest

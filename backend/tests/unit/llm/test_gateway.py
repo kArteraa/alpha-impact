@@ -2,8 +2,10 @@ import pytest
 from pydantic import BaseModel
 
 from apps.services.llm.client import build_http_client
+from apps.services.llm.embedder import LocalEmbedder
+from shared.config.embedding import EMBEDDING_DIMENSION
 from shared.config.settings import Settings
-from tests.unit.llm.fakes import MemoryStore, ModelServer, make_gateway
+from tests.unit.llm.fakes import SPEC, CountingEmbedder, MemoryStore, ModelServer, make_gateway
 
 
 class Verdict(BaseModel):
@@ -92,23 +94,29 @@ async def test_cache_key_covers_task_model_prompts_and_schema(
     assert len(server.requests) == 2
 
 
-async def test_embed_returns_vector_and_charges_tokens() -> None:
-    server = ModelServer(tokens_in=1000)
+async def test_embed_returns_e5_vector_without_calling_the_proxy(e5: LocalEmbedder) -> None:
+    server = ModelServer()
     store = MemoryStore()
-    vector = await make_gateway(server.http_client(), store).embed("steel prices")
-    assert vector == [0.1, 0.2, 0.3]
-    assert server.requests[0].url.path == "/v1/embeddings"
-    assert server.body() == {"model": "tbd-embedding-model", "input": "steel prices"}
-    assert store.usages[0].task == "embed"
-    assert store.usages[0].cost_rub == pytest.approx(0.1)
+    vector = await make_gateway(server.http_client(), store, embedder=e5).embed("цены на сталь")
+    assert len(vector) == EMBEDDING_DIMENSION
+    assert server.requests == []
+    assert store.usages == []
 
 
 async def test_repeated_embedding_is_served_from_cache() -> None:
-    server = ModelServer()
-    gateway = make_gateway(server.http_client(), MemoryStore())
-    await gateway.embed("steel prices")
-    assert await gateway.embed("steel prices") == [0.1, 0.2, 0.3]
-    assert len(server.requests) == 1
+    embedder = CountingEmbedder()
+    gateway = make_gateway(ModelServer().http_client(), MemoryStore(), embedder=embedder)
+    first = await gateway.embed("steel prices")
+    assert await gateway.embed("steel prices") == first
+    assert embedder.calls == ["steel prices"]
+
+
+async def test_other_model_revision_misses_the_cache() -> None:
+    store = MemoryStore()
+    newer = CountingEmbedder(SPEC.model_copy(update={"revision": "0" * 40}))
+    await make_gateway(ModelServer().http_client(), store).embed("steel prices")
+    await make_gateway(ModelServer().http_client(), store, embedder=newer).embed("steel prices")
+    assert newer.calls == ["steel prices"]
 
 
 def test_http_client_uses_shared_key_base_and_timeout(settings_env: dict[str, str]) -> None:

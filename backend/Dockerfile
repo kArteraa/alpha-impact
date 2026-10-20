@@ -2,6 +2,9 @@ FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/app/.venv PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
+COPY scripts/__init__.py scripts/download_embedder.py scripts/
+COPY apps/services/llm/embedder.json apps/services/llm/
+RUN python -m scripts.download_embedder
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
 COPY main.py alembic.ini ./

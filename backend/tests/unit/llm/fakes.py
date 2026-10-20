@@ -8,7 +8,8 @@ import httpx
 
 from apps.services.llm.catalog import ModelCatalog, ModelPrice
 from apps.services.llm.client import ModelClient
-from apps.services.llm.service import ModelGateway
+from apps.services.llm.embedder import EmbedderSpec, load_spec
+from apps.services.llm.service import ModelGateway, TextEmbedder
 from apps.services.llm.store import UsageStore
 from tests.unit.conftest import SETTINGS_ENV
 
@@ -18,8 +19,19 @@ ROUTES = {
     task: SETTINGS_ENV[f"MODEL_{task.upper()}"]
     for task in ("annotate", "extract", "interpret", "critic", "followup")
 }
-EMBEDDING_MODEL = SETTINGS_ENV["MODEL_EMBED"]
-PRICES = {model: PRICE for model in [*ROUTES.values(), EMBEDDING_MODEL]}
+PRICES = {model: PRICE for model in ROUTES.values()}
+SPEC = load_spec()
+VECTOR = [0.1, 0.2, 0.3]
+
+
+class CountingEmbedder:
+    def __init__(self, spec: EmbedderSpec = SPEC) -> None:
+        self.spec = spec
+        self.calls: list[str] = []
+
+    def encode(self, text: str) -> list[float]:
+        self.calls.append(text)
+        return list(VECTOR)
 
 
 @dataclass(frozen=True)
@@ -102,13 +114,7 @@ class ModelServer:
         if self.payload is not None:
             return httpx.Response(200, json=self.payload)
         usage = {"prompt_tokens": self.tokens_in, "completion_tokens": self.tokens_out}
-        if request.url.path.endswith("/embeddings"):
-            body: dict[str, Any] = {
-                "data": [{"embedding": [0.1, 0.2, 0.3]}],
-                "usage": {"prompt_tokens": self.tokens_in},
-            }
-        else:
-            body = {"choices": [{"message": {"content": self.content}}], "usage": usage}
+        body = {"choices": [{"message": {"content": self.content}}], "usage": usage}
         return httpx.Response(200, json=body)
 
     def body(self, index: int = -1) -> dict[str, Any]:
@@ -128,10 +134,12 @@ def make_gateway(
     call_reserve_rub: float = 1.0,
     prices: dict[str, ModelPrice] = PRICES,
     today: Callable[[], date] = lambda: TODAY,
+    embedder: TextEmbedder | None = None,
 ) -> ModelGateway:
     return ModelGateway(
-        catalog=ModelCatalog(prices, ROUTES, EMBEDDING_MODEL),
+        catalog=ModelCatalog(prices, ROUTES),
         client=ModelClient(http),
+        embedder=embedder or CountingEmbedder(),
         store=store,
         daily_budget_rub=daily_budget_rub,
         reserve_share=reserve_share,
