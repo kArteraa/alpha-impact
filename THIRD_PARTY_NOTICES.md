@@ -17,6 +17,9 @@
 | httpx | BSD-3-Clause | HTTP-клиент к LLM-шлюзу и тестовый клиент |
 | PyYAML | MIT | каталог продуктов и шаблоны планов |
 | python-multipart | Apache-2.0 | формы в FastAPI |
+| pypdf | BSD-3-Clause | страницы-картинки отчётов банка из PDF |
+| Pillow | MIT-CMU | перекодирование страниц отчётов для OCR |
+| Tesseract OCR (системный пакет `tesseract-ocr`, `tesseract-ocr-rus`) | Apache-2.0 | распознавание текста отчётов банка |
 
 Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), mypy (MIT), import-linter (BSD-2-Clause), types-PyYAML (Apache-2.0).
 
