@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspace @alfa-insight/plugin && npm run build --workspace @alfa-insight/application",
-    "test": "npm run test --workspaces",
+    "test": "node --test tests/lockfile.test.mjs && npm run test --workspaces",
     "gen:types": "node app-plugin/scripts/gen-types.mjs",
     "e2e": "playwright test"
   },
