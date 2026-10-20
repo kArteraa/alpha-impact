@@ -35,8 +35,8 @@ describe("PaymentPage", () => {
     render(<PaymentPage />);
     fill("cp_logistics_spb", "1500000");
 
-    expect(screen.getByLabelText("Получатель").getAttribute("aria-describedby")).toBeTruthy();
-    expect(screen.getByText("Грузоперевозки, Санкт-Петербург")).toBeTruthy();
+    const describedBy = screen.getByLabelText("Получатель").getAttribute("aria-describedby");
+    expect(describedBy).toBe(screen.getByText("Грузоперевозки, Санкт-Петербург").id);
   });
 
   it("shows insight cards for the carrier payment", () => {
@@ -64,6 +64,27 @@ describe("PaymentPage", () => {
     expect(panel()).toBe(shown);
     expect(panel()?.getAttribute("data-state")).toBe("cards");
     expect(screen.getByRole<HTMLButtonElement>("button", { name: "Продолжить" }).disabled).toBe(true);
+  });
+
+  it("follows the recipient while the amount is being typed", () => {
+    render(<PaymentPage />);
+    fill("cp_logistics_spb", "1500");
+    fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "1500," } });
+
+    fireEvent.change(screen.getByLabelText("Получатель"), { target: { value: "cp_stationery" } });
+    expect(panel()?.getAttribute("data-state")).toBe("silent");
+
+    fireEvent.change(screen.getByLabelText("Получатель"), { target: { value: "" } });
+    expect(panel()).toBeNull();
+  });
+
+  it("hides the panel when the amount is cleared", () => {
+    render(<PaymentPage />);
+    fill("cp_logistics_spb", "1500");
+
+    fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "" } });
+
+    expect(panel()).toBeNull();
   });
 
   it("hands the PaymentContext to the console on submit", () => {

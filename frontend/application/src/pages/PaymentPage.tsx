@@ -1,8 +1,8 @@
-import { InsightPanel, type PaymentContext } from "@alpha-impact/plugin";
-import { type FormEvent, useState } from "react";
+import { InsightPanel } from "@alpha-impact/plugin";
+import { type FormEvent, useMemo, useState } from "react";
 import { COUNTERPARTIES } from "../data/counterparties";
 import { mockInsightFor } from "../payment/mockInsight";
-import { type PaymentForm, toPaymentContext } from "../payment/paymentContext";
+import { type PaymentForm, parseAmount, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
 
 const RECIPIENT_HINT_ID = "recipient-hint";
 
@@ -11,15 +11,19 @@ const EMPTY_FORM: PaymentForm = { beneficiaryId: "", amount: "", purpose: "" };
 export function PaymentPage() {
   const [form, setForm] = useState<PaymentForm>(EMPTY_FORM);
   const paymentContext = toPaymentContext(form);
-  const [panelContext, setPanelContext] = useState<PaymentContext | null>(null);
+  const [heldAmount, setHeldAmount] = useState<number | null>(null);
+  const panelContext = useMemo(() => paymentContextOf(form.beneficiaryId, heldAmount), [form.beneficiaryId, heldAmount]);
   const recipient = COUNTERPARTIES.find((counterparty) => counterparty.id === form.beneficiaryId);
 
   function update(field: keyof PaymentForm, value: string) {
-    const next = { ...form, [field]: value };
-    setForm(next);
-    const context = toPaymentContext(next);
-    if (context) {
-      setPanelContext(context);
+    setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function updateAmount(value: string) {
+    update("amount", value);
+    const amount = parseAmount(value);
+    if (value.trim() === "" || amount !== null) {
+      setHeldAmount(amount);
     }
   }
 
@@ -64,7 +68,7 @@ export function PaymentPage() {
               inputMode="decimal"
               placeholder="0"
               value={form.amount}
-              onChange={(event) => update("amount", event.target.value)}
+              onChange={(event) => updateAmount(event.target.value)}
             />
           </label>
           <label className="field">
