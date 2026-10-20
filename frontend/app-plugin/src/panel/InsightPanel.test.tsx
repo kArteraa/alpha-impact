@@ -94,6 +94,17 @@ describe("InsightPanel card", () => {
     expect(newsBadge.getAttribute("href")).toBe("https://example.com/news/logistics");
   });
 
+  it("never turns a non-http source url into a link", () => {
+    const card = mockResponses.cards.cards[0];
+    const unsafe = { ...card.why_for_you[0].source_ref, url: "javascript:alert(1)", title: "Подозрительный источник" };
+    const response = { ...mockResponses.cards, cards: [{ ...card, why_for_you: [{ ...card.why_for_you[0], source_ref: unsafe }] }] };
+    render(<InsightPanel actionContext={context} role="cfo" response={response} />);
+
+    const badge = screen.getByLabelText("Факт — источник: Подозрительный источник");
+    expect(badge.tagName).toBe("SPAN");
+    expect(badge.getAttribute("href")).toBeNull();
+  });
+
   it("highlights company traits as chips in the why block", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
 
