@@ -1,11 +1,14 @@
 from collections.abc import Mapping
 from pathlib import Path
+from types import MappingProxyType
 
 import yaml
 
 OTHER = "other"
 INDUSTRIES_FILE = Path(__file__).resolve().parent / "industries.yaml"
-INDUSTRIES: dict[str, str] = yaml.safe_load(INDUSTRIES_FILE.read_text(encoding="utf-8"))
+INDUSTRIES: Mapping[str, str] = MappingProxyType(
+    yaml.safe_load(INDUSTRIES_FILE.read_text(encoding="utf-8"))
+)
 INDUSTRY_CLASSES = frozenset(INDUSTRIES.values()) | {OTHER}
 
 

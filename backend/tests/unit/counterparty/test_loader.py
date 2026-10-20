@@ -35,8 +35,9 @@ def test_size_bucket_by_revenue(revenue: float, expected: str) -> None:
     assert size_bucket(revenue, load_config()) == expected
 
 
-def test_self_payments_are_dropped() -> None:
+def test_self_and_empty_payments_are_dropped() -> None:
     payments = list(read_payments(PAYMENTS_CSV))
 
     assert len(payments) == 7
     assert all(payment.payer != payment.beneficiary for payment in payments)
+    assert all(payment.amount > 0 for payment in payments)

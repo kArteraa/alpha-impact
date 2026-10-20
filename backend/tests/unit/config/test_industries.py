@@ -41,6 +41,11 @@ def test_industry_class_takes_longest_prefix(code: str, expected: str) -> None:
     assert industry_class(code, INDUSTRIES) == expected
 
 
+def test_industries_cannot_be_changed_at_runtime() -> None:
+    with pytest.raises(TypeError):
+        INDUSTRIES["46.49"] = "other"  # type: ignore[index]
+
+
 def test_prefix_matches_whole_groups_only() -> None:
     assert industry_class("10.11", {"1": "x", "10": "food"}) == "food"
     assert industry_class("46.7", {"46.71": "fuel", "46": "wholesale"}) == "wholesale"

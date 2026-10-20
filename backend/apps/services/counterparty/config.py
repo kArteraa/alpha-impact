@@ -18,10 +18,9 @@ class Confidence(BaseModel):
 
 
 class CounterpartyConfig(BaseModel):
-    companies_file: str
     payments_file: str
-    min_revenue_rub: float
     top_size: int
+    inflow_share_digits: int
     no_card_segment: str
     size_buckets: list[SizeBucket]
     largest_bucket: str

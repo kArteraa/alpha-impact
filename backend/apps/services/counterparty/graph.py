@@ -5,6 +5,7 @@ from typing import Any, Protocol
 
 from apps.services.counterparty.config import CounterpartyConfig
 from apps.services.counterparty.loader import Card, Payment
+from shared.config.clients import SERVED_CLIENTS
 
 Payload = dict[str, Any]
 
@@ -105,7 +106,7 @@ def client_graph(
             },
         },
         dependence={
-            counterparty: share(flow.amount, received[counterparty])
+            counterparty: round(flow.amount / received[counterparty], config.inflow_share_digits)
             for counterparty, flow in outflow.items()
         },
     )
@@ -136,8 +137,10 @@ def build_graphs(
     }
 
 
-def served_clients(
-    cards: Mapping[str, Card], linked: Iterable[str], config: CounterpartyConfig
-) -> set[str]:
-    large = {client for client, card in cards.items() if card.revenue_rub > config.min_revenue_rub}
+def served_clients(cards: Mapping[str, Card], linked: Iterable[str]) -> set[str]:
+    large = {
+        client
+        for client, card in cards.items()
+        if card.revenue_rub > SERVED_CLIENTS.min_revenue_rub
+    }
     return large | set(linked)

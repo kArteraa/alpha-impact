@@ -57,10 +57,11 @@ def load_cards(path: Path, config: CounterpartyConfig) -> dict[str, Card]:
 def read_payments(path: Path) -> Iterator[Payment]:
     with path.open(encoding="utf-8", newline="") as file:
         for row in csv.DictReader(file, delimiter=CSV_DELIMITER):
-            if row["PAYER"] != row["BENEFICIARY"]:
-                yield Payment(
-                    payer=row["PAYER"],
-                    beneficiary=row["BENEFICIARY"],
-                    amount=float(row["PAY_AMT"]),
-                    count=int(float(row["PAY_CNT"])),
-                )
+            payment = Payment(
+                payer=row["PAYER"],
+                beneficiary=row["BENEFICIARY"],
+                amount=float(row["PAY_AMT"]),
+                count=int(float(row["PAY_CNT"])),
+            )
+            if payment.payer != payment.beneficiary and payment.amount > 0:
+                yield payment

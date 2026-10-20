@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import func, select
@@ -13,12 +14,37 @@ from tests.unit.counterparty.fixtures import AMOUNTS, CLIENT, FIXTURES_DIR
 
 CONFIG = load_config()
 LOW = CONFIG.confidence.low
+STALE = "U_800"
+STALE_CARD = {
+    "company_id": STALE,
+    "industry_class": "logistics",
+    "region": "Москва",
+    "size_bucket": "small",
+}
+STALE_GRAPH = {
+    "client_id": STALE,
+    "payload": {"outflow_segments": {}},
+    "dependence": {},
+    "built_at": datetime(2026, 1, 1, tzinfo=UTC),
+}
 
 
 @pytest.fixture
 async def service(sessions: async_sessionmaker[AsyncSession]) -> CounterpartyAggregates:
     await rebuild_graph(sessions, FIXTURES_DIR, CONFIG)
     return CounterpartyAggregates(sessions, CONFIG)
+
+
+async def table_sizes(sessions: async_sessionmaker[AsyncSession]) -> tuple[int, int]:
+    async with sessions() as session:
+        cards = await session.scalar(select(func.count()).select_from(CounterpartyCardRow))
+        graphs = await session.scalar(select(func.count()).select_from(ClientGraphRow))
+    return cards or 0, graphs or 0
+
+
+async def graph_built_at(sessions: async_sessionmaker[AsyncSession]) -> datetime | None:
+    async with sessions() as session:
+        return await session.scalar(select(ClientGraphRow.built_at))
 
 
 def assert_no_leak(context: CounterpartyContext) -> None:
@@ -76,7 +102,8 @@ async def test_card_without_payments_has_medium_confidence(
 
 
 @pytest.mark.parametrize(
-    ("beneficiary_id", "inn"), [(None, "7707083893"), (None, None), ("U_999", None)]
+    ("beneficiary_id", "inn"),
+    [(None, "7707083893"), (None, None), ("U_999", None), (CLIENT, None)],
 )
 async def test_unknown_counterparty_returns_nothing_but_low_confidence(
     service: CounterpartyAggregates, beneficiary_id: str | None, inn: str | None
@@ -84,6 +111,7 @@ async def test_unknown_counterparty_returns_nothing_but_low_confidence(
     context = await service.context(CLIENT, beneficiary_id, inn)
 
     assert context.industry_class is None
+    assert context.share_of_client_outflow is None
     assert context.share_of_counterparty_inflow is None
     assert context.confidence == LOW
     assert_no_leak(context)
@@ -104,10 +132,22 @@ async def test_rebuild_is_idempotent(
     service: CounterpartyAggregates, sessions: async_sessionmaker[AsyncSession]
 ) -> None:
     before = await service.context(CLIENT, "U_902", None)
+    built_at = await graph_built_at(sessions)
     await rebuild_graph(sessions, FIXTURES_DIR, CONFIG)
 
-    async with sessions() as session:
-        cards = await session.scalar(select(func.count()).select_from(CounterpartyCardRow))
-        graphs = await session.scalar(select(func.count()).select_from(ClientGraphRow))
-    assert (cards, graphs) == (5, 1)
+    assert await table_sizes(sessions) == (5, 1)
     assert await service.context(CLIENT, "U_902", None) == before
+    assert await graph_built_at(sessions) == built_at
+
+
+async def test_rebuild_drops_rows_missing_from_data(
+    service: CounterpartyAggregates, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    async with sessions() as session, session.begin():
+        session.add(CounterpartyCardRow(**STALE_CARD))
+        session.add(ClientGraphRow(**STALE_GRAPH))
+    await rebuild_graph(sessions, FIXTURES_DIR, CONFIG)
+
+    assert await table_sizes(sessions) == (5, 1)
+    assert (await service.context(CLIENT, STALE, None)).confidence == LOW
+    assert (await service.context(STALE, "U_902", None)).share_of_client_outflow is None

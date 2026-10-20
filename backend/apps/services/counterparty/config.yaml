@@ -1,7 +1,6 @@
-companies_file: df_Uid_data_hack.csv
 payments_file: df_Uid_payment_hack.csv
-min_revenue_rub: 15000000000
 top_size: 10
+inflow_share_digits: 2
 no_card_segment: no_card
 
 size_buckets:
