@@ -47,3 +47,17 @@ def test_rejects_non_finite_or_negative_values(
 ) -> None:
     with pytest.raises(ValueError):
         rate_burden(amount, rate_now, rate_expected, 12)
+
+
+def test_zero_rate_is_a_valid_scenario() -> None:
+    result = rate_burden(50_000_000.0, 0.0, 3.0, 12)
+
+    assert result.value == 1_500_000.0
+    assert result.formula == "50 000 000 ₽ × (3% − 0%) × 12/12 мес. = 1 500 000 ₽"
+
+
+def test_fractional_rate_is_shown_in_full() -> None:
+    result = rate_burden(1_000_000_000.0, 14.0, 13.125, 12)
+
+    assert result.value == -8_750_000.0
+    assert result.formula == "1 000 000 000 ₽ × (13,125% − 14%) × 12/12 мес. = −8 750 000 ₽"

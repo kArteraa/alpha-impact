@@ -15,12 +15,10 @@ RUB = "RUB"
 def rate_burden(
     portfolio_amount: float, rate_now: float, rate_expected: float, months: int
 ) -> WhatIfResult:
-    _require_positive(
-        portfolio_amount=portfolio_amount,
-        rate_now=rate_now,
-        rate_expected=rate_expected,
-        months=months,
-    )
+    _require_positive("portfolio_amount", portfolio_amount)
+    _require_positive("months", months)
+    _require_non_negative("rate_now", rate_now)
+    _require_non_negative("rate_expected", rate_expected)
     value = round(
         portfolio_amount * (rate_expected - rate_now) / PERCENT * months / MONTHS_IN_YEAR, 2
     )
@@ -43,14 +41,16 @@ def rate_burden(
 
 
 def deposit_terms(amount: float, term_days: int, rate_path: list[float]) -> WhatIfResult:
-    _require_positive(amount=amount, term_days=term_days)
-    _require_positive(**{f"rate_path[{i}]": rate for i, rate in enumerate(rate_path)})
+    _require_positive("amount", amount)
+    _require_positive("term_days", term_days)
+    for i, rate in enumerate(rate_path):
+        _require_non_negative(f"rate_path[{i}]", rate)
     months = math.ceil(term_days / DAYS_IN_MONTH)
     if len(rate_path) < months:
         raise ValueError(f"rate_path must cover {months} months, got {len(rate_path)}")
-    periods = [
-        (rate_path[i], min(DAYS_IN_MONTH, term_days - i * DAYS_IN_MONTH)) for i in range(months)
-    ]
+    periods = _collapse(
+        [(rate_path[i], min(DAYS_IN_MONTH, term_days - i * DAYS_IN_MONTH)) for i in range(months)]
+    )
     fixed = round(_interest(amount, rate_path[0], term_days), 2)
     rolling = round(sum(_interest(amount, rate, days) for rate, days in periods), 2)
     value = round(fixed - rolling, 2)
@@ -78,7 +78,9 @@ def deposit_terms(amount: float, term_days: int, rate_path: list[float]) -> What
 def fx_exposure(
     amount: float, currency: str, rate_now: float, rate_forecast: float
 ) -> WhatIfResult:
-    _require_positive(amount=amount, rate_now=rate_now, rate_forecast=rate_forecast)
+    _require_positive("amount", amount)
+    _require_positive("rate_now", rate_now)
+    _require_positive("rate_forecast", rate_forecast)
     if not CURRENCY_CODE.fullmatch(currency) or currency == RUB:
         raise ValueError(f"currency must be a foreign three-letter ISO code, got {currency!r}")
     value = round(amount * (rate_forecast - rate_now), 2)
@@ -104,7 +106,21 @@ def _interest(amount: float, rate: float, days: int) -> float:
     return amount * rate / PERCENT * days / DAYS_IN_YEAR
 
 
-def _require_positive(**values: float) -> None:
-    for name, value in values.items():
-        if not math.isfinite(value) or value <= 0:
-            raise ValueError(f"{name} must be a positive finite number, got {value}")
+def _collapse(periods: list[tuple[float, int]]) -> list[tuple[float, int]]:
+    collapsed: list[tuple[float, int]] = []
+    for rate, days in periods:
+        if collapsed and collapsed[-1][0] == rate:
+            collapsed[-1] = (rate, collapsed[-1][1] + days)
+        else:
+            collapsed.append((rate, days))
+    return collapsed
+
+
+def _require_positive(name: str, value: float) -> None:
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError(f"{name} must be a positive finite number, got {value}")
+
+
+def _require_non_negative(name: str, value: float) -> None:
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"{name} must be a non-negative finite number, got {value}")

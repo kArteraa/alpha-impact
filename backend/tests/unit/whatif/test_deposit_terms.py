@@ -51,3 +51,21 @@ def test_rejects_invalid_input(amount: float, term_days: int, rate_path: list[fl
 def test_rejects_invalid_rates(rate_path: list[float]) -> None:
     with pytest.raises(ValueError):
         deposit_terms(1_000_000.0, 90, rate_path)
+
+
+def test_equal_consecutive_rates_collapse_in_formula() -> None:
+    result = deposit_terms(50_000_000.0, 730, [14.0] * 12 + [12.0] * 13)
+
+    assert result.value == 1_013_698.63
+    assert result.formula == (
+        "фиксация: 50 000 000 ₽ × 14% × 730/365 = 14 000 000 ₽; "
+        "переразмещение: 50 000 000 ₽ × (14% × 360 + 12% × 370)/365"
+        " = 12 986 301,37 ₽; разница 1 013 698,63 ₽"
+    )
+
+
+def test_zero_rate_in_path_is_valid() -> None:
+    result = deposit_terms(1_000_000.0, 60, [3.65, 0.0])
+
+    assert result.value == 3_000.0
+    assert "(3,65% × 30 + 0% × 30)/365" in result.formula
