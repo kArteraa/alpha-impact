@@ -5,12 +5,16 @@ from pathlib import Path
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from apps.services.profile.batch import rebuild_profiles
+from apps.services.profile.config import load_config
 from shared.config.settings import Settings
 from shared.db.engine import create_engine
 from shared.db.models import UserClientRow, UserRow
 from shared.db.session import make_session_factory
 
-SEED_DIR = Path(__file__).resolve().parents[1] / "data" / "seed"
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+SEED_DIR = DATA_DIR / "seed"
+RAW_DIR = DATA_DIR / "raw"
 
 
 async def seed_users(sessions: async_sessionmaker[AsyncSession]) -> int:
@@ -30,8 +34,11 @@ async def seed_users(sessions: async_sessionmaker[AsyncSession]) -> int:
 async def main() -> None:
     engine = create_engine(Settings().DB_URL)
     try:
-        count = await seed_users(make_session_factory(engine))
-        print(f"users: {count}")
+        sessions = make_session_factory(engine)
+        users = await seed_users(sessions)
+        print(f"users: {users}")
+        profiles = await rebuild_profiles(sessions, RAW_DIR, load_config())
+        print(f"profiles: {profiles}")
     finally:
         await engine.dispose()
 
