@@ -1,0 +1,8 @@
+models:
+  gemma-4-26b-a4b: {input_rub_per_1m: 20, output_rub_per_1m: 80}
+  glm-5.3-flash: {input_rub_per_1m: 20, output_rub_per_1m: 80}
+  qwen3.6-35b-a3b: {input_rub_per_1m: 20, output_rub_per_1m: 80}
+  deepseek-v4.1-flash: {input_rub_per_1m: 20, output_rub_per_1m: 80}
+  qwen3-vl-30b-a3b: {input_rub_per_1m: 20, output_rub_per_1m: 80}
+  kimi-k2.6: {input_rub_per_1m: 60, output_rub_per_1m: 250}
+  tbd-embedding-model: {input_rub_per_1m: 5, output_rub_per_1m: 5}

@@ -12,11 +12,14 @@ class Settings(BaseSettings):
     LLM_API_BASE: str
     LLM_API_KEY: str
     LLM_DAILY_BUDGET_RUB: float = 500
+    LLM_BUDGET_RESERVE_SHARE: float
+    LLM_TIMEOUT_SECONDS: float
     MODEL_ANNOTATE: str
     MODEL_EXTRACT: str
     MODEL_INTERPRET: str
     MODEL_CRITIC: str
     MODEL_FOLLOWUP: str
+    MODEL_EMBED: str
     RELEVANCE_THRESHOLD: float
     CACHE_TTL_SECONDS: int
     EXTENSION_TOKEN_TTL_SECONDS: int
