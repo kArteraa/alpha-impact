@@ -11,7 +11,6 @@ class LlmCacheRow(Base):
     __tablename__ = "llm_cache"
 
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
-    model: Mapped[str] = mapped_column(String(64))
     content: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

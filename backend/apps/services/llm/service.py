@@ -70,7 +70,7 @@ class ModelGateway:
         completion = await self._client.chat(model, system, user, output_format)
         await self._spend(task, model, completion.tokens_in, completion.tokens_out)
         result = parse(completion.content, output_schema)
-        await self._store.remember(key, model, completion.content)
+        await self._store.remember(key, completion.content)
         return result, completion.tokens_in, completion.tokens_out
 
     async def embed(self, text: str) -> list[float]:
@@ -83,7 +83,7 @@ class ModelGateway:
         await self._ensure_budget()
         embedding = await self._client.embed(model, text)
         await self._spend(EMBED_TASK, model, embedding.tokens, 0)
-        await self._store.remember(key, model, json.dumps(embedding.vector))
+        await self._store.remember(key, json.dumps(embedding.vector))
         return embedding.vector
 
     async def budget_left_rub(self) -> float:

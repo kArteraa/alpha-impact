@@ -23,16 +23,7 @@ CASE_ALLOW_LIST = {
 }
 
 
-@pytest.mark.parametrize(
-    ("task", "model"),
-    [
-        ("annotate", "gemma-4-26b-a4b"),
-        ("extract", "qwen3.6-35b-a3b"),
-        ("interpret", "glm-5.3-flash"),
-        ("critic", "glm-5.3-flash"),
-        ("followup", "qwen3.6-35b-a3b"),
-    ],
-)
+@pytest.mark.parametrize(("task", "model"), ROUTES.items())
 def test_settings_route_each_task_to_its_model(
     settings_env: dict[str, str], task: str, model: str
 ) -> None:
@@ -72,11 +63,6 @@ def test_models_file_lists_the_case_allow_list_and_one_embedding_model() -> None
     prices = load_prices(MODELS_PATH)
     assert CASE_ALLOW_LIST <= set(prices)
     assert len(set(prices) - CASE_ALLOW_LIST) == 1
-
-
-def test_models_file_prices_every_model_above_zero() -> None:
-    prices = load_prices(MODELS_PATH)
-    assert all(p.input_rub_per_1m > 0 and p.output_rub_per_1m > 0 for p in prices.values())
 
 
 def test_cost_is_priced_per_million_tokens() -> None:

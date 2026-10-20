@@ -1,7 +1,7 @@
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from apps.services.llm.client import http_client_factory
+from apps.services.llm.client import build_http_client
 from shared.config.settings import Settings
 from tests.unit.llm.fakes import MemoryStore, ModelServer, make_gateway
 
@@ -113,7 +113,7 @@ async def test_repeated_embedding_is_served_from_cache() -> None:
 
 
 def test_http_client_uses_shared_key_base_and_timeout(settings_env: dict[str, str]) -> None:
-    client = http_client_factory(Settings(_env_file=None))()
+    client = build_http_client(Settings(_env_file=None))
     assert str(client.base_url) == "https://llm.example/v1/"
     assert client.headers["Authorization"] == "Bearer test-key"
     assert client.timeout.read == 8

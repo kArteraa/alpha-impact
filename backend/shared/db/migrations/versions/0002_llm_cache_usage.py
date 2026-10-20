@@ -21,7 +21,6 @@ def upgrade() -> None:
     op.create_table(
         "llm_cache",
         sa.Column("key", sa.String(length=64), primary_key=True),
-        sa.Column("model", sa.String(length=64), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column(
             "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False

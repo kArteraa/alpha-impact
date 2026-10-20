@@ -22,7 +22,7 @@ class Usage:
 
 class UsageStore(Protocol):
     async def cached(self, key: str) -> str | None: ...
-    async def remember(self, key: str, model: str, content: str) -> None: ...
+    async def remember(self, key: str, content: str) -> None: ...
     async def record(self, usage: Usage) -> None: ...
     async def spent_rub(self, day: date) -> float: ...
 
@@ -35,8 +35,8 @@ class SqlUsageStore:
         async with self._sessions() as session:
             return await session.scalar(select(LlmCacheRow.content).where(LlmCacheRow.key == key))
 
-    async def remember(self, key: str, model: str, content: str) -> None:
-        statement = insert(LlmCacheRow).values(key=key, model=model, content=content)
+    async def remember(self, key: str, content: str) -> None:
+        statement = insert(LlmCacheRow).values(key=key, content=content)
         async with self._sessions() as session, session.begin():
             await session.execute(statement.on_conflict_do_nothing(index_elements=["key"]))
 
