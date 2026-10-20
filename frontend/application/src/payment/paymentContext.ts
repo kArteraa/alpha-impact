@@ -6,9 +6,15 @@ export interface PaymentForm {
   purpose: string;
 }
 
+const AMOUNT_PATTERN = /^\d+([.,]\d{1,2})?$/;
+
 function parseAmount(raw: string): number | null {
-  const amount = Number(raw.replace(/\s/g, "").replace(",", "."));
-  return Number.isFinite(amount) && amount > 0 ? amount : null;
+  const compact = raw.replace(/\s/g, "");
+  if (!AMOUNT_PATTERN.test(compact)) {
+    return null;
+  }
+  const amount = Number(compact.replace(",", "."));
+  return amount > 0 ? amount : null;
 }
 
 export function toPaymentContext(form: PaymentForm): PaymentContext | null {

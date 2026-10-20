@@ -12,7 +12,7 @@ export function LoginPage() {
     event.preventDefault();
     setError(null);
     try {
-      await api.authMock(userId);
+      await api.authMock(userId.trim());
       navigate("/");
     } catch (failure) {
       setError(failure instanceof ApiError ? `Вход не удался (${failure.status})` : "Сервер недоступен");
