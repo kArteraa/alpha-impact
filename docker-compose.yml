@@ -77,6 +77,8 @@ services:
     environment:
       DB_URL: postgresql+asyncpg://alfa:alfa@db:5432/alfa
     command: python -m scripts.seed
+    volumes:
+      - ./backend/data/raw:/app/data/raw:ro
     depends_on:
       api:
         condition: service_healthy
