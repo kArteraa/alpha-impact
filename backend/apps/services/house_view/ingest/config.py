@@ -21,6 +21,7 @@ class IngestConfig(BaseModel):
     ocr_languages: str
     max_page_chars: int
     min_page_chars: int
+    ocr_timeout_seconds: float
     llm_task: str
     max_claims_per_page: int
     subject_hints: dict[str, str]

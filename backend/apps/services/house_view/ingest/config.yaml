@@ -1,6 +1,7 @@
 ocr_languages: rus+eng
 max_page_chars: 8000
 min_page_chars: 200
+ocr_timeout_seconds: 120
 llm_task: extract
 max_claims_per_page: 4
 subject_hints:

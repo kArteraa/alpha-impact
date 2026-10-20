@@ -19,12 +19,14 @@ async def main() -> None:
         result = await ingest_reports(
             container.resolve(async_sessionmaker),
             container.resolve(LLMGateway),
-            TesseractOcr(config.ocr_languages),
+            TesseractOcr(config.ocr_languages, config.ocr_timeout_seconds),
             RAW_DIR,
             config,
         )
         print(f"pages: {result.pages}")
         print(f"claims: {result.claims}")
+        print(f"failed pages: {', '.join(result.failed) or '-'}")
+        print(f"truncated pages: {', '.join(result.truncated) or '-'}")
     finally:
         await container.aclose()
 
