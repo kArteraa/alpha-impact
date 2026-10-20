@@ -1,6 +1,3 @@
-companies_file: df_Uid_data_hack.csv
-min_revenue_rub: 15000000000
-
 confidence:
   bank: 0.9
   inferred: 0.7
