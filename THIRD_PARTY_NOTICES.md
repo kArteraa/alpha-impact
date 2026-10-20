@@ -18,7 +18,7 @@
 | PyYAML | MIT | каталог продуктов и шаблоны планов |
 | python-multipart | Apache-2.0 | формы в FastAPI |
 
-Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), mypy (MIT), import-linter (BSD-2-Clause).
+Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), mypy (MIT), import-linter (BSD-2-Clause), types-PyYAML (Apache-2.0).
 
 ## Фронт (npm workspaces, `frontend/package.json`)
 
