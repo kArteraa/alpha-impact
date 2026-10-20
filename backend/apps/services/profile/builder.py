@@ -3,7 +3,8 @@ from typing import Any
 
 from apps.services.profile.config import ExposureRule, ProfileConfig
 from apps.services.profile.loader import Companies, Company
-from apps.services.profile.okved import industry_class
+from shared.config.clients import SERVED_CLIENTS
+from shared.config.industries import INDUSTRIES, industry_class
 
 Payload = dict[str, Any]
 
@@ -88,7 +89,7 @@ def exposures(features: Payload, imports: bool, config: ProfileConfig) -> dict[s
 
 
 def company_payload(company: Company, members: list[str], config: ProfileConfig) -> Payload:
-    industry = industry_class(company.okved_code, config.industries)
+    industry = industry_class(company.okved_code, INDUSTRIES)
     bank = config.confidence.bank
     features = {name: feature(bank_value(company, name), "bank", bank) for name in BANK_FEATURES}
     features[INDUSTRY] = feature(industry, "inferred", config.confidence.inferred)
@@ -123,7 +124,7 @@ def build_profiles(
             config,
         )
         for company in companies.by_id.values()
-        if company.revenue_rub > config.min_revenue_rub or company.client_id in linked
+        if company.revenue_rub > SERVED_CLIENTS.min_revenue_rub or company.client_id in linked
     }
     for client_id in companies.placeholders:
         profiles[client_id] = blank_payload(placeholder=True, no_card=False)

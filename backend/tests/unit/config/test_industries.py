@@ -1,7 +1,6 @@
 import pytest
 
-from apps.services.profile.config import load_config
-from apps.services.profile.okved import industry_class, normalize
+from shared.config.industries import INDUSTRIES, industry_class, normalize_okved
 
 
 @pytest.mark.parametrize(
@@ -18,7 +17,7 @@ from apps.services.profile.okved import industry_class, normalize
     ],
 )
 def test_normalize_pads_one_digit_group(raw: str, expected: str) -> None:
-    assert normalize(raw) == expected
+    assert normalize_okved(raw) == expected
 
 
 @pytest.mark.parametrize(
@@ -39,7 +38,12 @@ def test_normalize_pads_one_digit_group(raw: str, expected: str) -> None:
     ],
 )
 def test_industry_class_takes_longest_prefix(code: str, expected: str) -> None:
-    assert industry_class(code, load_config().industries) == expected
+    assert industry_class(code, INDUSTRIES) == expected
+
+
+def test_industries_cannot_be_changed_at_runtime() -> None:
+    with pytest.raises(TypeError):
+        INDUSTRIES["46.49"] = "other"  # type: ignore[index]
 
 
 def test_prefix_matches_whole_groups_only() -> None:

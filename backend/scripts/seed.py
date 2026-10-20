@@ -5,6 +5,8 @@ from pathlib import Path
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from apps.services.counterparty.batch import rebuild_graph
+from apps.services.counterparty.config import load_config as load_counterparty_config
 from apps.services.profile.batch import rebuild_profiles
 from apps.services.profile.config import load_config
 from shared.config.settings import Settings
@@ -39,6 +41,8 @@ async def main() -> None:
         print(f"users: {users}")
         profiles = await rebuild_profiles(sessions, RAW_DIR, load_config())
         print(f"profiles: {profiles}")
+        graphs = await rebuild_graph(sessions, RAW_DIR, load_counterparty_config())
+        print(f"client graphs: {graphs}")
     finally:
         await engine.dispose()
 

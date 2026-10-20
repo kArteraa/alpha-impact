@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from apps.services.profile.config import ProfileConfig
-from apps.services.profile.okved import normalize
+from shared.config.industries import normalize_okved
 
 MARK_ON = "1.0"
 COUNTRY_SEPARATOR = ","
@@ -45,7 +45,7 @@ def parse_row(row: dict[str, str], config: ProfileConfig) -> Company:
     return Company(
         client_id=row["SYNTHETIC_U"],
         group_id=row["GROUP_ID"],
-        okved_code=normalize(row["MAINOKVED_CODE"]),
+        okved_code=normalize_okved(row["MAINOKVED_CODE"]),
         okved_name=row["MAINOKVED_NAME"],
         region=row["REGION"],
         city=row["CITY"],
