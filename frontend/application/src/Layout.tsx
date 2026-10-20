@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router";
+import { Brand } from "./Brand";
 
 const NAV = [
   ["/", "Главный"],
@@ -12,14 +13,15 @@ export function Layout() {
   return (
     <div className="shell">
       <header className="shell-header">
-        <span className="brand">Альфа-Бизнес · прототип</span>
-        <nav>
+        <Brand />
+        <nav className="shell-nav">
           {NAV.map(([to, label]) => (
             <NavLink key={to} to={to} end={to === "/"}>
               {label}
             </NavLink>
           ))}
         </nav>
+        <span className="badge">Тестовый режим</span>
       </header>
       <main className="shell-main">
         <Outlet />
