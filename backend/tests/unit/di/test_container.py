@@ -93,3 +93,20 @@ async def test_request_scope_does_not_close_app_objects() -> None:
     container.on_close(close)
     await container.request_scope().aclose()
     assert closed == []
+
+
+async def test_app_object_built_from_request_scope_is_closed_by_root() -> None:
+    container = Container()
+    closed: list[str] = []
+
+    async def close() -> None:
+        closed.append("engine")
+
+    def build(c: Container) -> Impl:
+        c.on_close(close)
+        return Impl()
+
+    container.register(Port, build)
+    container.request_scope().resolve(Port)
+    await container.aclose()
+    assert closed == ["engine"]

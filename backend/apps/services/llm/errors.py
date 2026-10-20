@@ -10,3 +10,7 @@ class ModelUnavailable(DomainError):
 
 class ModelOutputInvalid(DomainError):
     pass
+
+
+class UsageNotRecorded(DomainError):
+    pass

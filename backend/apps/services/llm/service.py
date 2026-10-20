@@ -8,7 +8,7 @@ from pydantic import BaseModel, ValidationError
 
 from apps.services.llm.catalog import ModelCatalog
 from apps.services.llm.client import ModelClient
-from apps.services.llm.errors import ModelOutputInvalid, ModelUnavailable
+from apps.services.llm.errors import ModelOutputInvalid, ModelUnavailable, UsageNotRecorded
 from apps.services.llm.store import UsageStore
 from shared.contracts.errors import BudgetExceeded
 
@@ -33,6 +33,12 @@ def response_format(schema: type[BaseModel] | None) -> dict[str, Any] | None:
 def cache_key(*parts: object) -> str:
     payload = json.dumps(parts, ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def answer_text(content: str | None, model: str) -> str:
+    if not content:
+        raise ModelOutputInvalid(f"model {model} returned an empty answer")
+    return content
 
 
 def parse(content: str, schema: type[BaseModel] | None) -> object:
@@ -73,17 +79,19 @@ class ModelGateway:
         if cached is not None:
             return parse(cached, output_schema), 0, 0
         reservation = await self._reserve(task, model)
-        completion = await self._settled(
-            reservation,
-            model,
-            lambda: self._client.chat(model, system, user, output_format),
-            lambda done: (done.tokens_in, done.tokens_out),
+        completion = await self._called(
+            reservation, model, lambda: self._client.chat(model, system, user, output_format)
         )
-        if not completion.content:
-            raise ModelOutputInvalid(f"model {model} returned an empty answer")
-        result = parse(completion.content, output_schema)
-        await self._store.remember(key, completion.content)
-        return result, completion.tokens_in, completion.tokens_out
+        tokens = (completion.tokens_in, completion.tokens_out)
+        try:
+            content = answer_text(completion.content, model)
+            result = parse(content, output_schema)
+        except ModelOutputInvalid:
+            await self._record(reservation, model, *tokens)
+            raise
+        await self._store.remember(key, content)
+        await self._record(reservation, model, *tokens)
+        return result, *tokens
 
     async def embed(self, text: str) -> list[float]:
         model = self._catalog.embedding_model
@@ -93,13 +101,9 @@ class ModelGateway:
             vector: list[float] = json.loads(cached)
             return vector
         reservation = await self._reserve(EMBED_TASK, model)
-        embedding = await self._settled(
-            reservation,
-            model,
-            lambda: self._client.embed(model, text),
-            lambda done: (done.tokens, 0),
-        )
+        embedding = await self._called(reservation, model, lambda: self._client.embed(model, text))
         await self._store.remember(key, json.dumps(embedding.vector))
+        await self._record(reservation, model, embedding.tokens, 0)
         return embedding.vector
 
     async def budget_left_rub(self) -> float:
@@ -114,24 +118,19 @@ class ModelGateway:
             raise BudgetExceeded(f"daily LLM budget of {self._spendable_rub:.2f} RUB is spent")
         return reservation
 
-    async def _settled[T](
-        self,
-        reservation: int,
-        model: str,
-        call: Callable[[], Awaitable[T]],
-        tokens: Callable[[T], tuple[int, int]],
-    ) -> T:
+    async def _called[T](self, reservation: int, model: str, call: Callable[[], Awaitable[T]]) -> T:
         try:
-            result = await call()
+            return await call()
         except ModelUnavailable as error:
-            await self._settle(reservation, model, error.tokens_in, error.tokens_out)
+            await self._record(reservation, model, error.tokens_in, error.tokens_out)
             raise
         except BaseException:
             await self._store.settle(reservation, 0, 0, 0.0)
             raise
-        await self._settle(reservation, model, *tokens(result))
-        return result
 
-    async def _settle(self, reservation: int, model: str, tokens_in: int, tokens_out: int) -> None:
+    async def _record(self, reservation: int, model: str, tokens_in: int, tokens_out: int) -> None:
         cost = self._catalog.cost_rub(model, tokens_in, tokens_out)
-        await self._store.settle(reservation, tokens_in, tokens_out, cost)
+        try:
+            await self._store.settle(reservation, tokens_in, tokens_out, cost)
+        except Exception as error:
+            raise UsageNotRecorded(f"usage of reservation {reservation} is not recorded") from error
