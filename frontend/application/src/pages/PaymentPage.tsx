@@ -4,6 +4,8 @@ import { COUNTERPARTIES } from "../data/counterparties";
 import { mockInsightFor } from "../payment/mockInsight";
 import { type PaymentForm, toPaymentContext } from "../payment/paymentContext";
 
+const RECIPIENT_HINT_ID = "recipient-hint";
+
 const EMPTY_FORM: PaymentForm = { beneficiaryId: "", amount: "", purpose: "" };
 
 export function PaymentPage() {
@@ -28,18 +30,28 @@ export function PaymentPage() {
       <div className="page-grid">
         <form className="card form" onSubmit={submit}>
           <h2>Платёж контрагенту</h2>
-          <label className="field">
-            <span className="muted">Получатель</span>
-            <select value={form.beneficiaryId} onChange={(event) => update("beneficiaryId", event.target.value)}>
-              <option value="">Выберите контрагента</option>
-              {COUNTERPARTIES.map((counterparty) => (
-                <option key={counterparty.id} value={counterparty.id}>
-                  {counterparty.name}
-                </option>
-              ))}
-            </select>
-            {recipient && <small className="muted">{recipient.description}</small>}
-          </label>
+          <div className="field">
+            <label className="field">
+              <span className="muted">Получатель</span>
+              <select
+                value={form.beneficiaryId}
+                aria-describedby={recipient ? RECIPIENT_HINT_ID : undefined}
+                onChange={(event) => update("beneficiaryId", event.target.value)}
+              >
+                <option value="">Выберите контрагента</option>
+                {COUNTERPARTIES.map((counterparty) => (
+                  <option key={counterparty.id} value={counterparty.id}>
+                    {counterparty.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {recipient && (
+              <small id={RECIPIENT_HINT_ID} className="muted">
+                {recipient.description}
+              </small>
+            )}
+          </div>
           <label className="field">
             <span className="muted">Сумма, ₽</span>
             <input

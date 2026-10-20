@@ -36,6 +36,17 @@ describe("LoginPage", () => {
     expect(fetchMock.mock.calls[0][0]).toBe("/api/auth/mock");
   });
 
+  it("trims the user id before logging in", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ user_id: "user_cfo_wholesale" })));
+    vi.stubGlobal("fetch", fetchMock);
+    renderLogin();
+
+    submit("  user_cfo_wholesale ");
+
+    await screen.findByRole("heading", { name: "Главный экран" });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ user_id: "user_cfo_wholesale" });
+  });
+
   it("shows the status when the login fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("unknown user", { status: 404 })));
     renderLogin();

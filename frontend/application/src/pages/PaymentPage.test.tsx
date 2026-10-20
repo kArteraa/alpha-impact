@@ -31,6 +31,14 @@ describe("PaymentPage", () => {
     expect(values).toEqual(expect.arrayContaining(["cp_logistics_spb", "cp_stationery"]));
   });
 
+  it("keeps the recipient label stable after a recipient is chosen", () => {
+    render(<PaymentPage />);
+    fill("cp_logistics_spb", "1500000");
+
+    expect(screen.getByLabelText("Получатель").getAttribute("aria-describedby")).toBeTruthy();
+    expect(screen.getByText("Грузоперевозки, Санкт-Петербург")).toBeTruthy();
+  });
+
   it("shows insight cards for the carrier payment", () => {
     render(<PaymentPage />);
     fill("cp_logistics_spb", "1500000");
