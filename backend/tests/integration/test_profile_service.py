@@ -51,7 +51,7 @@ async def test_get_profile_returns_computed_profile(profiler: Profiler) -> None:
     assert profile.features["industry_class"].value == "construction"
     assert profile.features["industry_class"].source == "inferred"
     assert profile.exposures["construction_demand"] == 0.8
-    assert profile.flags["importer"] is True
+    assert profile.flags["imports"] is True
     assert profile.version == 1
 
 
