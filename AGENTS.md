@@ -39,7 +39,7 @@ frontend/                 npm workspace; run npm from here
   application/            React + Vite mock of Alfa-Business that embeds InsightPanel
   app-plugin/             InsightPanel library + MV3 browser extension
   tests/e2e/              Playwright
-docs/                     SUMMARY, CONCEPT, ARCHITECTURE, CONTRACTS, PIPELINE, BACKLOG, TEAM, DEMO, DECISIONS, DATA
+docs/                     SUMMARY, CONCEPT, ARCHITECTURE, CONTRACTS, PIPELINE, BACKLOG, TEAM, DEMO, DECISIONS (+ decisions/ per member), DATA
 ```
 
 Paths `apps/…`, `shared/…`, `scripts/…`, `data/…`, `tests/unit`, `tests/integration` in docs are relative to `backend/`; `application/`, `app-plugin/`, `tests/e2e` are relative to `frontend/`.
