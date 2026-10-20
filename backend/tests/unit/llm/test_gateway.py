@@ -35,7 +35,7 @@ async def test_request_carries_routed_model_and_prompts() -> None:
     await make_gateway(server.http_client(), MemoryStore()).complete("annotate", "sys", "usr")
     body = server.body()
     assert server.requests[0].url.path == "/v1/chat/completions"
-    assert body["model"] == "gemma-4-26b-a4b"
+    assert body["model"] == "google/gemma-4-26b-a4b-it"
     assert body["temperature"] == 0
     assert body["messages"] == [
         {"role": "system", "content": "sys"},
