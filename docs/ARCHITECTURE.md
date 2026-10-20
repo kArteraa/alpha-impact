@@ -29,12 +29,12 @@ alpha-impact/
         openapi/               экспорт схем в JSON Schema для фронта (генерируется, коммитится)
       db/
         engine.py session.py   SQLAlchemy 2 async
-        models/                таблицы по сервисам (profiles, profile_corrections, counterparty_cards, client_graphs, news, house_view, traces, feedback, users)
+        models/                таблицы по сервисам (profiles, profile_corrections, counterparty_cards, client_graphs, news, house_view, traces, feedback, users, llm_cache, llm_usage)
         migrations/            Alembic
       di/
-        container.py           Container: register(port, factory) / resolve(port); scope per request
+        container.py           Container: register(port, factory) / resolve(port); scope per request; on_close / aclose — закрытие ресурсов при остановке
       config/
-        settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, MODEL_*, RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
+        settings.py            pydantic-settings: DB_URL, LLM_API_BASE, LLM_API_KEY, LLM_DAILY_BUDGET_RUB, LLM_BUDGET_RESERVE_SHARE, LLM_TIMEOUT_SECONDS, LLM_CALL_RESERVE_RUB, LLM_CACHE_TTL_SECONDS, MODEL_* (включая MODEL_EMBED), RELEVANCE_THRESHOLD, CACHE_TTL_SECONDS, EXTENSION_TOKEN_TTL_SECONDS, NEWS_RSS_URLS
         industries.py          справочник отраслей: ОКВЭД → отраслевой класс по industries.yaml, общий для profile и counterparty
         clients.py             какие клиенты обслуживаются: файл компаний и порог выручки крупного клиента (clients.yaml), общий для profile и counterparty
     scripts/                   gen_schemas.py, seed.py
@@ -114,7 +114,7 @@ interpreter.interpret():
 | Критик | GLM-5.3-Flash, другой промпт |
 | Уточняющий вопрос | Qwen3.6 35B A3B |
 
-`LLM_DAILY_BUDGET_RUB` делится: 60% онлайн, 30% пакетная разметка, 10% резерв. При исчерпании — ответ из кэша или `needs_review`.
+Онлайн- и пакетные вызовы тратят общий дневной пул `LLM_DAILY_BUDGET_RUB × (1 − LLM_BUDGET_RESERVE_SHARE)`; 10% — резерв, не тратится; деление на онлайн и пакет пока не делается. Перед вызовом модели шлюз под advisory-блокировкой Postgres проверяет остаток и резервирует `LLM_CALL_RESERVE_RUB` строкой в `llm_usage`, после ответа резерв заменяется фактическим расходом или снимается — параллельные вызовы api и seed не проходят лимит вместе. Кэш ответов и эмбеддингов живёт `LLM_CACHE_TTL_SECONDS`, просроченные записи удаляются при записи в кэш. При исчерпании шлюз поднимает `BudgetExceeded`, ответы из кэша отдаются и дальше, вызывающий отвечает `needs_review`. Ошибки шлюза — `BudgetExceeded`, `ModelUnavailable` (HTTP-ошибка, таймаут, обрыв соединения или битое тело ответа 200 — не JSON, нет `choices` / `usage` / `data`, `content` не строка, `embedding` не непустой список чисел, счётчик токенов не целое ≥ 0; расход учитывается, если в теле есть `usage`), `ModelOutputInvalid` (пустой ответ или не по схеме), `UsageNotRecorded` (ответ получен и закэширован, но расход не записан — в `llm_usage` остаётся резерв), `CacheNotWritten` (ответ получен и расход записан фактом, но запись в кэш не удалась) — подклассы `DomainError`.
 
 ## Безопасность
 
