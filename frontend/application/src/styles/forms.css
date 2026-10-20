@@ -1,0 +1,67 @@
+.form {
+  display: grid;
+  gap: var(--s-5);
+}
+
+.field {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  background: var(--bg-neutral);
+  color: var(--text-primary);
+  font: inherit;
+  transition: background var(--t-fast);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field-hint {
+  color: var(--text-secondary);
+  font-size: var(--fs-12);
+  line-height: var(--lh-16);
+}
+
+.segmented {
+  display: inline-flex;
+  gap: var(--s-1);
+  padding: var(--s-1);
+  border-radius: var(--r-md);
+  background: var(--bg-neutral);
+}
+
+.segmented button {
+  min-width: 96px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-14);
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+
+.segmented button[aria-checked="true"] {
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+  font-weight: var(--fw-medium);
+}

@@ -1,31 +1,56 @@
 import { NavLink, Outlet } from "react-router";
 import { Brand } from "./Brand";
+import { CompanyProvider, useCompany } from "./company/CompanyContext";
 
 const NAV = [
-  ["/", "Главный"],
-  ["/payments/new", "Платёж"],
-  ["/deposits/new", "Депозит"],
+  ["/", "Главная"],
+  ["/payments/new", "Платежи"],
+  ["/deposits/new", "Депозиты"],
   ["/loans", "Кредиты"],
   ["/profile", "Профиль"],
 ] as const;
 
+function CompanySwitcher() {
+  const { company, companies, select } = useCompany();
+  if (companies.length === 1) {
+    return <span className="company-name">{company.name}</span>;
+  }
+  return (
+    <select
+      className="company-switcher"
+      aria-label="Компания"
+      value={company.id}
+      onChange={(event) => select(event.target.value)}
+    >
+      {companies.map((candidate) => (
+        <option key={candidate.id} value={candidate.id}>
+          {candidate.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function Layout() {
   return (
-    <div className="shell">
-      <header className="shell-header">
-        <Brand />
-        <nav className="shell-nav">
+    <CompanyProvider>
+      <div className="shell">
+        <header className="shell-top">
+          <Brand />
+          <CompanySwitcher />
+          <span className="badge">Тестовый режим</span>
+        </header>
+        <nav className="shell-nav" aria-label="Разделы">
           {NAV.map(([to, label]) => (
             <NavLink key={to} to={to} end={to === "/"}>
               {label}
             </NavLink>
           ))}
         </nav>
-        <span className="badge">Тестовый режим</span>
-      </header>
-      <main className="shell-main">
-        <Outlet />
-      </main>
-    </div>
+        <main className="shell-main">
+          <Outlet />
+        </main>
+      </div>
+    </CompanyProvider>
   );
 }
