@@ -24,6 +24,7 @@ describe("toPaymentContext", () => {
     ["exponent", "cp_stationery", "1e6"],
     ["comma as thousands separator", "cp_stationery", "1,500"],
     ["fraction of a kopeck", "cp_stationery", "0.001"],
+    ["more digits than a number keeps", "cp_stationery", "1234567890123456"],
   ])("returns null for %s", (_case, beneficiaryId, amount) => {
     expect(toPaymentContext({ beneficiaryId, amount, purpose: "" })).toBeNull();
   });

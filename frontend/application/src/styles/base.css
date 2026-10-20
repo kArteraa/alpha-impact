@@ -1,0 +1,125 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: var(--fs-18);
+  line-height: var(--lh-26);
+  font-weight: var(--fw-regular);
+}
+
+h1 {
+  margin: 0 0 var(--s-6);
+  font-size: var(--fs-40);
+  line-height: var(--lh-48);
+  font-weight: var(--fw-bold);
+}
+
+.card h2 {
+  margin: 0 0 var(--s-4);
+  font-size: var(--fs-30);
+  line-height: var(--lh-36);
+  font-weight: var(--fw-bold);
+}
+
+a {
+  color: var(--info);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.card {
+  padding: var(--s-6);
+  background: var(--bg-card);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.muted {
+  color: var(--text-secondary);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
+}
+
+.button {
+  height: var(--control-h);
+  padding: 0 var(--s-6);
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: var(--text-on-dark);
+  font: inherit;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+
+.button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.button:active:not(:disabled) {
+  background: var(--accent-active);
+}
+
+.button:disabled {
+  background: var(--bg-neutral-strong);
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-16);
+}
+
+.error {
+  margin: 0;
+  color: var(--text-primary);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-sm);
+  background: var(--bg-danger);
+  font-size: var(--fs-16);
+}
+
+.appear {
+  animation: appear var(--t-base);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.amount-lg {
+  font-size: var(--fs-40);
+  line-height: var(--lh-48);
+  font-weight: var(--fw-bold);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appear {
+    animation: none;
+  }
+}
