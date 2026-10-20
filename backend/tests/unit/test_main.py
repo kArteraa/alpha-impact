@@ -139,3 +139,28 @@ async def test_lifespan_closes_the_container(app: FastAPI, monkeypatch: pytest.M
     async with app.router.lifespan_context(app):
         assert closed == []
     assert closed == ["closed"]
+
+
+async def test_root_closes_engine_and_llm_client_resolved_in_a_request(
+    settings_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import main
+    from apps.services import llm
+    from shared.contracts.ports import LLMGateway
+
+    closed: list[str] = []
+
+    class FakeEngine:
+        async def dispose(self) -> None:
+            closed.append("engine")
+
+    http = httpx.AsyncClient()
+    monkeypatch.setattr(main, "create_engine", lambda url: FakeEngine())
+    monkeypatch.setattr(llm, "build_http_client", lambda settings: http)
+    container = main.build_container()
+    scope = container.request_scope()
+    scope.resolve(main.AsyncEngine)
+    scope.resolve(LLMGateway)
+    await container.aclose()
+    assert closed == ["engine"]
+    assert http.is_closed
