@@ -1,0 +1,52 @@
+.button-secondary,
+.button-ghost,
+.icon-button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.button-secondary,
+.button-ghost,
+.icon-button {
+  border: 0;
+  color: var(--text-primary);
+  transition: background var(--t-fast);
+}
+
+.button-secondary {
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--bg-neutral-strong);
+  font-weight: var(--fw-medium);
+}
+
+.button-secondary:hover {
+  background: var(--border-soft);
+}
+
+.button-ghost {
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--info);
+}
+
+.button-ghost:hover,
+.icon-button:hover {
+  background: var(--bg-neutral);
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: var(--s-8);
+  height: var(--s-8);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.icon-button[aria-pressed="true"] {
+  background: var(--bg-neutral-strong);
+  color: var(--text-primary);
+}
