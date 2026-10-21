@@ -118,7 +118,7 @@ def make_harness(settings: Settings) -> Harness:
     house_view.chain.return_value = seed.house_view
     llm = AsyncMock(spec=LLMGateway)
     traces = AsyncMock(spec=TraceStore)
-    answers = [plan_answer(), draft_answer(), {"items": []}]
+    answers: list[dict[str, object]] = [plan_answer(), draft_answer(), {"items": []}]
 
     async def complete(
         task: str, system: str, user: str, schema: type[BaseModel]
