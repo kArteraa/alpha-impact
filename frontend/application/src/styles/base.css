@@ -1,3 +1,7 @@
+:root {
+  --shell-top-h: 72px;
+}
+
 *,
 *::before,
 *::after {
@@ -164,6 +168,14 @@ a:hover {
   height: var(--control-h-sm);
   padding: 0 var(--s-5);
   font-size: var(--fs-16);
+}
+
+.button-xs {
+  height: var(--control-h-xs);
+  padding: 0 var(--s-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
 }
 
 .button-block {

@@ -1,11 +1,10 @@
 import { useId } from "react";
-import { LOANS } from "../data/loans";
+import { LOANS, LOANS_TOTAL } from "../data/loans";
 import { RUB_WHOLE } from "../money";
 import { Icon } from "../ui/Icon";
 
 const DATE = new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC" });
 
-const TOTAL = LOANS.reduce((sum, loan) => sum + loan.amount, 0);
 const NEAREST = [...LOANS].sort((left, right) => left.maturity.localeCompare(right.maturity))[0];
 
 export function LoansPage() {
@@ -16,19 +15,17 @@ export function LoansPage() {
       <div className="stats">
         <div className="card stat">
           <span className="muted">Общая сумма</span>
-          <strong>{RUB_WHOLE.format(TOTAL)}</strong>
+          <strong>{RUB_WHOLE.format(LOANS_TOTAL)}</strong>
         </div>
         <div className="card stat">
           <span className="muted">Продуктов</span>
           <strong>{LOANS.length}</strong>
         </div>
-        {NEAREST && (
-          <div className="card stat">
-            <span className="muted">Ближайшее погашение</span>
-            <strong>{DATE.format(new Date(NEAREST.maturity))}</strong>
-            <span className="muted">{NEAREST.product}</span>
-          </div>
-        )}
+        <div className="card stat">
+          <span className="muted">Ближайшее погашение</span>
+          <strong>{DATE.format(new Date(NEAREST.maturity))}</strong>
+          <span className="muted">{NEAREST.product}</span>
+        </div>
       </div>
       <div className="card">
         <div className="table-head">

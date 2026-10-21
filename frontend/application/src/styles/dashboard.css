@@ -11,11 +11,6 @@
   min-height: calc(100vh - var(--shell-top-h) - var(--s-4) - var(--s-12));
 }
 
-.dashboard-grid > .card,
-.quick-actions > .card {
-  min-width: 0;
-}
-
 .quick-actions {
   display: contents;
 }
@@ -167,16 +162,14 @@
   font-weight: var(--fw-bold);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
 }
 
 .quick-action {
   position: relative;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: var(--s-4);
-  padding: var(--s-5);
+  align-items: center;
+  gap: var(--s-5);
+  padding: var(--s-5) var(--s-12) var(--s-5) var(--s-5);
   color: var(--text-primary);
   transition:
     box-shadow var(--t-fast),
@@ -225,8 +218,9 @@
 
 .quick-arrow {
   position: absolute;
-  top: var(--s-5);
+  top: 50%;
   right: var(--s-5);
+  margin-top: -10px;
   color: var(--text-tertiary);
   transition:
     transform var(--t-fast),
@@ -241,6 +235,8 @@
 .quick-meta {
   display: grid;
   gap: 2px;
+  margin-left: auto;
+  text-align: right;
 }
 
 .quick-meta-value {
@@ -256,28 +252,6 @@
   font-size: var(--fs-14);
   line-height: var(--lh-20);
   white-space: nowrap;
-}
-
-.tile-pay,
-.tile-deposit,
-.tile-loans {
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--s-5);
-  padding-right: var(--s-12);
-}
-
-.tile-pay .quick-arrow,
-.tile-deposit .quick-arrow,
-.tile-loans .quick-arrow {
-  top: 50%;
-  margin-top: -10px;
-}
-
-.quick-action .quick-meta {
-  margin-left: auto;
-  text-align: right;
 }
 
 .tile-pay {
@@ -324,9 +298,7 @@
     min-height: 0;
   }
 
-  .tile-pay,
-  .tile-deposit,
-  .tile-loans {
+  .quick-action {
     min-height: 112px;
   }
 }
@@ -347,20 +319,18 @@
     min-height: 200px;
   }
 
-  .tile-pay,
-  .tile-deposit,
-  .tile-loans {
+  .quick-action {
     flex-wrap: wrap;
     min-height: 0;
     padding-right: var(--s-5);
   }
 
-  .quick-action .quick-text {
+  .quick-text {
     flex: 1;
     padding-right: var(--s-6);
   }
 
-  .quick-action .quick-meta {
+  .quick-meta {
     flex-basis: 100%;
     margin-left: 0;
     text-align: left;
@@ -371,9 +341,7 @@
     line-height: var(--lh-26);
   }
 
-  .tile-pay .quick-arrow,
-  .tile-deposit .quick-arrow,
-  .tile-loans .quick-arrow {
+  .quick-arrow {
     top: var(--s-5);
     margin-top: 0;
   }

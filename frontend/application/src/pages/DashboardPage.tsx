@@ -3,13 +3,12 @@ import { Link } from "react-router";
 import { useCompany } from "../company/context";
 import { EventList } from "../dashboard/EventList";
 import { DEPOSIT_RATES } from "../data/depositRates";
-import { LOANS } from "../data/loans";
-import { RUB_WHOLE } from "../money";
+import { LOANS, LOANS_TOTAL } from "../data/loans";
+import { RATE, RUB_WHOLE } from "../money";
 import { Amount } from "../ui/Amount";
 import { Icon, type IconName } from "../ui/Icon";
 
 const WIDGET_EVENTS = 3;
-const RATE = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 
 const PLURAL = new Intl.PluralRules("ru-RU");
 const PRODUCT_FORMS: Record<Intl.LDMLPluralRule, string> = {
@@ -22,7 +21,6 @@ const PRODUCT_FORMS: Record<Intl.LDMLPluralRule, string> = {
 };
 const products = (count: number) => `${count} ${PRODUCT_FORMS[PLURAL.select(count)]}`;
 
-const LOANS_TOTAL = LOANS.reduce((sum, loan) => sum + loan.amount, 0);
 const BEST_RATE = Math.max(...Object.values(DEPOSIT_RATES));
 
 const TILE_META: Record<string, readonly [string, string]> = {

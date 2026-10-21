@@ -63,15 +63,19 @@ function MainNav() {
     <nav className="main-nav" aria-label="Разделы">
       {NAV.map(([to, label, icon]) => (
         <NavLink key={to} to={to} end={to === "/"} title={label}>
-          <span className="nav-icon">
-            <Icon name={icon} />
-            {to === "/events" && eventCount > 0 && (
-              <span className="nav-count" aria-hidden="true">
-                {eventCount}
+          {({ isActive }) => (
+            <>
+              <span className="nav-icon">
+                <Icon name={icon} />
+                {to === "/events" && eventCount > 0 && (
+                  <span className="nav-count" aria-hidden="true">
+                    {eventCount}
+                  </span>
+                )}
               </span>
-            )}
-          </span>
-          <span className="nav-label">{label}</span>
+              <span className={isActive ? "nav-label" : "visually-hidden"}>{label}</span>
+            </>
+          )}
         </NavLink>
       ))}
     </nav>

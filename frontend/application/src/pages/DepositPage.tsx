@@ -1,11 +1,10 @@
 import { useId, useState } from "react";
 import { DEPOSIT_RATES } from "../data/depositRates";
 import { DEPOSIT_TERMS, type DepositTerm, depositIncome } from "../deposit/calc";
-import { parseAmount } from "../money";
+import { parseAmount, RATE } from "../money";
 import { Amount } from "../ui/Amount";
 
 const DEFAULT_TERM: DepositTerm = 6;
-const RATE = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 
 export function DepositPage() {
   const termLabelId = useId();

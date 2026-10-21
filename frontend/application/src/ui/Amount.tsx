@@ -5,14 +5,8 @@ export function Amount({ value, className, testId }: { value: number; className?
   const comma = text.lastIndexOf(",");
   return (
     <strong className={className} data-testid={testId}>
-      {comma < 0 ? (
-        text
-      ) : (
-        <>
-          {text.slice(0, comma)}
-          <span className="amount-tail">{text.slice(comma)}</span>
-        </>
-      )}
+      {text.slice(0, comma)}
+      <span className="amount-tail">{text.slice(comma)}</span>
     </strong>
   );
 }
