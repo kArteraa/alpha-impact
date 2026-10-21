@@ -33,16 +33,22 @@ class InterpretGateway:
         key = cache_key(request, profile.version, await self._house_view.version())
         response = await self._cache.get(key)
         cached = response is not None
-        try:
-            if response is None:
+        if response is None:
+            try:
                 response = await self._interpreter.interpret(request)
-                await self._cache.put(key, response)
-        except Exception as error:
-            await self._record(self._call(request, start, type(error).__name__))
-            raise
+            except Exception as error:
+                await self._record(self._call(request, start, type(error).__name__))
+                raise
+            await self._remember(key, response)
         trace_id = response.cards[0].trace_id if response.cards else None
         await self._record(self._call(request, start, "ok", cached, trace_id))
         return response.model_copy(update={"cached": cached})
+
+    async def _remember(self, key: str, response: InterpretResponse) -> None:
+        try:
+            await self._cache.put(key, response)
+        except Exception:
+            logger.exception("Gateway cache write failed for key %s", key)
 
     async def _record(self, call: CallRecord) -> None:
         try:
