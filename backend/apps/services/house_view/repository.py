@@ -42,6 +42,15 @@ async def approved_claims(session: AsyncSession, subject: str) -> Sequence[House
     return (await session.scalars(query)).all()
 
 
+async def all_approved(session: AsyncSession) -> Sequence[HouseViewClaimRow]:
+    query = (
+        select(HouseViewClaimRow)
+        .where(HouseViewClaimRow.status == APPROVED)
+        .order_by(HouseViewClaimRow.id)
+    )
+    return (await session.scalars(query)).all()
+
+
 async def find_approved(session: AsyncSession, claim_id: str) -> HouseViewClaimRow | None:
     row = await session.get(HouseViewClaimRow, claim_id)
     return row if row is not None and row.status == APPROVED else None
