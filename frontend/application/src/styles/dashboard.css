@@ -181,6 +181,10 @@
   box-shadow: var(--shadow-card);
 }
 
+.quick-action:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
 .quick-action:active {
   transform: scale(0.99);
 }

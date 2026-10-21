@@ -36,6 +36,8 @@
   padding: 25px var(--s-4) 5px;
   border: 0;
   border-radius: var(--r-md);
+  outline: 1px solid transparent;
+  outline-offset: -1px;
   background: var(--bg-neutral);
   box-shadow: inset 0 0 0 1px transparent;
   color: var(--text-primary);
@@ -47,20 +49,20 @@
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
 }
 
 .field input:hover,
 .field select:hover,
 .field textarea:hover {
-  background: var(--bg-neutral-strong);
+  background-color: var(--bg-neutral-strong);
 }
 
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  outline: none;
-  background: var(--bg-card);
+  outline: 2px solid transparent;
+  background-color: var(--bg-card);
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
