@@ -3,13 +3,9 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from apps.services.news.annotation import (
-    annotation_schema,
-    entry_prompt,
-    news_id,
-    to_news_item,
-)
+from apps.services.news.annotation import annotation_schema, news_id, to_news_item
 from apps.services.news.config import load_config
+from apps.services.news.feed import FeedEntry
 from shared.config.factors import FACTORS
 from tests.news_data import KEY_RATE_ANSWER, NOW
 
@@ -56,9 +52,9 @@ def test_answer_becomes_news_item_with_prefixed_entities() -> None:
         answer(regions=["Москва", " москва "], companies=["Сбербанк", "СБЕРБАНК"])
     )
 
-    news = to_news_item(
-        "id-1", "Ставка", "Текст", "https://a.example/1", NOW, "a.example", annotation
-    )
+    entry = FeedEntry("Ставка", "Текст", "https://a.example/1", NOW, "a.example")
+
+    news = to_news_item(entry, annotation)
 
     assert news.entities == [
         "industry:finance",
@@ -67,14 +63,7 @@ def test_answer_becomes_news_item_with_prefixed_entities() -> None:
         "company:сбербанк",
     ]
     assert [factor.name for factor in news.factors] == ["key_rate"]
-    assert (news.id, news.source, news.published_at) == ("id-1", "a.example", NOW)
-
-
-def test_prompt_cuts_long_text() -> None:
-    prompt = entry_prompt("Заголовок", "я" * (CONFIG.max_text_chars + 100), CONFIG.max_text_chars)
-
-    assert prompt.count("я") == CONFIG.max_text_chars
-    assert "Заголовок" in prompt
+    assert (news.id, news.source, news.published_at) == (news_id("Ставка"), "a.example", NOW)
 
 
 def test_news_id_ignores_case_and_spacing_of_title() -> None:

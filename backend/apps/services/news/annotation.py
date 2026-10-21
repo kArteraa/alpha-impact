@@ -1,10 +1,10 @@
 import hashlib
 from collections.abc import Sequence
-from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
 from apps.services.news.config import NewsConfig
+from apps.services.news.feed import FeedEntry
 from shared.config.factors import FACTORS
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem
@@ -98,22 +98,14 @@ async def annotate(
     return answer, tokens_in, tokens_out
 
 
-def to_news_item(
-    item_id: str,
-    title: str,
-    text: str,
-    url: str,
-    published_at: datetime,
-    source: str,
-    annotation: Annotation,
-) -> NewsItem:
+def to_news_item(entry: FeedEntry, annotation: Annotation) -> NewsItem:
     return NewsItem(
-        id=item_id,
-        title=title,
-        text=text,
-        url=url,
-        published_at=published_at,
-        source=source,
+        id=news_id(entry.title),
+        title=entry.title,
+        text=entry.text,
+        url=entry.url,
+        published_at=entry.published_at,
+        source=entry.source,
         entities=entities(annotation),
         factors=[Factor.model_validate(factor.model_dump()) for factor in annotation.factors],
     )
