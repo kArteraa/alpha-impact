@@ -96,7 +96,7 @@ class CriticAgent:
         unmarked = {
             claim.text
             for claim in checked
-            if claim.type != ClaimType.BANK and DIVERGENCE_MARK not in claim.text.lower()
+            if claim.type != ClaimType.BANK and not claim.text.lower().startswith(DIVERGENCE_MARK)
         }
         if not house_view or not unmarked:
             return []
@@ -119,8 +119,12 @@ class CriticAgent:
             task="critic", system=CRITIC_SYSTEM, user=user, schema=Contradictions
         )
         known = {claim.id for claim in house_view}
-        return [
-            f"contradiction: «{item.claim}» противоречит {item.house_view_id}: {item.reason}"
+        found = {
+            (item.claim, item.house_view_id): item.reason
             for item in Contradictions.model_validate(raw).items
             if item.claim in unmarked and item.house_view_id in known
+        }
+        return [
+            f"contradiction: «{claim}» противоречит {claim_id}: {reason}"
+            for (claim, claim_id), reason in found.items()
         ]
