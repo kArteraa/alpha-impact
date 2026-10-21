@@ -196,11 +196,15 @@ async def test_cache_is_not_shared_between_users(harness: Harness) -> None:
     assert harness.interpreter.interpret.await_count == 2
 
 
-async def test_broken_journal_does_not_break_response(harness: Harness) -> None:
+async def test_broken_journal_does_not_break_response(
+    harness: Harness, caplog: pytest.LogCaptureFixture
+) -> None:
     harness.journal.broken = True
     response = await harness.gateway.interpret(USER, request())
     assert response.cards == [card()]
     assert len(harness.cache.entries) == 1
+    assert "journal write failed" in caplog.text
+    assert "journal is down" in caplog.text
 
 
 async def test_broken_journal_keeps_original_error(harness: Harness) -> None:
