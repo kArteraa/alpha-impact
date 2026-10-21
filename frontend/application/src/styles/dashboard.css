@@ -93,7 +93,8 @@
   color: var(--text-on-dark);
   isolation: isolate;
   container-type: inline-size;
-  --account-bars-w: 72px;
+  --account-bar: 16px;
+  --account-bars-w: calc(var(--account-bar) * 4.5);
 }
 
 .account::after {
@@ -103,11 +104,19 @@
   right: var(--s-6);
   z-index: -1;
   width: var(--account-bars-w);
-  height: 80px;
+  height: calc(var(--account-bar) * 5);
   background:
-    linear-gradient(var(--accent), var(--accent)) right bottom / 16px 100% no-repeat,
-    linear-gradient(#ffffff26, #ffffff26) right 28px bottom / 16px 68% no-repeat,
-    linear-gradient(#ffffff14, #ffffff14) right 56px bottom / 16px 38% no-repeat;
+    linear-gradient(var(--accent), var(--accent)) right bottom / var(--account-bar) 100% no-repeat,
+    linear-gradient(
+        color-mix(in srgb, var(--text-on-dark) 15%, transparent),
+        color-mix(in srgb, var(--text-on-dark) 15%, transparent)
+      )
+      right calc(var(--account-bar) * 1.75) bottom / var(--account-bar) 68% no-repeat,
+    linear-gradient(
+        color-mix(in srgb, var(--text-on-dark) 8%, transparent),
+        color-mix(in srgb, var(--text-on-dark) 8%, transparent)
+      )
+      right calc(var(--account-bar) * 3.5) bottom / var(--account-bar) 38% no-repeat;
   border-radius: var(--r-sm);
   opacity: 0.9;
 }
@@ -252,7 +261,7 @@
 }
 
 .tile-pay .quick-icon {
-  background: #ffffff26;
+  background: color-mix(in srgb, var(--on-accent) 15%, transparent);
 }
 
 .tile-pay .muted,
@@ -284,6 +293,10 @@
       "deposit deposit deposit"
       "loans   loans   loans";
   }
+
+  .account {
+    --account-bar: 10px;
+  }
 }
 
 @media (max-width: 760px) {
@@ -295,6 +308,11 @@
       "pay"
       "deposit"
       "loans";
+  }
+
+  .account {
+    gap: var(--s-12);
+    --account-bar: 16px;
   }
 
   .quick-action {
