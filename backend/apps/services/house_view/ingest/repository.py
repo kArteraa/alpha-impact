@@ -2,10 +2,9 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from apps.services.house_view.statuses import MACHINE_STATUSES
 from shared.contracts.schemas import HouseViewClaim
 from shared.db.models import HouseViewClaimRow, ReportPageRow
-
-MACHINE_STATUSES = ("draft", "expired")
 
 
 async def cached_text(
