@@ -360,3 +360,9 @@
     margin-left: var(--s-3);
   }
 }
+
+@media (max-width: 360px) {
+  .stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
