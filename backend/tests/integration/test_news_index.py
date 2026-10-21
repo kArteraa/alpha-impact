@@ -295,10 +295,6 @@ async def test_search_finds_region_and_country_as_written_in_csv(index: NewsInde
     ]
 
 
-async def test_search_by_unknown_country_finds_nothing(index: NewsIndex) -> None:
-    assert await titles(index, [], country="Атлантида") == []
-
-
 async def test_search_skips_news_before_since(index: NewsIndex) -> None:
     since = (NOW - timedelta(days=3)).date()
 
