@@ -13,7 +13,6 @@ SETTINGS_ENV = {
     "MODEL_INTERPRET": "z-ai/glm-5.3-flash",
     "MODEL_CRITIC": "z-ai/glm-5.3-flash",
     "MODEL_FOLLOWUP": "qwen/qwen3.6-35b-a3b",
-    "MODEL_EMBED": "tbd-embedding-model",
     "RELEVANCE_THRESHOLD": "0.3",
     "CACHE_TTL_SECONDS": "3600",
     "EXTENSION_TOKEN_TTL_SECONDS": "3600",

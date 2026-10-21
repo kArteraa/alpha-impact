@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from apps.services.llm.catalog import MODELS_PATH, build_catalog, load_models
 from apps.services.llm.client import ModelClient, build_http_client
+from apps.services.llm.embedder import build_embedder
 from apps.services.llm.service import ModelGateway
 from apps.services.llm.store import SqlUsageStore
 from shared.config.settings import Settings
@@ -25,6 +26,7 @@ def build_gateway(container: Container) -> ModelGateway:
     return ModelGateway(
         catalog=build_catalog(settings, models.models, models.reasoning_off_tasks),
         client=ModelClient(http),
+        embedder=build_embedder(),
         store=SqlUsageStore(container.resolve(async_sessionmaker), settings.LLM_CACHE_TTL_SECONDS),
         daily_budget_rub=settings.LLM_DAILY_BUDGET_RUB,
         reserve_share=settings.LLM_BUDGET_RESERVE_SHARE,

@@ -32,7 +32,6 @@ class MockModelServer:
         self.delay_seconds = delay_seconds
         self.app = FastAPI()
         self.app.post("/v1/chat/completions")(self.chat)
-        self.app.post("/v1/embeddings")(self.embeddings)
 
     async def chat(self, body: dict[str, Any], authorization: str = Header()) -> dict[str, Any]:
         assert authorization == "Bearer test-key"
@@ -40,12 +39,8 @@ class MockModelServer:
         await asyncio.sleep(self.delay_seconds)
         return {
             "choices": [{"message": {"content": '{"name": "key_rate", "strength": 0.8}'}}],
-            "usage": {"prompt_tokens": 2000, "completion_tokens": 400},
+            "usage": {"prompt_tokens": 2000, "completion_tokens": 400, "cost": 0.05},
         }
-
-    async def embeddings(self, body: dict[str, Any]) -> dict[str, Any]:
-        self.calls += 1
-        return {"data": [{"embedding": [0.5, 0.25]}], "usage": {"prompt_tokens": 10}}
 
     def http_client(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(
@@ -61,16 +56,24 @@ def server() -> MockModelServer:
 
 
 @pytest.fixture
+def embedder() -> fakes.CountingEmbedder:
+    return fakes.CountingEmbedder()
+
+
+@pytest.fixture
 def make_gateway(
-    server: MockModelServer, sessions: async_sessionmaker[AsyncSession]
+    server: MockModelServer,
+    embedder: fakes.CountingEmbedder,
+    sessions: async_sessionmaker[AsyncSession],
 ) -> Callable[..., ModelGateway]:
     def build(daily_budget_rub: float = 500.0) -> ModelGateway:
         return fakes.make_gateway(
             server.http_client(),
             SqlUsageStore(sessions, CACHE_TTL_SECONDS),
             daily_budget_rub=daily_budget_rub,
-            prices=load_models(MODELS_PATH).models,
+            allowed=load_models(MODELS_PATH).models,
             today=utc_today,
+            embedder=embedder,
         )
 
     return build
@@ -90,8 +93,20 @@ async def test_structured_call_is_recorded_in_usage(
         2000,
         400,
     )
-    assert usage.cost_rub > 0
-    assert await gateway.budget_left_rub() == pytest.approx(450.0 - float(usage.cost_rub))
+    assert float(usage.cost_rub) == pytest.approx(0.05)
+    assert await gateway.budget_left_rub() == pytest.approx(449.95)
+
+
+async def test_charged_answer_without_token_counts_keeps_its_cost(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    store = SqlUsageStore(sessions, CACHE_TTL_SECONDS)
+    reservation = await store.reserve(utc_today(), "interpret", "z-ai/glm-5.3-flash", 1.0, 450.0)
+    assert reservation is not None
+    await store.settle(reservation, 0, 0, 0.02)
+    async with sessions() as session:
+        row = (await session.scalars(select(LlmUsageRow))).one()
+    assert float(row.cost_rub) == pytest.approx(0.02)
 
 
 async def test_cache_survives_a_new_gateway_instance(
@@ -126,11 +141,21 @@ async def test_exhausted_budget_raises(
 
 
 async def test_embedding_is_cached_in_database(
-    make_gateway: Callable[..., ModelGateway], server: MockModelServer
+    make_gateway: Callable[..., ModelGateway], embedder: fakes.CountingEmbedder
 ) -> None:
-    assert await make_gateway().embed("ставка") == [0.5, 0.25]
-    assert await make_gateway().embed("ставка") == [0.5, 0.25]
-    assert server.calls == 1
+    assert await make_gateway().embed("ставка") == fakes.VECTOR
+    assert await make_gateway().embed("ставка") == fakes.VECTOR
+    assert embedder.calls == ["ставка"]
+
+
+async def test_embedding_spends_no_budget(
+    make_gateway: Callable[..., ModelGateway], sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    gateway = make_gateway()
+    await gateway.embed("ставка")
+    async with sessions() as session:
+        assert await session.scalar(select(func.count()).select_from(LlmUsageRow)) == 0
+    assert await gateway.budget_left_rub() == pytest.approx(450.0)
 
 
 async def age_cache(sessions: async_sessionmaker[AsyncSession], seconds: int) -> None:
@@ -158,7 +183,7 @@ async def test_concurrent_calls_share_one_reservation_across_gateways(
         fakes.make_gateway(
             server.http_client(),
             SqlUsageStore(sessions, CACHE_TTL_SECONDS),
-            prices=load_models(MODELS_PATH).models,
+            allowed=load_models(MODELS_PATH).models,
             today=utc_today,
         )
         for _ in range(5)
@@ -193,14 +218,14 @@ async def test_expired_cache_entry_is_a_miss_and_is_refreshed(
 
 async def test_fresh_cache_entry_is_still_a_hit(
     make_gateway: Callable[..., ModelGateway],
-    server: MockModelServer,
+    embedder: fakes.CountingEmbedder,
     sessions: async_sessionmaker[AsyncSession],
 ) -> None:
     gateway = make_gateway()
     await gateway.embed("ставка")
     await age_cache(sessions, CACHE_TTL_SECONDS - 60)
-    assert await gateway.embed("ставка") == [0.5, 0.25]
-    assert server.calls == 1
+    assert await gateway.embed("ставка") == fakes.VECTOR
+    assert embedder.calls == ["ставка"]
 
 
 async def test_writing_to_cache_drops_other_expired_entries(

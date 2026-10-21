@@ -31,16 +31,6 @@ async def test_paid_answer_is_cached_when_usage_cannot_be_recorded() -> None:
     assert len(server.requests) == 1
 
 
-async def test_paid_embedding_is_cached_when_usage_cannot_be_recorded() -> None:
-    server = ModelServer()
-    store = BrokenSettleStore()
-    gateway = make_gateway(server.http_client(), store)
-    with pytest.raises(UsageNotRecorded):
-        await gateway.embed("text")
-    assert await gateway.embed("text") == [0.1, 0.2, 0.3]
-    assert len(server.requests) == 1
-
-
 async def test_invalid_answer_with_unrecorded_usage_is_not_cached() -> None:
     store = BrokenSettleStore()
     gateway = make_gateway(ModelServer(content="not json").http_client(), store)
@@ -65,10 +55,11 @@ async def test_answer_charged_as_fact_when_cache_cannot_be_written() -> None:
     assert [(usage.tokens_in, usage.tokens_out) for usage in store.usages] == [(1000, 500)]
 
 
-async def test_embedding_charged_as_fact_when_cache_cannot_be_written() -> None:
-    server = ModelServer(tokens_in=10)
+async def test_embedding_not_cached_raises_without_charge() -> None:
     store = BrokenCacheStore()
-    gateway = make_gateway(server.http_client(), store, call_reserve_rub=1.0)
-    with pytest.raises(CacheNotWritten):
+    gateway = make_gateway(ModelServer().http_client(), store)
+    with pytest.raises(CacheNotWritten) as raised:
         await gateway.embed("text")
-    assert [usage.tokens_in for usage in store.usages] == [10]
+    assert isinstance(raised.value, DomainError)
+    assert isinstance(raised.value.__cause__, RuntimeError)
+    assert store.usages == []

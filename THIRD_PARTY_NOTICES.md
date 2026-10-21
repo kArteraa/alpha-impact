@@ -17,6 +17,9 @@
 | httpx | BSD-3-Clause | HTTP-клиент к LLM-шлюзу и тестовый клиент |
 | PyYAML | MIT | каталог продуктов и шаблоны планов |
 | python-multipart | Apache-2.0 | формы в FastAPI |
+| onnxruntime | MIT | локальный запуск модели эмбеддингов (CPU) |
+| tokenizers | Apache-2.0 | токенизатор модели эмбеддингов |
+| numpy | BSD-3-Clause | входы модели и нормировка векторов |
 | pypdf | BSD-3-Clause | страницы-картинки отчётов банка из PDF |
 | Pillow | MIT-CMU | перекодирование страниц отчётов для OCR |
 | Tesseract OCR (системный пакет `tesseract-ocr`, `tesseract-ocr-rus`) | Apache-2.0 | распознавание текста отчётов банка |
@@ -47,7 +50,7 @@ Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), my
 | Docker Compose | Apache-2.0 | запуск одной командой |
 | tesseract (rus+eng) | Apache-2.0 | OCR отчётов банка (задача AH-9) |
 
-## Модели (только из allow-list кейса, вызываются через `apps/services/llm`)
+## Модели (генерация — только из allow-list кейса, эмбеддинги — локальная e5 по исключению из `AGENTS.md`; всё через `apps/services/llm`)
 
 | Модель | Лицензия по карточке модели | Задача |
 |---|---|---|
@@ -57,6 +60,7 @@ Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), my
 | DeepSeek-V4.1-Flash | MIT | резерв |
 | Qwen3-VL-30B-A3B | Apache-2.0 | резерв (сканы) |
 | Kimi-K2.6 | Modified MIT | резерв |
+| multilingual-e5-small (`intfloat`, ONNX) | MIT | эмбеддинги: дубли и индекс новостей; локально, скачивается при сборке образа |
 
 Доступ к моделям — через единый API-ключ кейса; условия использования — по правилам хакатона.
 

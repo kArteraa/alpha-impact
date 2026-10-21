@@ -4,7 +4,13 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 GATEWAY = ROOT / "apps" / "services" / "llm"
-MODEL_API_MARKERS = ("LLM_API_BASE", "LLM_API_KEY", "/chat/completions", "/embeddings")
+MODEL_API_MARKERS = (
+    "LLM_API_BASE",
+    "LLM_API_KEY",
+    "/chat/completions",
+    "onnxruntime",
+    "tokenizers",
+)
 
 
 def sources_outside_gateway() -> list[Path]:

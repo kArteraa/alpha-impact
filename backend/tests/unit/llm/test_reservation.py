@@ -59,11 +59,20 @@ async def test_reservation_is_held_during_the_call() -> None:
 
 async def test_reservation_is_replaced_by_the_actual_cost() -> None:
     store = MemoryStore()
-    gateway = make_gateway(ModelServer(tokens_in=1000, tokens_out=500).http_client(), store)
+    gateway = make_gateway(
+        ModelServer(tokens_in=1000, tokens_out=500, cost_rub=0.07).http_client(), store
+    )
     await gateway.complete("interpret", "sys", "usr")
     assert [(u.tokens_in, u.tokens_out, u.cost_rub) for u in store.usages] == [
-        (1000, 500, pytest.approx(0.25))
+        (1000, 500, pytest.approx(0.07))
     ]
+
+
+async def test_charged_answer_without_token_counts_keeps_its_cost() -> None:
+    store = MemoryStore()
+    server = ModelServer(tokens_in=0, tokens_out=0, cost_rub=0.02)
+    await make_gateway(server.http_client(), store).complete("interpret", "sys", "usr")
+    assert [(u.tokens_in, u.cost_rub) for u in store.usages] == [(0, 0.02)]
 
 
 async def test_unavailable_model_releases_the_reservation() -> None:
@@ -85,7 +94,7 @@ async def test_unexpected_failure_releases_the_reservation() -> None:
         transport=httpx.MockTransport(handle), base_url="https://llm.example/v1"
     )
     with pytest.raises(RuntimeError):
-        await make_gateway(http, store).embed("text")
+        await make_gateway(http, store).complete("interpret", "sys", "usr")
     assert store.usages == []
 
 
