@@ -62,6 +62,14 @@ class Profiles:
             version=self.version,
         )
 
+    async def list_clients(self, user_id: str) -> list[str]:
+        return [CLIENT]
+
+    async def apply_user_correction(
+        self, user_id: str, client_id: str, feature: str, value: object
+    ) -> ClientProfile:
+        raise AssertionError("gateway must not correct profiles while interpreting")
+
 
 def card() -> InsightCard:
     claim = Claim(
