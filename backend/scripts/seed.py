@@ -42,8 +42,9 @@ async def main() -> None:
         sessions = make_session_factory(engine)
         users = await seed_users(sessions)
         print(f"users: {users}")
-        expired_docs = {doc.file for doc in load_ingest_config().documents if doc.expired}
-        claims = await load_house_view(sessions, SEED_DIR / APPROVED_HOUSE_VIEW, expired_docs)
+        claims = await load_house_view(
+            sessions, SEED_DIR / APPROVED_HOUSE_VIEW, load_ingest_config().expired_docs
+        )
         print(f"house view claims: {claims}")
         profiles = await rebuild_profiles(sessions, RAW_DIR, load_config())
         print(f"profiles: {profiles}")

@@ -40,6 +40,10 @@ class IngestConfig(BaseModel):
         return [*FACTORS, *self.extra_subjects]
 
     @property
+    def expired_docs(self) -> set[str]:
+        return {doc.file for doc in self.documents if doc.expired}
+
+    @property
     def prompt(self) -> str:
         hints = "\n".join(f"- {name}: {self.subject_hints[name]}" for name in self.subjects)
         return f"{self.system_prompt}\nТемы:\n{hints}"
