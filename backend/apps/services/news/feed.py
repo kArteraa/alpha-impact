@@ -7,7 +7,7 @@ from email.utils import parsedate_to_datetime
 
 import httpx
 
-TAG = re.compile(r"<[^>]+>")
+TAG = re.compile(r"</?[A-Za-z][^>]*>")
 
 
 class FeedTooLarge(ValueError):
@@ -24,7 +24,7 @@ class FeedEntry:
 
 
 def plain(value: str | None) -> str:
-    return " ".join(html.unescape(TAG.sub(" ", value or "")).split())
+    return " ".join(TAG.sub(" ", html.unescape(value or "")).split())
 
 
 def published(value: str | None) -> datetime | None:
