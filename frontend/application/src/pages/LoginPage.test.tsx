@@ -25,6 +25,12 @@ describe("LoginPage", () => {
     vi.unstubAllGlobals();
   });
 
+  it("marks the test mode", () => {
+    renderLogin();
+
+    expect(screen.getByText("Тестовый режим")).toBeTruthy();
+  });
+
   it("logs in through /auth/mock and opens the main screen", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ user_id: "user_cfo_wholesale" })));
     vi.stubGlobal("fetch", fetchMock);

@@ -6,6 +6,7 @@ export function Significance({ value }: { value: number }) {
   return (
     <span
       className="significance"
+      data-level={level}
       role="img"
       aria-label={`Значимость ${level} из ${SIGNIFICANCE_LEVELS}`}
       title={`Значимость ${level} из ${SIGNIFICANCE_LEVELS}`}

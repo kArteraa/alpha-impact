@@ -86,13 +86,15 @@ export function PaymentPage() {
               </small>
             )}
           </div>
-          <label className="field">
+          <label className="field field-static">
             <span className="muted">Назначение платежа</span>
             <textarea rows={3} value={form.purpose} onChange={(event) => update("purpose", event.target.value)} />
           </label>
-          <button className="button" type="submit" disabled={paymentContext === null}>
-            Отправить
-          </button>
+          <div className="form-actions">
+            <button className="button" type="submit" disabled={paymentContext === null}>
+              Отправить
+            </button>
+          </div>
         </form>
         <aside>
           {panelContext ? (
@@ -105,7 +107,7 @@ export function PaymentPage() {
               onRetry={insight.retry}
             />
           ) : (
-            <div className="card muted">Выберите получателя и сумму — Alpha Impact проверит, что важно для этого платежа</div>
+            <div className="card card-neutral muted">Выберите получателя и сумму — Alpha Impact проверит, что важно для этого платежа</div>
           )}
         </aside>
       </div>

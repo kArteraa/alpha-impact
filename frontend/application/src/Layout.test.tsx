@@ -1,6 +1,15 @@
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { renderApp } from "./testing";
+
+const SECTIONS = [
+  ["Главная", "/"],
+  ["События", "/events"],
+  ["Платежи", "/payments/new"],
+  ["Депозиты", "/deposits/new"],
+  ["Кредиты", "/loans"],
+  ["Профиль", "/profile"],
+];
 
 describe("Layout", () => {
   afterEach(cleanup);
@@ -8,22 +17,32 @@ describe("Layout", () => {
   it("names the product in text without a bank logo", () => {
     renderApp();
 
-    expect(screen.getByText("Alpha Impact").className).toContain("brand");
+    expect(document.querySelector(".brand")?.textContent).toBe("Alpha Impact");
     expect(document.querySelector(".brand img, .brand svg")).toBeNull();
   });
 
-  it("offers the side navigation", () => {
+  it("offers the top navigation with events", () => {
     renderApp();
 
     const nav = screen.getByRole("navigation", { name: "Разделы" });
-    const links = Array.from(nav.querySelectorAll("a"), (link) => [link.textContent, link.getAttribute("href")]);
-    expect(links).toEqual([
-      ["Главная", "/"],
-      ["Платежи", "/payments/new"],
-      ["Депозиты", "/deposits/new"],
-      ["Кредиты", "/loans"],
-      ["Профиль", "/profile"],
-    ]);
+    const hrefs = within(nav)
+      .getAllByRole("link")
+      .map((link) => link.getAttribute("href"));
+    expect(hrefs).toEqual(SECTIONS.map(([, href]) => href));
+    for (const [name, href] of SECTIONS) {
+      expect(within(nav).getByRole("link", { name }).getAttribute("href")).toBe(href);
+    }
+  });
+
+  it("shows how many events the company has next to the events link", () => {
+    renderApp();
+
+    const events = screen.getByRole("link", { name: "События" });
+    expect(events.querySelector(".nav-count")?.textContent).toBe("4");
+
+    fireEvent.change(screen.getByLabelText("Компания"), { target: { value: "client_construction" } });
+
+    expect(events.querySelector(".nav-count")?.textContent).toBe("3");
   });
 
   it("switches the company and changes the feed", () => {
