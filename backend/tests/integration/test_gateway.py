@@ -37,7 +37,9 @@ class FakeInterpreter:
         self.calls.append(request)
         if self.error is not None:
             raise self.error
-        claim = Claim(text="Ставка снижена", type=ClaimType.FACT, source_ref=SourceRef(kind="news", id="n1"))
+        claim = Claim(
+            text="Ставка снижена", type=ClaimType.FACT, source_ref=SourceRef(kind="news", id="n1")
+        )
         card = InsightCard(
             id="c1",
             headline="Ставка",
@@ -111,7 +113,9 @@ async def logged_in(client: httpx.AsyncClient) -> httpx.AsyncClient:
     return client
 
 
-def interpret_body(client_id: str = "U_1", user_id: str = USER, amount: float = 100.0) -> dict[str, Any]:
+def interpret_body(
+    client_id: str = "U_1", user_id: str = USER, amount: float = 100.0
+) -> dict[str, Any]:
     return {
         "user_id": user_id,
         "client_id": client_id,
@@ -204,7 +208,9 @@ async def test_expired_cache_entry_is_not_served(
     age = Settings().CACHE_TTL_SECONDS + 1
     async with engine.begin() as connection:
         await connection.execute(
-            text("UPDATE interpret_cache SET created_at = created_at - make_interval(secs => :age)"),
+            text(
+                "UPDATE interpret_cache SET created_at = created_at - make_interval(secs => :age)"
+            ),
             {"age": age},
         )
     response = await logged_in.post("/interpret", json=interpret_body())
