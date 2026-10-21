@@ -6,7 +6,6 @@ import pytest
 from shared.config.geography import (
     COUNTRIES,
     REGIONS,
-    Country,
     country_code,
     name_key,
     names_index,
@@ -67,18 +66,28 @@ def test_russia_is_neither_region_nor_country() -> None:
     assert [country_code(name) for name in ("Россия", "Russia", "ru")] == [None, None, None]
 
 
-def test_region_is_returned_as_written_in_csv() -> None:
-    assert region_name("республика татарстан") == "Республика Татарстан"
-    assert region_name("БУРЯТИЯ (РЕСПУБЛИКА)") == "Бурятия (Республика)"
-    assert region_name("Татарстан") is None
-    assert len({name_key(name) for name in REGIONS}) == len(REGIONS)
+@pytest.mark.parametrize(
+    ("name", "region"),
+    [
+        ("республика татарстан", "Республика Татарстан"),
+        ("Татарстан", "Республика Татарстан"),
+        ("БУРЯТИЯ (РЕСПУБЛИКА)", "Бурятия (Республика)"),
+        ("Бурятия", "Бурятия (Республика)"),
+        ("Якутия", "Саха (Республика) (Якутия)"),
+        ("Адыгея", "Адыгея (Республика) (Адыгея)"),
+        ("Чувашия", "Чувашская Республика-Чувашия"),
+        ("Севастополь", "Севастополь"),
+    ],
+)
+def test_region_is_returned_as_written_in_csv(name: str, region: str) -> None:
+    assert region_name(name) == region
 
 
-def test_name_shared_by_two_countries_is_rejected() -> None:
-    countries = {
-        "cg": Country(ru="Конго", en="Congo", aliases=()),
-        "cd": Country(ru="ДР Конго", en="DR Congo", aliases=("конго",)),
-    }
+def test_model_sees_common_names_of_every_subject() -> None:
+    assert len(REGIONS) == 90
+    assert {"Якутия", "Татарстан", "Москва", "Херсонская область"} <= set(REGIONS.values())
 
+
+def test_name_shared_by_two_places_is_rejected() -> None:
     with pytest.raises(ValueError, match="конго"):
-        names_index(countries)
+        names_index({"cg": ("cg", "Конго"), "cd": ("cd", "ДР Конго", "конго")})
