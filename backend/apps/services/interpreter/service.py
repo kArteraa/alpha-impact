@@ -203,18 +203,24 @@ class Agent:
         news: list[NewsItem],
     ) -> InsightCard:
         card = build_card(draft, evidence, card_id=str(uuid4()), trace_id=journal.trace.id)
-        verdicts = await journal.review(1, self._critic, card, house_view, news)
-        if not verdicts:
-            return card
-        redraft = await journal.generate(
-            "redraft",
-            DRAFT_SYSTEM,
-            json.dumps(
-                {**payload, "previous_draft": draft.model_dump(), "critic_verdicts": verdicts},
-                ensure_ascii=False,
-            ),
-            Draft,
-        )
-        card = build_card(redraft, evidence, card_id=card.id, trace_id=journal.trace.id)
-        verdicts = await journal.review(2, self._critic, card, house_view, news)
+        round_number = 1
+        try:
+            verdicts = await journal.review(round_number, self._critic, card, house_view, news)
+            if not verdicts:
+                return card
+            round_number = 2
+            redraft = await journal.generate(
+                "redraft",
+                DRAFT_SYSTEM,
+                json.dumps(
+                    {**payload, "previous_draft": draft.model_dump(), "critic_verdicts": verdicts},
+                    ensure_ascii=False,
+                ),
+                Draft,
+            )
+            card = build_card(redraft, evidence, card_id=card.id, trace_id=journal.trace.id)
+            verdicts = await journal.review(round_number, self._critic, card, house_view, news)
+        except (DomainError, ValidationError) as error:
+            journal.trace.critic_verdicts.append(f"{round_number}: error: {type(error).__name__}")
+            return card.model_copy(update={"needs_review": True})
         return card.model_copy(update={"needs_review": bool(verdicts)})

@@ -46,13 +46,19 @@ def card(**blocks: list[Claim]) -> InsightCard:
     )
 
 
-def model(items: list[dict[str, str]] | None = None) -> AsyncMock:
+def model(*flags: tuple[str, str], items: list[dict[str, object]] | None = None) -> AsyncMock:
     llm = AsyncMock(spec=LLMGateway)
 
     async def complete(
         task: str, system: str, user: str, schema: type[BaseModel]
     ) -> tuple[BaseModel, int, int]:
-        return schema.model_validate({"items": items or []}), 50, 10
+        ids = {claim["text"]: claim["id"] for claim in json.loads(user)["claims"]}
+        found = [
+            {"claim_id": ids[text], "house_view_id": claim_id, "reason": "банк ждёт иного"}
+            for text, claim_id in flags
+            if text in ids
+        ]
+        return schema.model_validate({"items": found + (items or [])}), 50, 10
 
     llm.complete.side_effect = complete
     return llm
@@ -119,44 +125,77 @@ async def test_bank_claim_on_outdated_house_view_is_rejected(update: dict[str, s
 
 
 async def test_unmarked_contradiction_with_house_view_is_rejected() -> None:
-    llm = model([{"claim": RISK, "house_view_id": CURRENT.id, "reason": "банк ждёт иного"}])
-    verdicts = await review(card(), llm)
+    verdicts = await review(card(), model((RISK, CURRENT.id)))
     assert codes(verdicts) == {"contradiction"}
     assert RISK in verdicts[0]
 
 
-async def test_contradiction_marked_as_divergence_is_accepted() -> None:
-    marked = f"Расхождение с позицией банка: {RISK}"
-    claim = Claim(text=marked, type=ClaimType.AI, source_ref=NEWS)
-    llm = model([{"claim": marked, "house_view_id": CURRENT.id, "reason": "банк ждёт иного"}])
+async def test_contradiction_is_matched_by_claim_id_not_model_text() -> None:
+    llm = model()
+    await review(card(), llm)
+    claims = json.loads(llm.complete.await_args.kwargs["user"])["claims"]
+    risk_id = next(claim["id"] for claim in claims if claim["text"] == RISK)
+    item = {"claim_id": risk_id, "house_view_id": CURRENT.id, "reason": "банк ждёт иного"}
+    verdicts = await review(card(), model(items=[item]))
+    assert codes(verdicts) == {"contradiction"}
+    assert f"«{RISK}»" in verdicts[0]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"Расхождение с позицией банка: {RISK}",
+        f"  расхождение: {RISK}",
+        f"«Расхождение» с банком: {RISK}",
+        f"— Расхождение. {RISK}",
+    ],
+)
+async def test_contradiction_marked_as_divergence_is_accepted(text: str) -> None:
+    claim = Claim(text=text, type=ClaimType.AI, source_ref=NEWS)
+    llm = model((text, CURRENT.id))
     assert await review(card(consequences=[claim]), llm) == []
-    assert marked not in llm.complete.await_args.kwargs["user"]
+    assert text not in llm.complete.await_args.kwargs["user"]
 
 
-async def test_negated_divergence_mark_does_not_hide_contradiction() -> None:
-    negated = f"Это не расхождение с позицией банка: {RISK}"
-    claim = Claim(text=negated, type=ClaimType.AI, source_ref=NEWS)
-    llm = model([{"claim": negated, "house_view_id": CURRENT.id, "reason": "банк ждёт иного"}])
-    assert codes(await review(card(consequences=[claim]), llm)) == {"contradiction"}
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"Это не расхождение с позицией банка: {RISK}",
+        f"Расхождением с банком это не считается: {RISK}",
+        f"Расхождения нет: {RISK}",
+    ],
+)
+async def test_word_other_than_leading_mark_does_not_hide_contradiction(text: str) -> None:
+    claim = Claim(text=text, type=ClaimType.AI, source_ref=NEWS)
+    verdicts = await review(card(consequences=[claim]), model((text, CURRENT.id)))
+    assert codes(verdicts) == {"contradiction"}
 
 
 async def test_repeated_contradiction_gives_one_verdict() -> None:
-    item = {"claim": RISK, "house_view_id": CURRENT.id, "reason": "банк ждёт иного"}
-    assert len(await review(card(), model([item, item]))) == 1
+    assert len(await review(card(), model((RISK, CURRENT.id), (RISK, CURRENT.id)))) == 1
 
 
 @pytest.mark.parametrize(
     "item",
     [
-        {"claim": "Текст, которого нет в карточке", "house_view_id": CURRENT.id, "reason": "-"},
-        {"claim": RISK, "house_view_id": "invented-claim", "reason": "-"},
-        {"claim": CURRENT.claim, "house_view_id": CURRENT.id, "reason": "-"},
+        {"claim_id": 99, "house_view_id": CURRENT.id, "reason": "-"},
+        {"claim_id": -1, "house_view_id": CURRENT.id, "reason": "-"},
+        {"claim_id": 0, "house_view_id": "invented-claim", "reason": "-"},
     ],
 )
 async def test_contradictions_outside_card_or_house_view_are_ignored(
-    item: dict[str, str],
+    item: dict[str, object],
 ) -> None:
-    assert await review(card(), model([item])) == []
+    assert await review(card(), model(items=[item])) == []
+
+
+async def test_bank_quotes_are_not_sent_for_contradiction_check() -> None:
+    llm = model()
+    await review(card(), llm)
+    texts = [
+        claim["text"] for claim in json.loads(llm.complete.await_args.kwargs["user"])["claims"]
+    ]
+    assert CURRENT.claim not in texts
 
 
 async def test_without_house_view_model_is_not_called() -> None:

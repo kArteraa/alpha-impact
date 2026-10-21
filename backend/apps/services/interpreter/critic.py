@@ -1,4 +1,5 @@
 import json
+import re
 
 from pydantic import BaseModel, ConfigDict
 
@@ -7,13 +8,13 @@ from apps.services.interpreter.prompts import CRITIC_SYSTEM
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Claim, ClaimType, HouseViewClaim, InsightCard, NewsItem
 
-DIVERGENCE_MARK = "расхождение"
+DIVERGENCE_MARK = re.compile(r"^\W*расхождение\b", re.IGNORECASE)
 CLIENT_SOURCES = {"profile", "graph"}
 
 
 class Contradiction(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    claim: str
+    claim_id: int
     house_view_id: str
     reason: str
 
@@ -93,16 +94,18 @@ class CriticAgent:
     async def _contradictions(
         self, checked: list[Claim], house_view: list[HouseViewClaim]
     ) -> list[str]:
-        unmarked = {
-            claim.text
-            for claim in checked
-            if claim.type != ClaimType.BANK and not claim.text.lower().startswith(DIVERGENCE_MARK)
-        }
+        unmarked = sorted(
+            {
+                claim.text
+                for claim in checked
+                if claim.type != ClaimType.BANK and not DIVERGENCE_MARK.match(claim.text)
+            }
+        )
         if not house_view or not unmarked:
             return []
         user = json.dumps(
             {
-                "claims": sorted(unmarked),
+                "claims": [{"id": index, "text": text} for index, text in enumerate(unmarked)],
                 "house_view": [
                     {
                         "id": claim.id,
@@ -120,11 +123,11 @@ class CriticAgent:
         )
         known = {claim.id for claim in house_view}
         found = {
-            (item.claim, item.house_view_id): item.reason
+            (item.claim_id, item.house_view_id): item.reason
             for item in Contradictions.model_validate(raw).items
-            if item.claim in unmarked and item.house_view_id in known
+            if 0 <= item.claim_id < len(unmarked) and item.house_view_id in known
         }
         return [
-            f"contradiction: «{claim}» противоречит {claim_id}: {reason}"
-            for (claim, claim_id), reason in found.items()
+            f"contradiction: «{unmarked[claim_id]}» противоречит {house_view_id}: {reason}"
+            for (claim_id, house_view_id), reason in found.items()
         ]
