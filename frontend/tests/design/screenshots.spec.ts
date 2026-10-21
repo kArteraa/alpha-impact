@@ -12,6 +12,16 @@ test("dashboard", async ({ page }) => {
   await page.screenshot({ path: path.join(OUTPUT, "dashboard.png"), fullPage: true, animations: "disabled" });
 });
 
+test.describe("dark theme", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("dashboard", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("heading", { name: "Что важно для вашего бизнеса" })).toBeVisible();
+    await page.screenshot({ path: path.join(OUTPUT, "dashboard-dark.png"), fullPage: true, animations: "disabled" });
+  });
+});
+
 test("payment with the panel", async ({ page }) => {
   await page.goto("/payments/new");
   await page.getByLabel("Получатель").selectOption("cp_logistics_spb");

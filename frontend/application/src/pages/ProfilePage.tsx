@@ -46,7 +46,7 @@ function FeatureCard({ label, feature, onSave }: FeatureCardProps) {
             </button>
           ) : (
             <>
-              <button type="button" className="button-secondary" onClick={() => save(draft)}>
+              <button type="button" className="button-primary button-xs" onClick={() => save(draft)}>
                 Сохранить
               </button>
               <button type="button" className="button-ghost" onClick={() => setDraft(null)}>

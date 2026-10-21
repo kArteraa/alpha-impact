@@ -25,6 +25,12 @@ describe("TracePage", () => {
     expect(screen.getByText(/820 мс/)).toBeTruthy();
   });
 
+  it("leads back to the main screen", () => {
+    renderTrace("trace-mock-1");
+
+    expect(screen.getByRole("link", { name: "← Главная" }).getAttribute("href")).toBe("/");
+  });
+
   it("opens the details of a step", () => {
     renderTrace("trace-mock-1");
     const plan = screen.getByText("План").closest("details");

@@ -23,8 +23,13 @@ export function TracePage() {
   const trace = Object.hasOwn(TRACES, id) ? TRACES[id] : undefined;
   return (
     <section>
-      <h1>Трасса {id}</h1>
-      <div className="card">
+      <div className="page-head">
+        <Link to="/" className="page-back">
+          ← Главная
+        </Link>
+        <h1>Трасса {id}</h1>
+      </div>
+      <div className="card trace-card">
         {trace === undefined ? (
           <p className="empty">
             Трасса не найдена. <Link to="/">На главную</Link>
