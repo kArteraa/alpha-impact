@@ -1,6 +1,7 @@
 import pytest
 from pydantic import BaseModel
 
+from apps.services.llm.catalog import MODELS_PATH, load_models
 from apps.services.llm.client import build_http_client
 from apps.services.llm.embedder import LocalEmbedder
 from apps.services.llm.service import cache_key, response_format
@@ -135,27 +136,44 @@ def test_http_client_uses_shared_key_base_and_timeout(settings_env: dict[str, st
     assert client.timeout.connect == 8
 
 
-async def test_task_without_reasoning_asks_model_not_to_reason() -> None:
+@pytest.mark.parametrize("task", ["extract", "followup"])
+async def test_task_without_reasoning_asks_model_not_to_reason(task: str) -> None:
     server = ModelServer(content='{"ok": true, "reason": "r"}')
     gateway = make_gateway(
-        server.http_client(), MemoryStore(), reasoning_off=frozenset({"extract"})
+        server.http_client(),
+        MemoryStore(),
+        reasoning_off=load_models(MODELS_PATH).reasoning_off_tasks,
     )
 
-    await gateway.complete("extract", "sys", "usr", Verdict)
+    result = await gateway.complete(task, "sys", "usr", Verdict)
     await gateway.complete("critic", "sys", "usr", Verdict)
 
+    assert result == (Verdict(ok=True, reason="r"), 1000, 500)
+    assert server.body(0)["model"] == ROUTES[task]
     assert server.body(0)["reasoning"] == {"enabled": False}
     assert "reasoning" not in server.body(1)
 
 
-async def test_reasoning_switch_is_part_of_cache_key() -> None:
+@pytest.mark.parametrize("task", ["extract", "followup"])
+async def test_reasoning_switch_is_part_of_cache_key(task: str) -> None:
     server = ModelServer(content='{"ok": true, "reason": "r"}')
     store = MemoryStore()
-    await make_gateway(server.http_client(), store).complete("extract", "sys", "usr", Verdict)
+    await make_gateway(server.http_client(), store).complete(task, "sys", "usr", Verdict)
 
-    switched = make_gateway(server.http_client(), store, reasoning_off=frozenset({"extract"}))
-    await switched.complete("extract", "sys", "usr", Verdict)
+    switched = make_gateway(
+        server.http_client(),
+        store,
+        reasoning_off=load_models(MODELS_PATH).reasoning_off_tasks,
+    )
+    result = await switched.complete(task, "sys", "usr", Verdict)
 
+    assert result == (Verdict(ok=True, reason="r"), 1000, 500)
+    assert len(server.requests) == 2
+    assert await switched.complete(task, "sys", "usr", Verdict) == (
+        Verdict(ok=True, reason="r"),
+        0,
+        0,
+    )
     assert len(server.requests) == 2
 
 
