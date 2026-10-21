@@ -14,8 +14,6 @@
 
 .feed-widget {
   grid-area: feed;
-  display: flex;
-  flex-direction: column;
 }
 
 .feed-head {
@@ -39,10 +37,8 @@
   list-style: none;
 }
 
-
 .event {
   display: grid;
-  align-content: start;
   gap: var(--s-1);
   padding: var(--s-4) var(--s-3);
 }
@@ -97,6 +93,7 @@
   color: var(--text-on-dark);
   isolation: isolate;
   container-type: inline-size;
+  --account-bars-w: 72px;
 }
 
 .account::after {
@@ -105,7 +102,7 @@
   top: var(--s-6);
   right: var(--s-6);
   z-index: -1;
-  width: 72px;
+  width: var(--account-bars-w);
   height: 80px;
   background:
     linear-gradient(var(--accent), var(--accent)) right bottom / 16px 100% no-repeat,
@@ -120,7 +117,7 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 var(--s-3);
-  padding-right: calc(72px + var(--s-4));
+  padding-right: calc(var(--account-bars-w) + var(--s-4));
   font-size: var(--fs-16);
   line-height: var(--lh-24);
 }
@@ -292,7 +289,6 @@
 @media (max-width: 760px) {
   .dashboard-grid {
     grid-template-columns: minmax(0, 1fr);
-    grid-auto-rows: auto;
     grid-template-areas:
       "acct"
       "feed"
@@ -301,10 +297,8 @@
       "loans";
   }
 
-
   .quick-action {
     flex-wrap: wrap;
-    min-height: 0;
     padding-right: var(--s-5);
   }
 

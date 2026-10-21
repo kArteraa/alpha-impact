@@ -332,17 +332,12 @@
     grid-column: 1 / -1;
   }
 
-  .stat strong {
+  .stat:not(:first-child) strong {
     font-size: var(--fs-22);
     line-height: var(--lh-26);
+    letter-spacing: -0.2px;
   }
 
-  .stat:first-child strong {
-    font-size: var(--fs-30);
-    line-height: var(--lh-36);
-  }
-
-  .portfolio th,
   .portfolio td {
     white-space: nowrap;
   }
@@ -363,9 +358,5 @@
     grid-column: 2;
     grid-row: 1;
     margin-left: var(--s-3);
-  }
-
-  .trace-step-meta {
-    grid-column: 1;
   }
 }
