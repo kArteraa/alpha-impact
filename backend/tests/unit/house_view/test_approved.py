@@ -10,8 +10,8 @@ from apps.services.house_view.approved import (
     validate_chains,
 )
 from shared.contracts.schemas import HouseViewClaim
+from tests.house_view_data import APPROVED_FILE
 
-APPROVED_FILE = Path(__file__).resolve().parents[3] / "data" / "seed" / "house_view_approved.json"
 RATE_CHAIN = [date(2026, 7, 22), date(2026, 7, 31), date(2026, 9, 7), date(2026, 9, 11)]
 
 

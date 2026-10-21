@@ -1,4 +1,3 @@
-import json
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -6,15 +5,13 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.house_view.approved import load_approved
 from apps.services.house_view.batch import load_house_view
 from apps.services.house_view.service import HouseView
 from shared.contracts.errors import NotFound
 from shared.contracts.schemas import HouseViewClaim
 from shared.db.models import HouseViewClaimRow
+from tests.house_view_data import APPROVED, APPROVED_FILE, write_claims
 
-APPROVED_FILE = Path(__file__).resolve().parents[2] / "data" / "seed" / "house_view_approved.json"
-APPROVED = load_approved(APPROVED_FILE)
 SUBJECTS = sorted({claim.subject for claim in APPROVED})
 DRAFT = HouseViewClaim(
     id="draft-key-rate",
@@ -146,11 +143,7 @@ async def test_claim_removed_from_file_is_no_longer_approved(
     house_view: HouseView, sessions: async_sessionmaker[AsyncSession], tmp_path: Path
 ) -> None:
     kept = [claim for claim in APPROVED if claim.subject != "gold"]
-    path = tmp_path / "approved.json"
-    path.write_text(
-        json.dumps([claim.model_dump(mode="json") for claim in kept], ensure_ascii=False),
-        encoding="utf-8",
-    )
+    path = write_claims(tmp_path / "approved.json", kept)
 
     await load_house_view(sessions, path, {EXPIRED_DOC})
 
@@ -178,8 +171,7 @@ async def test_claim_from_expired_document_goes_back_as_expired(
     steel = DRAFT.model_copy(
         update={"id": "steel", "source_doc": EXPIRED_DOC, "status": "approved"}
     )
-    path = tmp_path / "approved.json"
-    path.write_text(json.dumps([steel.model_dump(mode="json")]), encoding="utf-8")
+    path = write_claims(tmp_path / "approved.json", [steel])
     await load_house_view(sessions, path, {EXPIRED_DOC})
     path.write_text("[]", encoding="utf-8")
 
