@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import MappingProxyType
 
@@ -22,13 +22,13 @@ def name_key(value: str) -> str:
     return " ".join(value.split()).casefold().replace("ё", "е")
 
 
-def names_index(countries: Mapping[str, Country]) -> Mapping[str, str]:
+def names_index(names: Mapping[str, Sequence[str]]) -> Mapping[str, str]:
     index: dict[str, str] = {}
-    for code, country in countries.items():
-        for name in (code, country.ru, country.en, *country.aliases):
-            known = index.setdefault(name_key(name), code)
-            if known != code:
-                raise ValueError(f"{name_key(name)!r} names both {known!r} and {code!r}")
+    for target, spellings in names.items():
+        for spelling in spellings:
+            known = index.setdefault(name_key(spelling), target)
+            if known != target:
+                raise ValueError(f"{name_key(spelling)!r} names both {known!r} and {target!r}")
     return MappingProxyType(index)
 
 
@@ -36,12 +36,16 @@ def load_yaml(path: Path) -> object:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-REGIONS = TypeAdapter(tuple[str, ...]).validate_python(load_yaml(REGIONS_FILE))
-REGION_NAMES: Mapping[str, str] = MappingProxyType({name_key(name): name for name in REGIONS})
+REGIONS: Mapping[str, str] = MappingProxyType(
+    TypeAdapter(dict[str, str]).validate_python(load_yaml(REGIONS_FILE))
+)
+REGION_NAMES = names_index({name: (name, label) for name, label in REGIONS.items()})
 COUNTRIES: Mapping[str, Country] = MappingProxyType(
     TypeAdapter(dict[str, Country]).validate_python(load_yaml(COUNTRIES_FILE))
 )
-COUNTRY_CODES = names_index(COUNTRIES)
+COUNTRY_CODES = names_index(
+    {code: (code, country.ru, country.en, *country.aliases) for code, country in COUNTRIES.items()}
+)
 
 
 def region_name(name: str) -> str | None:

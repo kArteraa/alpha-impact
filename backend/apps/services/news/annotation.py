@@ -60,7 +60,7 @@ def annotation_schema(config: NewsConfig) -> type[Annotation]:
             json_schema_extra=vocabulary(list(config.industry_hints)),
         )
         regions: list[str] = Field(
-            max_length=config.max_entities, json_schema_extra=vocabulary(REGIONS)
+            max_length=config.max_entities, json_schema_extra=vocabulary(list(REGIONS.values()))
         )
         countries: list[str] = Field(
             max_length=config.max_entities, json_schema_extra=vocabulary(list(COUNTRIES))

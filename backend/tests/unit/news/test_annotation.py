@@ -46,7 +46,7 @@ def test_schema_shows_vocabularies_to_the_model() -> None:
 
     assert all(name in schema for name in FACTORS)
     assert all(name in schema for name in CONFIG.industry_hints)
-    assert all(name in schema for name in REGIONS)
+    assert all(label in schema for label in REGIONS.values())
     assert all(f"'{code}'" in schema for code in COUNTRIES)
 
 
@@ -57,16 +57,16 @@ def test_schema_rejects_russia(field: str) -> None:
 
 
 def test_schema_rejects_region_outside_vocabulary() -> None:
-    with pytest.raises(ValidationError, match="Татарстан"):
-        SCHEMA.model_validate(answer(regions=["Татарстан"]))
+    with pytest.raises(ValidationError, match="Алеппо"):
+        SCHEMA.model_validate(answer(regions=["Алеппо"]))
 
 
 def test_schema_spells_regions_as_csv_and_countries_as_codes() -> None:
     annotation = SCHEMA.model_validate(
-        answer(regions=["республика татарстан"], countries=["ОАЭ", "Китай", "tr"])
+        answer(regions=["Татарстан", "якутия"], countries=["ОАЭ", "Китай", "tr"])
     )
 
-    assert annotation.regions == ["Республика Татарстан"]
+    assert annotation.regions == ["Республика Татарстан", "Саха (Республика) (Якутия)"]
     assert annotation.countries == ["ae", "cn", "tr"]
 
 
