@@ -1,0 +1,22 @@
+lookback_days: 14
+search_limit: 200
+max_tool_calls: 4
+templates:
+  payment:
+    focus: Сроки поставки и тарифы получателя платежа; связь с отраслью и долей в оттоке клиента
+    context: [profile, counterparty, news, house_view]
+  deposit:
+    focus: Влияние событий и позиции банка по ставке на сумму и срок размещения
+    context: [profile, news, house_view]
+  fx:
+    focus: Влияние валютных и внешнеторговых событий на будущий платёж
+    context: [profile, news, house_view]
+  loan:
+    focus: Условия финансирования и чувствительность клиента к ставке
+    context: [profile, news, house_view]
+  payroll:
+    focus: События рынка труда и последствия для фонда оплаты труда
+    context: [profile, news, house_view]
+  dashboard:
+    focus: Значимость событий для компании и её текущих экспозиций
+    context: [profile, news, house_view]
