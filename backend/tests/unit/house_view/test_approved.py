@@ -88,3 +88,14 @@ def test_file_with_draft_status_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ChainError, match="approved"):
         load_approved(path)
+
+
+def test_chain_cannot_merge_two_predecessors() -> None:
+    claims = [
+        claim("a", superseded_by="c"),
+        claim("b", superseded_by="c"),
+        claim("c", date=date(2026, 8, 1)),
+    ]
+
+    with pytest.raises(ChainError, match="more than one"):
+        validate_chains(claims)
