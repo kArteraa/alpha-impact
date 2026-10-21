@@ -29,7 +29,7 @@
   background: var(--bg-neutral-strong);
 }
 
-.significance:has(.insight-dot:nth-child(3).insight-dot-on) .insight-dot-on {
+.significance[data-level="3"] .insight-dot-on {
   background: var(--accent);
 }
 

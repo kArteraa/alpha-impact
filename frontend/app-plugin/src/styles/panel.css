@@ -37,7 +37,6 @@
   padding: var(--s-5);
   background: var(--bg-card);
   border-radius: var(--r-lg);
-  box-shadow: none;
   overflow: hidden;
   gap: var(--s-3);
 }
@@ -137,7 +136,6 @@
   padding: var(--s-6);
   background: var(--bg-card);
   border-radius: var(--r-lg);
-  box-shadow: none;
   animation: insight-appear var(--t-base);
 }
 
@@ -286,15 +284,10 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--s-1);
-  column-gap: var(--s-4);
+  gap: var(--s-1) var(--s-4);
   padding: var(--s-4) var(--s-5);
   border-radius: var(--r-lg);
   background: var(--bg-card);
-}
-
-.product-offer > :not(.button-secondary) {
-  grid-column: 1;
 }
 
 .product-offer h4 {
@@ -319,7 +312,6 @@
 .product-offer .button-secondary {
   grid-column: 2;
   grid-row: 1 / span 3;
-  margin-top: 0;
 }
 
 .card-footer {

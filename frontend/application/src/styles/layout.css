@@ -1,6 +1,5 @@
 .shell {
   min-height: 100vh;
-  background: var(--bg-page);
 }
 
 .shell-top {
@@ -17,12 +16,7 @@
   backdrop-filter: blur(16px);
 }
 
-.shell-top > .brand {
-  grid-column: 1;
-}
-
 .shell-top-end {
-  grid-column: 3;
   justify-self: end;
   display: flex;
   align-items: center;
@@ -48,10 +42,6 @@
   padding: var(--s-4) var(--s-8) var(--s-12);
 }
 
-.main-nav a {
-  text-decoration: none;
-}
-
 .nav-icon {
   position: relative;
   display: grid;
@@ -72,6 +62,7 @@
   line-height: var(--lh-18);
   font-weight: var(--fw-bold);
   text-align: center;
+  box-shadow: 0 0 0 2px var(--bg-card);
 }
 
 .company {
@@ -139,7 +130,6 @@
 }
 
 .main-nav {
-  grid-column: 2;
   display: flex;
   gap: 2px;
   padding: var(--s-1);
@@ -156,6 +146,7 @@
   height: 40px;
   border-radius: var(--r-pill);
   color: var(--text-secondary);
+  text-decoration: none;
   font-size: var(--fs-16);
   line-height: var(--lh-24);
   font-weight: var(--fw-medium);
@@ -177,19 +168,6 @@
   color: var(--on-primary);
 }
 
-.main-nav a:not(.active) .nav-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.main-nav .nav-count {
-  box-shadow: 0 0 0 2px var(--bg-card);
-}
-
 @media (max-width: 1200px) {
   .shell-top {
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -205,10 +183,13 @@
 }
 
 @media (max-width: 960px) {
+  :root {
+    --shell-top-h: 64px;
+  }
+
   .shell-top {
     display: flex;
     gap: var(--s-3);
-    height: 64px;
     padding: 0 var(--s-4);
     background: var(--bg-page);
     backdrop-filter: none;
@@ -216,10 +197,6 @@
 
   .shell-top-end {
     margin-left: auto;
-  }
-
-  .shell-top .badge {
-    display: none;
   }
 
   .shell-main {
@@ -242,10 +219,6 @@
     flex: none;
     width: var(--control-h-sm);
     height: var(--control-h-sm);
-  }
-
-  .main-nav a.active {
-    padding: 0 var(--s-4) 0 var(--s-3);
   }
 }
 
