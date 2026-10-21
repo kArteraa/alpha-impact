@@ -183,7 +183,7 @@ class Agent:
                 collected[claim.id] = claim
         current = [collected[key] for key in sorted(collected)]
         evidence = sources(profile, counterparty, news, current)
-        payload = {
+        payload: dict[str, object] = {
             "plan": plan.model_dump(),
             "context": prompt_context(request, profile, counterparty, evidence),
         }
