@@ -1,5 +1,6 @@
 .insight-panel {
   position: relative;
+  container: insight-panel / inline-size;
   display: grid;
   gap: var(--s-3);
   min-width: 0;
@@ -335,14 +336,16 @@
   gap: var(--s-3);
 }
 
-.insight-panel-compact .product-offer {
-  grid-template-columns: minmax(0, 1fr);
-}
+@container insight-panel (max-width: 440px) {
+  .product-offer {
+    grid-template-columns: minmax(0, 1fr);
+  }
 
-.insight-panel-compact .product-offer .button-secondary {
-  grid-column: 1;
-  grid-row: auto;
-  margin-top: var(--s-2);
+  .product-offer .button-secondary {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: var(--s-2);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
