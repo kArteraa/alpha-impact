@@ -21,10 +21,18 @@ def context_hash(context: BaseModel) -> str:
     return sha256(context.model_dump(mode="json"))
 
 
-def cache_key(request: InterpretRequest, house_view_version: str) -> str:
+def cache_key(request: InterpretRequest, profile_version: int, house_view_version: str) -> str:
     context = request.action_context
     return sha256(
-        [request.client_id, request.role, context.type, context_hash(context), house_view_version]
+        [
+            request.user_id,
+            request.client_id,
+            request.role,
+            context.type,
+            context_hash(context),
+            profile_version,
+            house_view_version,
+        ]
     )
 
 
