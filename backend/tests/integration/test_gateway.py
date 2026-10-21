@@ -33,6 +33,7 @@ class FakeInterpreter:
     def __init__(self) -> None:
         self.calls: list[InterpretRequest] = []
         self.error: Exception | None = None
+        self.needs_review = False
 
     async def interpret(self, request: InterpretRequest) -> InterpretResponse:
         self.calls.append(request)
@@ -52,6 +53,7 @@ class FakeInterpreter:
             basis=[claim.source_ref],
             significance=0.5,
             trace_id=f"trace-{len(self.calls)}",
+            needs_review=self.needs_review,
         )
         return InterpretResponse(silent=False, cards=[card])
 
@@ -233,6 +235,20 @@ async def test_colleague_gets_own_trace_not_cached_one(
         (USER, "trace-1"),
         (COLLEAGUE, "trace-2"),
     ]
+
+
+async def test_needs_review_card_is_not_cached(
+    logged_in: httpx.AsyncClient, interpreter: FakeInterpreter, engine: AsyncEngine
+) -> None:
+    interpreter.needs_review = True
+    first = await logged_in.post("/interpret", json=interpret_body())
+    second = await logged_in.post("/interpret", json=interpret_body())
+    assert first.json()["cards"][0]["needs_review"] is True
+    assert (first.json()["cached"], second.json()["cached"]) == (False, False)
+    assert len(interpreter.calls) == 2
+    async with engine.connect() as connection:
+        rows = await connection.execute(text("SELECT count(*) FROM interpret_cache"))
+    assert rows.scalar_one() == 0
 
 
 async def test_expired_cache_entry_is_not_served(
