@@ -3,23 +3,20 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.house_view.approved import APPROVED
 from apps.services.house_view.repository import approved_claims, find_approved
+from apps.services.house_view.statuses import APPROVED, EXPIRED, SUPERSEDED
 from shared.contracts.errors import NotFound
 from shared.contracts.schemas import HouseViewClaim
 from shared.db.models import HouseViewClaimRow
 
-SUPERSEDED = "superseded"
-EXPIRED = "expired"
-
 
 def as_claim(row: HouseViewClaimRow, status: str) -> HouseViewClaim:
-    fields = {name: getattr(row, name) for name in HouseViewClaim.model_fields}
-    return HouseViewClaim.model_validate({**fields, "status": status})
+    claim = HouseViewClaim.model_validate(row, from_attributes=True)
+    return claim.model_copy(update={"status": status})
 
 
 def status_on(row: HouseViewClaimRow, by_id: Mapping[str, HouseViewClaimRow], day: date) -> str:
-    successor = by_id.get(row.superseded_by or "")
+    successor = by_id.get(row.superseded_by) if row.superseded_by else None
     if successor is not None and successor.date <= day:
         return SUPERSEDED
     if row.valid_until is not None and row.valid_until < day:
@@ -36,8 +33,8 @@ def ordered_chain(
     while head.id in predecessor:
         head = predecessor[head.id]
     chain = [head]
-    while chain[-1].superseded_by in by_id:
-        chain.append(by_id[chain[-1].superseded_by or ""])
+    while (successor := chain[-1].superseded_by) is not None and successor in by_id:
+        chain.append(by_id[successor])
     return chain
 
 

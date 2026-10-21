@@ -5,13 +5,13 @@ from pathlib import Path
 import pytest
 
 from apps.services.house_view.approved import (
-    APPROVED_FILE,
     ChainError,
     load_approved,
     validate_chains,
 )
 from shared.contracts.schemas import HouseViewClaim
 
+APPROVED_FILE = Path(__file__).resolve().parents[3] / "data" / "seed" / "house_view_approved.json"
 RATE_CHAIN = [date(2026, 7, 22), date(2026, 7, 31), date(2026, 9, 7), date(2026, 9, 11)]
 
 

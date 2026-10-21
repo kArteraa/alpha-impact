@@ -1,16 +1,19 @@
+import json
 from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.house_view.approved import APPROVED_FILE, load_approved
+from apps.services.house_view.approved import load_approved
 from apps.services.house_view.batch import load_house_view
 from apps.services.house_view.service import HouseView
 from shared.contracts.errors import NotFound
 from shared.contracts.schemas import HouseViewClaim
 from shared.db.models import HouseViewClaimRow
 
+APPROVED_FILE = Path(__file__).resolve().parents[2] / "data" / "seed" / "house_view_approved.json"
 APPROVED = load_approved(APPROVED_FILE)
 SUBJECTS = sorted({claim.subject for claim in APPROVED})
 DRAFT = HouseViewClaim(
@@ -121,3 +124,23 @@ async def test_reload_adds_no_duplicates(
     async with sessions() as session:
         count = await session.scalar(select(func.count()).select_from(HouseViewClaimRow))
     assert count == len(APPROVED) + 1
+
+
+async def test_claim_removed_from_file_is_no_longer_approved(
+    house_view: HouseView, sessions: async_sessionmaker[AsyncSession], tmp_path: Path
+) -> None:
+    kept = [claim for claim in APPROVED if claim.subject != "gold"]
+    path = tmp_path / "approved.json"
+    path.write_text(
+        json.dumps([claim.model_dump(mode="json") for claim in kept], ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    await load_house_view(sessions, path)
+
+    assert await house_view.claims("gold", date(2026, 8, 15)) == []
+    async with sessions() as session:
+        gold = await session.scalar(
+            select(HouseViewClaimRow.status).where(HouseViewClaimRow.subject == "gold")
+        )
+    assert gold == "draft"
