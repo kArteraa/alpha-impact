@@ -91,7 +91,11 @@ class LocalEmbedder:
                 f"embedding model files are missing: {missing}; "
                 "run python -m scripts.download_embedder"
             )
-        session = onnxruntime.InferenceSession(str(weights), providers=["CPUExecutionProvider"])
+        options = onnxruntime.SessionOptions()
+        options.add_session_config_entry("session.intra_op.allow_spinning", "0")
+        session = onnxruntime.InferenceSession(
+            str(weights), sess_options=options, providers=["CPUExecutionProvider"]
+        )
         size = session.get_outputs()[0].shape[-1]
         if size != self._dimension:
             raise EmbeddingDimensionMismatch(
