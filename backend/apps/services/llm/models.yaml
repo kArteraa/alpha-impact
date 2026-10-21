@@ -5,4 +5,4 @@ models:
   - deepseek/deepseek-v4.1-flash
   - qwen/qwen3-vl-30b-a3b-instruct
   - moonshotai/kimi-k2.6
-reasoning_off_tasks: [extract]
+reasoning_off_tasks: [extract, followup]

@@ -29,6 +29,7 @@ class Factor(BaseModel):
 class MockModelServer:
     def __init__(self, delay_seconds: float = 0.0) -> None:
         self.calls = 0
+        self.bodies: list[dict[str, Any]] = []
         self.delay_seconds = delay_seconds
         self.app = FastAPI()
         self.app.post("/v1/chat/completions")(self.chat)
@@ -36,6 +37,7 @@ class MockModelServer:
     async def chat(self, body: dict[str, Any], authorization: str = Header()) -> dict[str, Any]:
         assert authorization == "Bearer test-key"
         self.calls += 1
+        self.bodies.append(body)
         await asyncio.sleep(self.delay_seconds)
         return {
             "choices": [{"message": {"content": '{"name": "key_rate", "strength": 0.8}'}}],
@@ -67,16 +69,47 @@ def make_gateway(
     sessions: async_sessionmaker[AsyncSession],
 ) -> Callable[..., ModelGateway]:
     def build(daily_budget_rub: float = 500.0) -> ModelGateway:
+        models = load_models(MODELS_PATH)
         return fakes.make_gateway(
             server.http_client(),
             SqlUsageStore(sessions, CACHE_TTL_SECONDS),
             daily_budget_rub=daily_budget_rub,
-            allowed=load_models(MODELS_PATH).models,
+            allowed=models.models,
+            reasoning_off=models.reasoning_off_tasks,
             today=utc_today,
             embedder=embedder,
         )
 
     return build
+
+
+async def test_followup_without_reasoning_validates_accounts_and_caches(
+    make_gateway: Callable[..., ModelGateway],
+    server: MockModelServer,
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    result = await make_gateway().complete("followup", "sys", "usr", Factor)
+    assert result == (Factor(name="key_rate", strength=0.8), 2000, 400)
+    assert server.bodies[0]["model"] == "qwen/qwen3.6-35b-a3b"
+    assert server.bodies[0]["reasoning"] == {"enabled": False}
+    assert server.bodies[0]["response_format"]["type"] == "json_schema"
+    async with sessions() as session:
+        usage = (await session.scalars(select(LlmUsageRow))).one()
+        assert await session.scalar(select(func.count()).select_from(LlmCacheRow)) == 1
+    assert (usage.task, usage.model, usage.tokens_in, usage.tokens_out) == (
+        "followup",
+        "qwen/qwen3.6-35b-a3b",
+        2000,
+        400,
+    )
+    assert float(usage.cost_rub) == pytest.approx(0.05)
+    assert await make_gateway().complete("followup", "sys", "usr", Factor) == (
+        Factor(name="key_rate", strength=0.8),
+        0,
+        0,
+    )
+    assert server.calls == 1
+    assert await make_gateway().budget_left_rub() == pytest.approx(449.95)
 
 
 async def test_structured_call_is_recorded_in_usage(
