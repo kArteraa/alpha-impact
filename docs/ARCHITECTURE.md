@@ -14,7 +14,7 @@ alpha-impact/
       gateway/                 HTTP-вход: POST /interpret, /profile, /feedback, /trace/{id}; auth из мок-сессии, права user→client, лимиты, кэш, журнал
       profile/                 профилировщик: пакетная сборка паспорта клиента, группа, правки пользователя; порт ProfileService
       counterparty/            агрегаты по графу платежей; порт CounterpartyService
-      news/                    RSS-парсер, дедупликация, разметка факторов, индекс (pgvector, vector(EMBEDDING_DIMENSION)); порты NewsService и PageContextService
+      news/                    RSS-парсер, дедупликация, разметка факторов, индекс (pgvector, vector(EMBEDDING_DIMENSION)); entities — ключи industry:/region:/country:/company: в нижнем регистре; порты NewsService и PageContextService
       house_view/              OCR отчётов, извлечение утверждений, версии/supersede; порт HouseViewService
       interpreter/             агент (план, вызовы инструментов, черновик), критик; порт Interpreter
       whatif/                  арифметика: нагрузка по ставке, сравнение сроков депозита, курс; порт WhatIfService
@@ -38,7 +38,7 @@ alpha-impact/
         industries.py          справочник отраслей: ОКВЭД → отраслевой класс по industries.yaml, общий для profile и counterparty
         clients.py             какие клиенты обслуживаются: файл компаний и порог выручки крупного клиента (clients.yaml), общий для profile и counterparty
         embedding.py           EMBEDDING_DIMENSION (384) — длина вектора e5: её сверяет llm, её берёт колонка pgvector новостей
-    scripts/                   gen_schemas.py, seed.py, ingest_reports.py, download_embedder.py (модель эмбеддингов в models/, только стандартная библиотека)
+    scripts/                   gen_schemas.py, seed.py, ingest_reports.py, ingest_news.py, download_embedder.py (модель эмбеддингов в models/, только стандартная библиотека)
     models/                    скачанная модель эмбеддингов (не коммитится, .gitignore)
     data/
       raw/                     три csv (не коммитятся, .gitignore) + PDF/DOCX отчётов
@@ -98,7 +98,7 @@ interpreter.interpret():
 
 ## Пакетный контур
 
-`scripts.seed` запускает по порядку: пользователи → загрузка csv → чистка → профили и агрегаты графа → парсинг RSS и разметка. OCR отчётов банка и извлечение утверждений — отдельная команда `scripts.ingest_reports` (`docker compose --profile seed run --rm -e LLM_TIMEOUT_SECONDS=120 seed python -m scripts.ingest_reports` — пакетному извлечению нужен таймаут больше интерактивного): ей нужны tesseract (есть в образе backend) и ключ LLM; страницы распознаются один раз (кэш по хэшу картинки в `report_pages`), утверждения пишутся черновиками `draft` в `house_view_claims` (отчёт по стали — `expired`), подтверждение — в `data/seed/house_view_approved.json` (AH-14). Повторный запуск идемпотентен.
+`scripts.seed` запускает по порядку: пользователи → загрузка csv → чистка → профили и агрегаты графа; ключ LLM ему не нужен. Новости собирает отдельная команда `scripts.ingest_news` (`docker compose --profile seed run --build --rm -e LLM_TIMEOUT_SECONDS=30 seed python -m scripts.ingest_news` — при 8 с часть ответов прокси не успевает, а таймаут оставляет в `llm_usage` резерв), ей нужен ключ LLM: ленты из `NEWS_RSS_URLS` → новости за `max_age_days` → отсев уже известных (хэш заголовка, адрес) → эмбеддинг e5 → дубль, если у ближайшей новости за ±`dedup_window_hours` косинус ≥ `dedup_threshold` и те же числа и месяцы → разметка Gemma → `news` (`apps/services/news/config.yaml`). Недоступная лента и ошибка модели на новости не останавливают прогон, исчерпанный бюджет останавливает; повторный запуск размечает только новые новости. `NewsService.search` берёт новости с `since` по пересечению факторов или по отрасли, региону и стране и ранжирует по сумме силы совпавших факторов плюс число совпавших полей; `annotate` размечает вставленный текст без записи в индекс (запись — AH-40). OCR отчётов банка и извлечение утверждений — отдельная команда `scripts.ingest_reports` (`docker compose --profile seed run --rm -e LLM_TIMEOUT_SECONDS=120 seed python -m scripts.ingest_reports` — пакетному извлечению нужен таймаут больше интерактивного): ей нужны tesseract (есть в образе backend) и ключ LLM; страницы распознаются один раз (кэш по хэшу картинки в `report_pages`), утверждения пишутся черновиками `draft` в `house_view_claims` (отчёт по стали — `expired`), подтверждение — в `data/seed/house_view_approved.json` (AH-14). Повторный запуск идемпотентен.
 
 ## Фронтенд
 

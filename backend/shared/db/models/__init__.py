@@ -3,6 +3,7 @@ from shared.db.models.counterparty import ClientGraphRow, CounterpartyCardRow
 from shared.db.models.feedback import FeedbackRow
 from shared.db.models.house_view import HouseViewClaimRow, ReportPageRow
 from shared.db.models.llm import LlmCacheRow, LlmUsageRow
+from shared.db.models.news import NewsRow
 from shared.db.models.profiles import ProfileCorrectionRow, ProfileRow
 from shared.db.models.traces import TraceRow
 from shared.db.models.users import UserClientRow, UserRow
@@ -15,6 +16,7 @@ __all__ = [
     "HouseViewClaimRow",
     "LlmCacheRow",
     "LlmUsageRow",
+    "NewsRow",
     "ProfileCorrectionRow",
     "ProfileRow",
     "ReportPageRow",
