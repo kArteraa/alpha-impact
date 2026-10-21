@@ -109,6 +109,7 @@ class Agent:
                 self._counterparties.context(request.client_id, action.beneficiary_id, action.inn),
             )
         as_of = journal.trace.created_at.date()
+        prefilter_started_at = utc_now()
         start = perf_counter()
         selection = await self._prefilter.select(
             profile,
@@ -130,7 +131,7 @@ class Agent:
                     }
                 ),
                 duration_ms=int((perf_counter() - start) * 1000),
-                started_at=journal.trace.created_at,
+                started_at=prefilter_started_at,
             )
         )
         if not selection.candidates:
