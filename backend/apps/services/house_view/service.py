@@ -68,9 +68,6 @@ class HouseView:
     async def version(self) -> str:
         async with self._sessions() as session:
             rows = await all_approved(session)
-        snapshot = [
-            HouseViewClaim.model_validate(row, from_attributes=True).model_dump(mode="json")
-            for row in rows
-        ]
+        snapshot = [as_claim(row, APPROVED).model_dump(mode="json") for row in rows]
         digest = hashlib.sha256(json.dumps(snapshot, ensure_ascii=False, sort_keys=True).encode())
         return digest.hexdigest()[:VERSION_LENGTH]
