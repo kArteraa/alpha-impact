@@ -161,7 +161,7 @@ async def test_ranking_and_topics_are_unique_and_deterministic(
     news.search.return_value = [
         item.model_copy(update={"id": "b"}),
         item.model_copy(update={"id": "a"}),
-        item.model_copy(update={"id": "c", "entities": ["logistics", "Москва"]}),
+        item.model_copy(update={"id": "c", "entities": ["industry:logistics", "region:москва"]}),
     ]
     house_view.claims.return_value = [seed.house_view[0], seed.house_view[0]]
     result = await run_prefilter(seed, news, house_view, "logistics", 0.3)
@@ -187,7 +187,7 @@ async def test_product_only_news_is_not_lost_in_search(
     seed: MockSeed, news: AsyncMock, house_view: AsyncMock
 ) -> None:
     news.search.return_value = [
-        seed.news[0].model_copy(update={"entities": ["settlement"], "factors": []})
+        seed.news[0].model_copy(update={"entities": ["product:settlement"], "factors": []})
     ]
     result = await run_prefilter(seed, news, house_view, "stationery", 0.3)
     assert len(result.candidates) == 1

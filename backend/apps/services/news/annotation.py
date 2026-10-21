@@ -6,14 +6,20 @@ from pydantic import BaseModel, Field, field_validator
 from apps.services.news.config import NewsConfig
 from apps.services.news.feed import FeedEntry
 from shared.config.factors import FACTORS
+from shared.config.news_entities import (
+    COMPANY,
+    COUNTRY,
+    INDUSTRY,
+    PRODUCT,
+    PRODUCTS,
+    REGION,
+    entity,
+    normalized,
+)
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem
 
 ID_LENGTH = 32
-INDUSTRY = "industry"
-REGION = "region"
-COUNTRY = "country"
-COMPANY = "company"
 
 
 class Annotation(BaseModel):
@@ -22,6 +28,7 @@ class Annotation(BaseModel):
     regions: Sequence[str]
     countries: Sequence[str]
     companies: Sequence[str]
+    products: Sequence[str]
 
 
 def annotation_schema(config: NewsConfig) -> type[Annotation]:
@@ -47,6 +54,18 @@ def annotation_schema(config: NewsConfig) -> type[Annotation]:
         regions: list[str] = Field(max_length=config.max_entities)
         countries: list[str] = Field(max_length=config.max_entities)
         companies: list[str] = Field(max_length=config.max_entities)
+        products: list[str] = Field(
+            max_length=config.max_entities,
+            json_schema_extra={"items": {"type": "string", "enum": list(PRODUCTS)}},
+        )
+
+        @field_validator("products")
+        @classmethod
+        def known_products(cls, values: list[str]) -> list[str]:
+            unknown = [value for value in values if value not in PRODUCTS]
+            if unknown:
+                raise ValueError(f"unknown products {unknown!r}")
+            return values
 
         @field_validator("industries")
         @classmethod
@@ -59,16 +78,8 @@ def annotation_schema(config: NewsConfig) -> type[Annotation]:
     return NewsAnnotation
 
 
-def normalized(value: str) -> str:
-    return " ".join(value.split()).casefold()
-
-
 def news_id(title: str) -> str:
     return hashlib.sha256(normalized(title).encode()).hexdigest()[:ID_LENGTH]
-
-
-def entity(kind: str, value: str) -> str:
-    return f"{kind}:{normalized(value)}"
 
 
 def entities(annotation: Annotation) -> list[str]:
@@ -77,6 +88,7 @@ def entities(annotation: Annotation) -> list[str]:
         (REGION, annotation.regions),
         (COUNTRY, annotation.countries),
         (COMPANY, annotation.companies),
+        (PRODUCT, annotation.products),
     )
     keys = [entity(kind, value) for kind, values in groups for value in values if value.strip()]
     return list(dict.fromkeys(keys))
