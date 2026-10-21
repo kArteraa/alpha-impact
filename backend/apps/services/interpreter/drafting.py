@@ -61,5 +61,4 @@ def build_card(
         bank_view=blocks["bank_view"],
         basis=list(basis.values()),
         significance=draft.significance,
-        needs_review=True,
     )
