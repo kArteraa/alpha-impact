@@ -22,7 +22,7 @@ from tests.unit.counterparty.fixtures import AMOUNTS, CLIENT, FIXTURES_DIR
 
 CONFIG = load_config()
 LOW = CONFIG.confidence.low
-FIXTURE_FOREIGN = ForeignData(amounts=set(AMOUNTS))
+FIXTURE_FOREIGN = ForeignData(amounts=frozenset(AMOUNTS))
 AGGREGATE_FIELDS = {
     "industry_class",
     "region",
@@ -167,7 +167,7 @@ async def test_rebuild_drops_rows_missing_from_data(
 
 
 @pytest.mark.skipif(not PAYMENTS_FILE.exists(), reason="data/raw is not present")
-async def test_seed_clients_see_only_aggregates_of_their_recipients(
+async def test_seed_clients_see_only_aggregates_of_their_counterparties(
     sessions: async_sessionmaker[AsyncSession],
 ) -> None:
     await seed_users(sessions)
@@ -175,7 +175,7 @@ async def test_seed_clients_see_only_aggregates_of_their_recipients(
     service = CounterpartyAggregates(sessions, CONFIG)
 
     for client_id, foreign in seed_foreign_data().items():
-        assert foreign.recipients
+        assert foreign.counterparties
         for beneficiary_id, inn in probes(foreign):
             assert_no_leak(
                 await service.context(client_id, beneficiary_id, inn), client_id, foreign
