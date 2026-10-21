@@ -61,4 +61,23 @@ docker compose --profile seed run --build --rm --no-deps -e LLM_TIMEOUT_SECONDS=
 
 Проверка перед коммитом (ruff, mypy, import-linter, pytest, vitest, сборка) — раздел «Проверка» в [docs/PIPELINE.md](docs/PIPELINE.md).
 
+Предфильтр AH-15 работает без LLM через реальные порты новостей и house view. Проверка из `backend/` (тестовая PostgreSQL поднята по пайплайну):
+
+```
+uv run python -m scripts.prefilter_mocks
+uv run --env-file ../.env pytest tests/unit/interpreter/test_prefilter.py tests/integration/test_prefilter.py tests/integration/test_prefilter_services.py
+```
+
+Первая команда создаёт синтетические профили, агрегаты контрагентов, новость и house view в `backend/data/local/ah15/seed.json` (папка в `.gitignore`). Тесты работают на чистом клоне: наборы данных создаются во временной папке. `test_prefilter_services.py` строит профили и граф из тестовых CSV, загружает подтверждённый house view из seed, разрешает настоящие сервисы через DI и читает индекс PostgreSQL. Сценарии: для перевозчика есть кандидаты, для поставщика канцтоваров — пусто; 200 новостей обрабатываются за < 200 мс вместе с запросами индекса и house view. Данные тестовые, реализации портов и БД настоящие. Interpreter подключает предфильтр в AH-18; HTTP-маршрут `POST /interpret` — AH-19.
+
+Проверка плана и черновика AH-18 (из `backend/`, тестовая БД запущена):
+
+```bash
+uv run --env-file ../.env pytest tests/unit/interpreter tests/integration/test_interpreter.py
+```
+
+Сквозной тест разрешает interpreter через DI с настоящими сервисами профиля, контрагентов, индекса и house view в PostgreSQL. LLM и `TraceStore` — моки: проверяются карточка по платежу перевозчику, источники, план в трассе и молчание по канцтоварам. Настоящее хранилище трасс реализуется в AH-23; до него вызов interpreter без мока хранилища завершится ошибкой. Карточка пока имеет `needs_review: true`, критик — AH-22. Содержание живой модели и показ карточки через UI эти тесты не проверяют.
+
+Сущности новостей имеют вид `industry:logistics`, `region:москва`, `country:cn`, `product:loan`; ключ строит одно правило `shared/config/news_entities.entity` для индекса, `search` и предфильтра: регион и страна — по справочнику `shared/config/geography.py` из любого написания («Республика Татарстан» и «Татарстан», «ОАЭ» и «ae»), место вне справочника ключа не даёт. Новая разметка выдаёт также продукты. Уже сохранённые новости не переразмечаются автоматически: индекс, собранный до AH-58, переразмечается `scripts.reannotate_news` (иначе страны в нём — `country:китай` и с профилем не совпадут), а совпадение по продукту возможно, когда у новости есть `product:…`. Поиск без критериев возвращает последние новости с `since` в пределах `limit` (а поиск только по месту вне справочника — пустой список), поэтому предфильтр ранжирует полученную выборку, а не весь индекс.
+
 Репозиторий разделён на `backend/` (Python-монолит: `uv`, `pytest`, `alembic` запускаются оттуда) и `frontend/` (npm workspace: `application`, `app-plugin`, Playwright). Структура — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), правила для агентов — [AGENTS.md](AGENTS.md), процесс задачи — [docs/PIPELINE.md](docs/PIPELINE.md), задачи — [docs/BACKLOG.md](docs/BACKLOG.md).

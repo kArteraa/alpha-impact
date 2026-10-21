@@ -43,14 +43,14 @@ async def add_news(session: AsyncSession, item: NewsItem, vector: list[float]) -
 
 
 async def matching(
-    session: AsyncSession, factors: list[str], entities: list[str], since: datetime
+    session: AsyncSession, factors: list[str], entities: list[str], since: datetime, limit: int
 ) -> Sequence[NewsRow]:
-    overlaps = or_(NewsRow.factor_names.overlap(factors), NewsRow.entities.overlap(entities))
-    query = (
-        select(NewsRow)
-        .options(defer(NewsRow.embedding))
-        .where(NewsRow.published_at >= since, overlaps)
-    )
+    query = select(NewsRow).options(defer(NewsRow.embedding)).where(NewsRow.published_at >= since)
+    if factors or entities:
+        overlaps = or_(NewsRow.factor_names.overlap(factors), NewsRow.entities.overlap(entities))
+        query = query.where(overlaps)
+    else:
+        query = query.order_by(NewsRow.published_at.desc(), NewsRow.id).limit(limit)
     return (await session.scalars(query)).all()
 
 
