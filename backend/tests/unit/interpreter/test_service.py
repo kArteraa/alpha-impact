@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -83,6 +84,26 @@ async def test_trace_contains_plan_tools_draft_tokens_and_result(harness: Harnes
     assert any(step.step == "draft" for step in trace.steps)
     assert all(step.duration_ms >= 0 and step.started_at.tzinfo for step in trace.steps)
     harness.house_view.chain.assert_awaited_once_with(claim_id="logistics-approved")
+
+
+async def test_trace_timestamps_follow_execution_order(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from apps.services.interpreter import journal, service
+
+    now = datetime.now(UTC)
+
+    def tick() -> datetime:
+        nonlocal now
+        now += timedelta(milliseconds=1)
+        return now
+
+    monkeypatch.setattr(journal, "utc_now", tick)
+    monkeypatch.setattr(service, "utc_now", tick)
+    await harness.agent.interpret(harness.request())
+    trace = harness.traces.save.call_args.args[0]
+    timestamps = [step.started_at for step in trace.steps]
+    assert timestamps == sorted(timestamps)
 
 
 async def test_model_can_request_house_view_topic(harness: Harness) -> None:
