@@ -31,6 +31,11 @@ def test_same_value_written_differently_is_the_same_number() -> None:
     assert numbers("выпуск на 1000 млн") != numbers("выпуск на 1 млрд")
 
 
+def test_repeated_number_counts_once() -> None:
+    assert numbers("ставка 16%, а через год снова 16%") == numbers("ставка 16%")
+    assert numbers("24 июля и снова в июле") == numbers("24 июля")
+
+
 def test_duplicate_needs_close_vectors_and_same_numbers() -> None:
     same = numbers("MOL выкупит долю за 1 млрд")
     other = numbers("MOL выкупит долю за 2 млрд")

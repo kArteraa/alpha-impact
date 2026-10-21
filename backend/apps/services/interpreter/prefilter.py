@@ -4,7 +4,7 @@ from datetime import date
 from math import fsum, isfinite
 
 from shared.config.factors import FACTORS
-from shared.config.news_entities import COUNTRY, INDUSTRY, PRODUCT, REGION, entity, normalized
+from shared.config.news_entities import COUNTRY, INDUSTRY, PRODUCT, REGION, entity
 from shared.contracts.ports import HouseViewService, NewsService
 from shared.contracts.schemas import (
     ActionContext,
@@ -86,7 +86,7 @@ def score_news(
     )
     entities = set(item.entities)
     matches = sum(
-        any(entity(kind, value) in entities for value in values if normalized(value))
+        any(entity(kind, value) in entities for value in values)
         for kind, values in zip(
             (INDUSTRY, REGION, COUNTRY, PRODUCT),
             entity_dimensions(profile, counterparty, action),
