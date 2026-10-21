@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from apps.services.house_view.ingest.config import Document
+from apps.services.house_view.statuses import DRAFT, EXPIRED
 from shared.contracts.schemas import HouseViewClaim
 
 ID_LENGTH = 32
@@ -62,7 +63,7 @@ def to_claims(
             source_doc=document.file,
             page=page,
             superseded_by=None,
-            status="expired" if document.expired else "draft",
+            status=EXPIRED if document.expired else DRAFT,
         )
         for item in extracted
     ]
