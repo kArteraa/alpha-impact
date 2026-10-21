@@ -1,4 +1,3 @@
-import json
 import re
 from datetime import date
 from pathlib import Path
@@ -6,25 +5,14 @@ from pathlib import Path
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.house_view.approved import load_approved
 from apps.services.house_view.batch import load_house_view
 from apps.services.house_view.ingest.config import load_config
 from apps.services.house_view.service import HouseView
-from shared.contracts.schemas import HouseViewClaim
 from shared.db.models import HouseViewClaimRow
+from tests.house_view_data import APPROVED, APPROVED_FILE, write_claims
 
-APPROVED_FILE = Path(__file__).resolve().parents[2] / "data" / "seed" / "house_view_approved.json"
-APPROVED = load_approved(APPROVED_FILE)
 TODAY = date(2026, 10, 21)
-EXPIRED_DOCS = {doc.file for doc in load_config().documents if doc.expired}
-
-
-def write_claims(path: Path, claims: list[HouseViewClaim]) -> Path:
-    path.write_text(
-        json.dumps([claim.model_dump(mode="json") for claim in claims], ensure_ascii=False),
-        encoding="utf-8",
-    )
-    return path
+EXPIRED_DOCS = load_config().expired_docs
 
 
 @pytest.fixture
