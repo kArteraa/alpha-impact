@@ -144,3 +144,13 @@ async def test_claim_removed_from_file_is_no_longer_approved(
             select(HouseViewClaimRow.status).where(HouseViewClaimRow.subject == "gold")
         )
     assert gold == "draft"
+
+
+async def test_empty_file_demotes_every_approved_claim(
+    house_view: HouseView, sessions: async_sessionmaker[AsyncSession], tmp_path: Path
+) -> None:
+    path = tmp_path / "approved.json"
+    path.write_text("[]", encoding="utf-8")
+
+    assert await load_house_view(sessions, path) == 0
+    assert await house_view.claims("key_rate", date(2026, 9, 15)) == []

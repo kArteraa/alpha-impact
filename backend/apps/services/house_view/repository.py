@@ -18,6 +18,8 @@ async def replace_approved(session: AsyncSession, claims: Sequence[HouseViewClai
         )
         .values(status=DRAFT, superseded_by=None)
     )
+    if not claims:
+        return
     statement = insert(HouseViewClaimRow).values([claim.model_dump() for claim in claims])
     columns = [name for name in HouseViewClaim.model_fields if name != "id"]
     await session.execute(

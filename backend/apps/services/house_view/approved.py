@@ -21,6 +21,10 @@ def check_link(claim: HouseViewClaim, successor: HouseViewClaim) -> None:
 
 def validate_chains(claims: Sequence[HouseViewClaim]) -> None:
     by_id = {claim.id: claim for claim in claims}
+    successors = [claim.superseded_by for claim in claims if claim.superseded_by is not None]
+    merged = sorted({successor for successor in successors if successors.count(successor) > 1})
+    if merged:
+        raise ChainError(f"claims superseded by more than one claim: {merged}")
     for claim in claims:
         node, seen = claim, {claim.id}
         while node.superseded_by is not None:
