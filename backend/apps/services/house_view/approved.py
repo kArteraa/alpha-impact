@@ -2,10 +2,8 @@ import json
 from collections.abc import Sequence
 from pathlib import Path
 
+from apps.services.house_view.statuses import APPROVED
 from shared.contracts.schemas import HouseViewClaim
-
-APPROVED_FILE = Path(__file__).resolve().parents[3] / "data" / "seed" / "house_view_approved.json"
-APPROVED = "approved"
 
 
 class ChainError(ValueError):
@@ -24,19 +22,16 @@ def check_link(claim: HouseViewClaim, successor: HouseViewClaim) -> None:
 def validate_chains(claims: Sequence[HouseViewClaim]) -> None:
     by_id = {claim.id: claim for claim in claims}
     for claim in claims:
-        if claim.superseded_by is None:
-            continue
-        successor = by_id.get(claim.superseded_by)
-        if successor is None:
-            raise ChainError(f"{claim.id} is superseded by unknown claim {claim.superseded_by}")
-        check_link(claim, successor)
-        seen = {claim.id}
-        current: HouseViewClaim | None = successor
-        while current is not None:
-            if current.id in seen:
-                raise ChainError(f"superseded_by forms a cycle at {current.id}")
-            seen.add(current.id)
-            current = by_id.get(current.superseded_by or "")
+        node, seen = claim, {claim.id}
+        while node.superseded_by is not None:
+            successor = by_id.get(node.superseded_by)
+            if successor is None:
+                raise ChainError(f"{node.id} is superseded by unknown claim {node.superseded_by}")
+            check_link(node, successor)
+            if successor.id in seen:
+                raise ChainError(f"superseded_by forms a cycle at {successor.id}")
+            seen.add(successor.id)
+            node = successor
 
 
 def load_approved(path: Path) -> list[HouseViewClaim]:

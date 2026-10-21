@@ -1,15 +1,23 @@
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.services.house_view.approved import APPROVED
+from apps.services.house_view.statuses import APPROVED, DRAFT
 from shared.contracts.schemas import HouseViewClaim
 from shared.db.models import HouseViewClaimRow
 
 
-async def upsert_approved(session: AsyncSession, claims: Sequence[HouseViewClaim]) -> None:
+async def replace_approved(session: AsyncSession, claims: Sequence[HouseViewClaim]) -> None:
+    await session.execute(
+        update(HouseViewClaimRow)
+        .where(
+            HouseViewClaimRow.status == APPROVED,
+            HouseViewClaimRow.id.not_in([claim.id for claim in claims]),
+        )
+        .values(status=DRAFT, superseded_by=None)
+    )
     statement = insert(HouseViewClaimRow).values([claim.model_dump() for claim in claims])
     columns = [name for name in HouseViewClaim.model_fields if name != "id"]
     await session.execute(
