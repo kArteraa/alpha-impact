@@ -15,6 +15,7 @@ class Completion:
     content: str | None
     tokens_in: int
     tokens_out: int
+    cost_rub: float
 
 
 class ModelClient:
@@ -43,9 +44,8 @@ class ModelClient:
         try:
             return read_completion(data)
         except MALFORMED_RESPONSE as error:
-            tokens_in, tokens_out = read_usage(data)
             message = f"model API {CHAT_PATH} returned a malformed body: {error!r}"
-            raise ModelUnavailable(message, tokens_in, tokens_out) from error
+            raise ModelUnavailable(message, *read_usage(data)) from error
 
 
 def token_count(value: Any) -> int:
@@ -60,21 +60,33 @@ def text_content(value: Any) -> str | None:
     return value
 
 
+def cost_value(value: Any) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
+        raise TypeError(f"cost must be a non-negative number, got {value!r}")
+    return float(value)
+
+
 def read_completion(data: Any) -> Completion:
     usage = data["usage"]
     return Completion(
         content=text_content(data["choices"][0]["message"]["content"]),
         tokens_in=token_count(usage["prompt_tokens"]),
         tokens_out=token_count(usage["completion_tokens"]),
+        cost_rub=cost_value(usage["cost"]),
     )
 
 
-def read_usage(data: Any) -> tuple[int, int]:
+def read_usage(data: Any) -> tuple[int, int, float | None]:
     try:
         usage = data["usage"]
-        return token_count(usage["prompt_tokens"]), token_count(usage.get("completion_tokens", 0))
+        tokens_in = token_count(usage["prompt_tokens"])
+        tokens_out = token_count(usage.get("completion_tokens", 0))
     except MALFORMED_RESPONSE:
-        return 0, 0
+        return 0, 0, 0.0
+    try:
+        return tokens_in, tokens_out, cost_value(usage["cost"])
+    except MALFORMED_RESPONSE:
+        return tokens_in, tokens_out, None
 
 
 def build_http_client(settings: Settings) -> httpx.AsyncClient:

@@ -11,7 +11,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from apps.services.llm import utc_today
-from apps.services.llm.catalog import MODELS_PATH, load_prices
+from apps.services.llm.catalog import MODELS_PATH, load_models
 from apps.services.llm.service import ModelGateway
 from apps.services.llm.store import SqlUsageStore
 from shared.contracts.errors import BudgetExceeded
@@ -39,7 +39,7 @@ class MockModelServer:
         await asyncio.sleep(self.delay_seconds)
         return {
             "choices": [{"message": {"content": '{"name": "key_rate", "strength": 0.8}'}}],
-            "usage": {"prompt_tokens": 2000, "completion_tokens": 400},
+            "usage": {"prompt_tokens": 2000, "completion_tokens": 400, "cost": 0.05},
         }
 
     def http_client(self) -> httpx.AsyncClient:
@@ -71,7 +71,7 @@ def make_gateway(
             server.http_client(),
             SqlUsageStore(sessions, CACHE_TTL_SECONDS),
             daily_budget_rub=daily_budget_rub,
-            prices=load_prices(MODELS_PATH),
+            allowed=load_models(MODELS_PATH),
             today=utc_today,
             embedder=embedder,
         )
@@ -93,8 +93,8 @@ async def test_structured_call_is_recorded_in_usage(
         2000,
         400,
     )
-    assert usage.cost_rub > 0
-    assert await gateway.budget_left_rub() == pytest.approx(450.0 - float(usage.cost_rub))
+    assert float(usage.cost_rub) == pytest.approx(0.05)
+    assert await gateway.budget_left_rub() == pytest.approx(449.95)
 
 
 async def test_cache_survives_a_new_gateway_instance(
@@ -171,7 +171,7 @@ async def test_concurrent_calls_share_one_reservation_across_gateways(
         fakes.make_gateway(
             server.http_client(),
             SqlUsageStore(sessions, CACHE_TTL_SECONDS),
-            prices=load_prices(MODELS_PATH),
+            allowed=load_models(MODELS_PATH),
             today=utc_today,
         )
         for _ in range(5)
