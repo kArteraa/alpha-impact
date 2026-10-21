@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime
 
 import pytest
@@ -11,13 +10,19 @@ from apps.services.counterparty.service import CounterpartyAggregates
 from scripts.seed import RAW_DIR, seed_users
 from shared.contracts.schemas import CounterpartyContext
 from shared.db.models import ClientGraphRow, CounterpartyCardRow
-from tests.leak import PAYMENTS_FILE, assert_no_foreign_data, load_foreign_data, seed_clients
+from tests.leak import (
+    PAYMENTS_FILE,
+    UNKNOWN_INN,
+    ForeignData,
+    assert_no_foreign_data,
+    probes,
+    seed_foreign_data,
+)
 from tests.unit.counterparty.fixtures import AMOUNTS, CLIENT, FIXTURES_DIR
 
 CONFIG = load_config()
 LOW = CONFIG.confidence.low
-UNKNOWN_COMPANY = "U_999999999"
-UNKNOWN_INN = "7707083893"
+FIXTURE_FOREIGN = ForeignData(amounts=set(AMOUNTS))
 AGGREGATE_FIELDS = {
     "industry_class",
     "region",
@@ -59,13 +64,9 @@ async def graph_built_at(sessions: async_sessionmaker[AsyncSession]) -> datetime
         return await session.scalar(select(ClientGraphRow.built_at))
 
 
-def assert_no_leak(context: CounterpartyContext) -> None:
-    dumped = context.model_dump(mode="json")
-    text = json.dumps(dumped, ensure_ascii=False)
-    assert set(dumped) == set(CounterpartyContext.model_fields)
-    assert "U_" not in text
-    for amount in AMOUNTS:
-        assert str(int(amount)) not in text
+def assert_no_leak(context: CounterpartyContext, client_id: str, foreign: ForeignData) -> None:
+    assert set(context.model_dump()) == AGGREGATE_FIELDS
+    assert_no_foreign_data(context, client_id, foreign)
     for share in (context.share_of_client_outflow, context.share_of_counterparty_inflow):
         assert share is None or 0 <= share <= 1
 
@@ -83,7 +84,7 @@ async def test_paid_logistics_carrier_returns_only_aggregates(
         share_of_counterparty_inflow=0.75,
         confidence=CONFIG.confidence.linked,
     )
-    assert_no_leak(context)
+    assert_no_leak(context, CLIENT, FIXTURE_FOREIGN)
 
 
 async def test_counterparty_without_card_has_low_confidence(
@@ -97,7 +98,7 @@ async def test_counterparty_without_card_has_low_confidence(
     assert context.share_of_client_outflow == 0.4
     assert context.share_of_counterparty_inflow == 1.0
     assert context.confidence == LOW
-    assert_no_leak(context)
+    assert_no_leak(context, CLIENT, FIXTURE_FOREIGN)
 
 
 async def test_card_without_payments_has_medium_confidence(
@@ -110,12 +111,12 @@ async def test_card_without_payments_has_medium_confidence(
     assert context.share_of_client_outflow == 0.0
     assert context.share_of_counterparty_inflow is None
     assert context.confidence == CONFIG.confidence.card_only
-    assert_no_leak(context)
+    assert_no_leak(context, CLIENT, FIXTURE_FOREIGN)
 
 
 @pytest.mark.parametrize(
     ("beneficiary_id", "inn"),
-    [(None, "7707083893"), (None, None), ("U_999", None), (CLIENT, None)],
+    [(None, UNKNOWN_INN), (None, None), ("U_999", None), (CLIENT, None)],
 )
 async def test_unknown_counterparty_returns_nothing_but_low_confidence(
     service: CounterpartyAggregates, beneficiary_id: str | None, inn: str | None
@@ -126,7 +127,7 @@ async def test_unknown_counterparty_returns_nothing_but_low_confidence(
     assert context.share_of_client_outflow is None
     assert context.share_of_counterparty_inflow is None
     assert context.confidence == LOW
-    assert_no_leak(context)
+    assert_no_leak(context, CLIENT, FIXTURE_FOREIGN)
 
 
 async def test_client_without_graph_still_gets_card_aggregates(
@@ -173,13 +174,9 @@ async def test_seed_clients_see_only_aggregates_of_their_recipients(
     await rebuild_graph(sessions, RAW_DIR, CONFIG)
     service = CounterpartyAggregates(sessions, CONFIG)
 
-    for client_id, foreign in load_foreign_data(seed_clients()).items():
+    for client_id, foreign in seed_foreign_data().items():
         assert foreign.recipients
-        for beneficiary_id, inn in [
-            *((recipient, None) for recipient in sorted(foreign.recipients)),
-            (UNKNOWN_COMPANY, None),
-            (None, UNKNOWN_INN),
-        ]:
-            context = await service.context(client_id, beneficiary_id, inn)
-            assert set(context.model_dump()) == AGGREGATE_FIELDS
-            assert_no_foreign_data(context, client_id, foreign)
+        for beneficiary_id, inn in probes(foreign):
+            assert_no_leak(
+                await service.context(client_id, beneficiary_id, inn), client_id, foreign
+            )
