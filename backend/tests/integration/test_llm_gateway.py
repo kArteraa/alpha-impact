@@ -71,7 +71,7 @@ def make_gateway(
             server.http_client(),
             SqlUsageStore(sessions, CACHE_TTL_SECONDS),
             daily_budget_rub=daily_budget_rub,
-            allowed=load_models(MODELS_PATH),
+            allowed=load_models(MODELS_PATH).models,
             today=utc_today,
             embedder=embedder,
         )
@@ -183,7 +183,7 @@ async def test_concurrent_calls_share_one_reservation_across_gateways(
         fakes.make_gateway(
             server.http_client(),
             SqlUsageStore(sessions, CACHE_TTL_SECONDS),
-            allowed=load_models(MODELS_PATH),
+            allowed=load_models(MODELS_PATH).models,
             today=utc_today,
         )
         for _ in range(5)

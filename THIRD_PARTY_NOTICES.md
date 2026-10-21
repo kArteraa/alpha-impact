@@ -20,6 +20,9 @@
 | onnxruntime | MIT | локальный запуск модели эмбеддингов (CPU) |
 | tokenizers | Apache-2.0 | токенизатор модели эмбеддингов |
 | numpy | BSD-3-Clause | входы модели и нормировка векторов |
+| pypdf | BSD-3-Clause | страницы-картинки отчётов банка из PDF |
+| Pillow | MIT-CMU | перекодирование страниц отчётов для OCR |
+| Tesseract OCR (системный пакет `tesseract-ocr`, `tesseract-ocr-rus`) | Apache-2.0 | распознавание текста отчётов банка |
 
 Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), mypy (MIT), import-linter (BSD-2-Clause), types-PyYAML (Apache-2.0).
 

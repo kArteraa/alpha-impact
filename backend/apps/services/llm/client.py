@@ -24,7 +24,12 @@ class ModelClient:
         self._http = http
 
     async def chat(
-        self, model: str, system: str, user: str, response_format: dict[str, Any] | None
+        self,
+        model: str,
+        system: str,
+        user: str,
+        response_format: dict[str, Any] | None,
+        reasoning: bool,
     ) -> Completion:
         body: dict[str, Any] = {
             "model": model,
@@ -36,6 +41,8 @@ class ModelClient:
         }
         if response_format is not None:
             body["response_format"] = response_format
+        if not reasoning:
+            body["reasoning"] = {"enabled": False}
         try:
             response = await self._http.post(CHAT_PATH, json=body)
             response.raise_for_status()

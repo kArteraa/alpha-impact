@@ -20,6 +20,7 @@ from apps.services.llm.store import UsageStore
 from shared.contracts.errors import BudgetExceeded
 
 EMBED_TASK = "embed"
+REASONING_OFF = "reasoning_off"
 
 
 def pydantic_schema(schema: type | None) -> type[BaseModel] | None:
@@ -87,12 +88,14 @@ class ModelGateway:
         output_schema = pydantic_schema(schema)
         output_format = response_format(output_schema)
         model = self._catalog.route(task)
-        key = cache_key(task, model, system, user, output_format)
+        reasoning = self._catalog.reasoning(task)
+        parts = (task, model, system, user, output_format)
+        key = cache_key(*parts) if reasoning else cache_key(*parts, REASONING_OFF)
         cached = await self._store.cached(key)
         if cached is not None:
             return parse(cached, output_schema), 0, 0
         reservation = await self._reserve(task, model)
-        completion = await self._chat(reservation, model, system, user, output_format)
+        completion = await self._chat(reservation, model, system, user, output_format, reasoning)
         try:
             content = answer_text(completion.content, model)
             result = parse(content, output_schema)
@@ -131,9 +134,10 @@ class ModelGateway:
         system: str,
         user: str,
         output_format: dict[str, Any] | None,
+        reasoning: bool,
     ) -> Completion:
         try:
-            return await self._client.chat(model, system, user, output_format)
+            return await self._client.chat(model, system, user, output_format, reasoning)
         except ModelUnavailable as error:
             if error.cost_rub is not None:
                 await self._record(reservation, error.tokens_in, error.tokens_out, error.cost_rub)

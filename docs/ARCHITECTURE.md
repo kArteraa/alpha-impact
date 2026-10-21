@@ -29,7 +29,7 @@ alpha-impact/
         openapi/               экспорт схем в JSON Schema для фронта (генерируется, коммитится)
       db/
         engine.py session.py   SQLAlchemy 2 async
-        models/                таблицы по сервисам (profiles, profile_corrections, counterparty_cards, client_graphs, news, house_view, traces, feedback, users, llm_cache, llm_usage)
+        models/                таблицы по сервисам (profiles, profile_corrections, counterparty_cards, client_graphs, news, report_pages, house_view_claims, traces, feedback, users, llm_cache, llm_usage)
         migrations/            Alembic
       di/
         container.py           Container: register(port, factory) / resolve(port); scope per request; on_close / aclose — закрытие ресурсов при остановке
@@ -38,7 +38,7 @@ alpha-impact/
         industries.py          справочник отраслей: ОКВЭД → отраслевой класс по industries.yaml, общий для profile и counterparty
         clients.py             какие клиенты обслуживаются: файл компаний и порог выручки крупного клиента (clients.yaml), общий для profile и counterparty
         embedding.py           EMBEDDING_DIMENSION (384) — длина вектора e5: её сверяет llm, её берёт колонка pgvector новостей
-    scripts/                   gen_schemas.py, seed.py, download_embedder.py (модель эмбеддингов в models/, только стандартная библиотека)
+    scripts/                   gen_schemas.py, seed.py, ingest_reports.py, download_embedder.py (модель эмбеддингов в models/, только стандартная библиотека)
     models/                    скачанная модель эмбеддингов (не коммитится, .gitignore)
     data/
       raw/                     три csv (не коммитятся, .gitignore) + PDF/DOCX отчётов
@@ -98,7 +98,7 @@ interpreter.interpret():
 
 ## Пакетный контур
 
-`scripts.seed` запускает по порядку: загрузка csv → чистка → профили и агрегаты графа → OCR отчётов → извлечение утверждений (черновики в статусе `draft`, подтверждение в `data/seed/house_view_approved.json`) → парсинг RSS и разметка. Повторный запуск идемпотентен.
+`scripts.seed` запускает по порядку: пользователи → загрузка csv → чистка → профили и агрегаты графа → парсинг RSS и разметка. OCR отчётов банка и извлечение утверждений — отдельная команда `scripts.ingest_reports` (`docker compose --profile seed run --rm -e LLM_TIMEOUT_SECONDS=120 seed python -m scripts.ingest_reports` — пакетному извлечению нужен таймаут больше интерактивного): ей нужны tesseract (есть в образе backend) и ключ LLM; страницы распознаются один раз (кэш по хэшу картинки в `report_pages`), утверждения пишутся черновиками `draft` в `house_view_claims` (отчёт по стали — `expired`), подтверждение — в `data/seed/house_view_approved.json` (AH-14). Повторный запуск идемпотентен.
 
 ## Фронтенд
 
