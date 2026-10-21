@@ -66,10 +66,12 @@ def test_empty_models_file_is_rejected(tmp_path: Path) -> None:
 
 def test_models_file_turns_reasoning_off_only_for_routed_tasks() -> None:
     reasoning_off = load_models(MODELS_PATH).reasoning_off_tasks
-    assert reasoning_off == {"extract"}
+    assert reasoning_off == {"extract", "followup"}
     catalog = ModelCatalog(ALLOWED, ROUTES, reasoning_off)
     assert catalog.reasoning("extract") is False
-    assert catalog.reasoning("interpret") is True
+    assert catalog.reasoning("followup") is False
+    for task in ("annotate", "interpret", "critic"):
+        assert catalog.reasoning(task) is True
 
 
 def test_reasoning_switch_for_unknown_task_is_rejected() -> None:
