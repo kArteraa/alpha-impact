@@ -37,10 +37,19 @@ cd backend && uv run python -m scripts.gen_schemas && cd ../frontend && npm run 
 docker compose up -d --build --wait && cd frontend && npm run e2e                           # e2e (Playwright)
 ```
 
+Индекс новостей собирает отдельная команда: ей нужен ключ LLM, повторный запуск размечает только новые новости и те, что в прошлый раз не разметились:
+
+```
+docker compose --profile seed run --build --rm -e LLM_TIMEOUT_SECONDS=30 seed python -m scripts.ingest_news   # RSS из NEWS_RSS_URLS → разметка → news
+```
+
+Расход разметки на 100 новостей (замер 21.10.2026, Gemma 4 через прокси кейса): ~79 тыс. входных и ~6 тыс. выходных токенов, ≈ 0,74 ₽ по `usage.cost`. Первый сбор — около 480 новостей за 14 дней, ~26 минут, ~3,5 ₽; около 2% вызовов прокси не отвечает и за 30 с — такие новости размечаются при следующем запуске, а в `llm_usage` за каждый остаётся резерв `LLM_CALL_RESERVE_RUB`.
+
 Если `.env` создан раньше, сравните его с `.env.example` и перенесите недостающие строки, свой ключ оставьте:
 
 - после AH-16: `LLM_BUDGET_RESERVE_SHARE`, `LLM_TIMEOUT_SECONDS`, `LLM_CALL_RESERVE_RUB`, `LLM_CACHE_TTL_SECONDS`; `MODEL_*` — имена моделей с префиксом провайдера, как в `.env.example` (`google/gemma-4-26b-a4b-it`, `z-ai/glm-5.3-flash`, `qwen/qwen3.6-35b-a3b`);
-- после AH-54: `LLM_API_BASE` — адрес прокси кейса `https://changellenge.up.railway.app/v1` (старая строка в `.env` перекрывает его — замените или удалите), `LLM_API_KEY` — ключ кейса; `MODEL_EMBED` больше не используется.
+- после AH-54: `LLM_API_BASE` — адрес прокси кейса `https://changellenge.up.railway.app/v1` (старая строка в `.env` перекрывает его — замените или удалите), `LLM_API_KEY` — ключ кейса; `MODEL_EMBED` больше не используется;
+- после AH-13: `NEWS_RSS_URLS` — рубрики Коммерсанта и Ведомостей и лента Интерфакса, как в `.env.example` (старая строка с общими лентами и РБК перекрывает его — замените или удалите).
 
 Проверка перед коммитом (ruff, mypy, import-linter, pytest, vitest, сборка) — раздел «Проверка» в [docs/PIPELINE.md](docs/PIPELINE.md).
 
