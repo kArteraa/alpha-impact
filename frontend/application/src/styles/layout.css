@@ -56,7 +56,7 @@
   height: 18px;
   padding: 0 5px;
   border-radius: var(--r-pill);
-  background: var(--accent);
+  background: var(--accent-active);
   color: var(--on-accent);
   font-size: var(--fs-11);
   line-height: var(--lh-18);
@@ -82,7 +82,7 @@
   box-shadow: var(--shadow-card);
 }
 
-.company:focus-within {
+.company:has(select:focus-visible) {
   box-shadow: var(--focus-ring);
 }
 
