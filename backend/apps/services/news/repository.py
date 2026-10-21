@@ -1,12 +1,12 @@
 from collections.abc import Sequence
 from datetime import datetime, timedelta
-from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
+from shared.contracts.schemas import NewsItem
 from shared.db.models import NewsRow
 
 
@@ -32,25 +32,26 @@ async def neighbours(
     return [(title, text, 1 - float(value)) for title, text, value in rows]
 
 
-async def add_news(session: AsyncSession, values: dict[str, Any]) -> None:
+async def add_news(session: AsyncSession, item: NewsItem, vector: list[float]) -> None:
+    values = {
+        **item.model_dump(),
+        "factor_names": [factor.name for factor in item.factors],
+        "embedding": vector,
+    }
     await session.execute(insert(NewsRow).values(**values).on_conflict_do_nothing())
 
 
 async def matching(
-    session: AsyncSession, factors: Sequence[str], entities: Sequence[str], since: datetime
+    session: AsyncSession, factors: list[str], entities: list[str], since: datetime
 ) -> Sequence[NewsRow]:
-    conditions = []
-    if factors:
-        conditions.append(NewsRow.factor_names.overlap(list(factors)))
-    if entities:
-        conditions.append(NewsRow.entities.overlap(list(entities)))
+    overlaps = or_(NewsRow.factor_names.overlap(factors), NewsRow.entities.overlap(entities))
     query = (
         select(NewsRow)
         .options(defer(NewsRow.embedding))
-        .where(NewsRow.published_at >= since, or_(*conditions))
+        .where(NewsRow.published_at >= since, overlaps)
     )
     return (await session.scalars(query)).all()
 
 
 async def news_count(session: AsyncSession) -> int:
-    return int(await session.scalar(select(func.count()).select_from(NewsRow)) or 0)
+    return (await session.execute(select(func.count()).select_from(NewsRow))).scalar_one()

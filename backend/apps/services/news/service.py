@@ -10,14 +10,13 @@ from apps.services.news.annotation import (
     annotate,
     annotation_schema,
     entity,
-    news_id,
     to_news_item,
 )
 from apps.services.news.config import NewsConfig
+from apps.services.news.feed import FeedEntry
 from apps.services.news.repository import matching
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem, PageContext
-from shared.db.models import NewsRow
 
 MANUAL_SOURCE = "manual"
 
@@ -27,13 +26,9 @@ def query_entities(industry: str | None, region: str | None, country: str | None
     return [entity(kind, value) for kind, value in wanted if value]
 
 
-def score(row: NewsRow, factors: Collection[str], entities: Collection[str]) -> float:
-    strength = sum(float(factor["strength"]) for factor in row.factors if factor["name"] in factors)
-    return strength + sum(1 for key in row.entities if key in entities)
-
-
-def as_news_item(row: NewsRow) -> NewsItem:
-    return NewsItem.model_validate(row, from_attributes=True)
+def score(item: NewsItem, factors: Collection[str], entities: Collection[str]) -> float:
+    strength = sum(factor.strength for factor in item.factors if factor.name in factors)
+    return strength + sum(1 for key in item.entities if key in entities)
 
 
 class NewsIndex:
@@ -65,17 +60,17 @@ class NewsIndex:
         start = datetime.combine(since, time.min, tzinfo=UTC)
         async with self._sessions() as session:
             rows = await matching(session, factors, entities, start)
+        items = [NewsItem.model_validate(row, from_attributes=True) for row in rows]
         wanted, keys = set(factors), set(entities)
         ranked = sorted(
-            rows, key=lambda row: (score(row, wanted, keys), row.published_at), reverse=True
+            items, key=lambda item: (score(item, wanted, keys), item.published_at), reverse=True
         )
-        return [as_news_item(row) for row in ranked[:limit]]
+        return ranked[:limit]
 
     async def annotate(self, title: str, text: str, url: str) -> NewsItem:
         annotation, _, _ = await annotate(self._llm, self._config, self._schema, title, text)
-        return to_news_item(
-            news_id(title), title, text, url, self._now(), MANUAL_SOURCE, annotation
-        )
+        entry = FeedEntry(title, text, url, self._now(), MANUAL_SOURCE)
+        return to_news_item(entry, annotation)
 
 
 class PageClassifier:

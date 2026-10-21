@@ -3,14 +3,8 @@ from pydantic import ValidationError
 
 from apps.services.news.config import load_config
 from shared.config.factors import FACTORS
-from shared.config.industries import INDUSTRY_CLASSES, OTHER
 
 CONFIG = load_config()
-
-
-def test_hints_describe_every_factor_and_industry() -> None:
-    assert set(CONFIG.factor_hints) == set(FACTORS)
-    assert set(CONFIG.industry_hints) == INDUSTRY_CLASSES - {OTHER}
 
 
 def test_config_rejects_factor_without_hint() -> None:

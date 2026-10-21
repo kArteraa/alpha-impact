@@ -29,9 +29,11 @@ class NewsConfig(BaseModel):
     def hints_cover_vocabularies(self) -> "NewsConfig":
         if set(self.factor_hints) != set(FACTORS):
             raise ValueError(f"factor_hints must describe exactly the factors: {FACTORS}")
-        industries = sorted(INDUSTRY_CLASSES - {OTHER})
-        if set(self.industry_hints) != set(industries):
-            raise ValueError(f"industry_hints must describe exactly the industries: {industries}")
+        industries = INDUSTRY_CLASSES - {OTHER}
+        if set(self.industry_hints) != industries:
+            raise ValueError(
+                f"industry_hints must describe exactly the industries: {sorted(industries)}"
+            )
         return self
 
     @property

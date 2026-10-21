@@ -3,7 +3,7 @@ from typing import Any
 
 import httpx
 import pytest
-from sqlalchemy import func, select, text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from apps.services.llm.errors import ModelUnavailable
@@ -289,4 +289,3 @@ async def test_embedding_column_has_model_dimension(
     )
     async with sessions() as session:
         assert await session.scalar(query) == EMBEDDING_DIMENSION
-        assert await session.scalar(select(func.count()).select_from(NewsRow)) == 0

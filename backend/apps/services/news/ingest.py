@@ -2,18 +2,11 @@ import xml.etree.ElementTree as ElementTree
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.news.annotation import (
-    Annotation,
-    annotate,
-    annotation_schema,
-    news_id,
-    to_news_item,
-)
+from apps.services.news.annotation import annotate, annotation_schema, news_id, to_news_item
 from apps.services.news.config import NewsConfig
 from apps.services.news.dedup import is_duplicate, numbers
 from apps.services.news.feed import FeedEntry, FeedTooLarge, fetch_feed
@@ -89,20 +82,6 @@ async def repeats_indexed(
     )
 
 
-def news_values(entry: FeedEntry, annotation: Annotation, vector: list[float]) -> dict[str, Any]:
-    item = to_news_item(
-        news_id(entry.title),
-        entry.title,
-        entry.text,
-        entry.url,
-        entry.published_at,
-        entry.source,
-        annotation,
-    )
-    names = [factor.name for factor in item.factors]
-    return {**item.model_dump(), "factor_names": names, "embedding": vector}
-
-
 async def ingest_news(
     sessions: async_sessionmaker[AsyncSession],
     llm: LLMGateway,
@@ -131,7 +110,7 @@ async def ingest_news(
             failed.append(entry.url)
             continue
         async with sessions() as session, session.begin():
-            await add_news(session, news_values(entry, annotation, vector))
+            await add_news(session, to_news_item(entry, annotation), vector)
         added += 1
         tokens_in += used_in
         tokens_out += used_out
