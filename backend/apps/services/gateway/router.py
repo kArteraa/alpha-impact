@@ -1,19 +1,15 @@
-from typing import Annotated
-
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from shared.db.models import UserClientRow, UserRow
-from shared.di.container import Container
-from shared.di.dependency import get_container
-
-SESSION_COOKIE = "alfa_session"
+from apps.services.gateway.auth import SESSION_COOKIE, ContainerDep, CurrentUser
+from apps.services.gateway.errors import domain_errors
+from apps.services.gateway.service import InterpretGateway
+from shared.contracts.ports import ProfileService
+from shared.contracts.schemas import ClientProfile, InterpretRequest, InterpretResponse
+from shared.db.models import UserRow
 
 router = APIRouter()
-ContainerDep = Annotated[Container, Depends(get_container)]
-SessionCookie = Annotated[str | None, Cookie(alias=SESSION_COOKIE)]
 
 
 class MockLogin(BaseModel):
@@ -22,6 +18,10 @@ class MockLogin(BaseModel):
 
 class MockSession(BaseModel):
     user_id: str
+
+
+class FeatureCorrection(BaseModel):
+    value: str | float | bool | list[str] | None
 
 
 def not_implemented(task: str) -> HTTPException:
@@ -45,31 +45,38 @@ async def auth_mock(body: MockLogin, response: Response, container: ContainerDep
 
 
 @router.get("/clients")
-async def clients(container: ContainerDep, session_id: SessionCookie = None) -> list[str]:
-    if session_id is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "no session")
-    sessions = container.resolve(async_sessionmaker)
-    async with sessions() as session:
-        user = await session.get(UserRow, session_id)
-        if user is None:
-            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "unknown session")
-        query = select(UserClientRow.client_id).where(UserClientRow.user_id == user.id)
-        return list(await session.scalars(query))
+async def clients(user_id: CurrentUser, container: ContainerDep) -> list[str]:
+    return await container.resolve(ProfileService).list_clients(user_id)
 
 
 @router.post("/interpret")
-async def interpret() -> None:
-    raise not_implemented("AH-19")
+async def interpret(
+    body: InterpretRequest, user_id: CurrentUser, container: ContainerDep
+) -> InterpretResponse:
+    with domain_errors():
+        return await container.resolve(InterpretGateway).interpret(user_id, body)
 
 
 @router.get("/profile/{client_id}")
-async def profile(client_id: str) -> None:
-    raise not_implemented("AH-19")
+async def profile(client_id: str, user_id: CurrentUser, container: ContainerDep) -> ClientProfile:
+    with domain_errors():
+        await container.resolve(InterpretGateway).authorize(user_id, client_id)
+        return await container.resolve(ProfileService).get_profile(user_id, client_id)
 
 
 @router.patch("/profile/{client_id}/features/{name}")
-async def patch_feature(client_id: str, name: str) -> None:
-    raise not_implemented("AH-19")
+async def patch_feature(
+    client_id: str,
+    name: str,
+    body: FeatureCorrection,
+    user_id: CurrentUser,
+    container: ContainerDep,
+) -> ClientProfile:
+    with domain_errors():
+        await container.resolve(InterpretGateway).authorize(user_id, client_id)
+        return await container.resolve(ProfileService).apply_user_correction(
+            user_id, client_id, name, body.value
+        )
 
 
 @router.post("/feedback")

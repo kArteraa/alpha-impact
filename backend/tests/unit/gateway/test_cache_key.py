@@ -1,3 +1,4 @@
+from apps.services.gateway.cache import cache_key, context_hash
 from shared.contracts.schemas import (
     DepositContext,
     InterpretRequest,
@@ -5,12 +6,13 @@ from shared.contracts.schemas import (
     PaymentContext,
     Role,
 )
-from apps.services.gateway.cache import cache_key, context_hash
 
 VERSION = "a1b2c3d4e5f60718"
 
 
-def payment(amount: float = 100.0, client_id: str = "U_1", role: Role = Role.CFO) -> InterpretRequest:
+def payment(
+    amount: float = 100.0, client_id: str = "U_1", role: Role = Role.CFO
+) -> InterpretRequest:
     return InterpretRequest(
         user_id="user",
         client_id=client_id,
