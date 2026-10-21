@@ -96,6 +96,7 @@ async def test_foreign_client_is_denied_before_interpreter(harness: Harness) -> 
     with pytest.raises(AccessDenied):
         await harness.gateway.interpret(USER, request(client_id="U_9"))
     harness.interpreter.interpret.assert_not_awaited()
+    harness.profiles.list_clients.assert_awaited_once_with(USER)
     assert harness.journal.records == []
 
 
@@ -147,10 +148,3 @@ async def test_interpreter_error_is_journaled_and_not_cached(harness: Harness) -
     assert harness.cache.entries == {}
     assert harness.journal.records[0].outcome == "DomainError"
     assert harness.journal.records[0].cached is False
-
-
-async def test_authorize_uses_profile_port(harness: Harness) -> None:
-    await harness.gateway.authorize(USER, CLIENT)
-    harness.profiles.list_clients.assert_awaited_once_with(USER)
-    with pytest.raises(AccessDenied):
-        await harness.gateway.authorize(USER, "U_9")

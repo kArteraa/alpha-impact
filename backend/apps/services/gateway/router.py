@@ -3,13 +3,13 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from apps.services.gateway.auth import SESSION_COOKIE, ContainerDep, CurrentUser
-from apps.services.gateway.errors import domain_errors
+from apps.services.gateway.errors import DomainErrorRoute
 from apps.services.gateway.service import InterpretGateway
 from shared.contracts.ports import ProfileService
 from shared.contracts.schemas import ClientProfile, InterpretRequest, InterpretResponse
 from shared.db.models import UserRow
 
-router = APIRouter()
+router = APIRouter(route_class=DomainErrorRoute)
 
 
 class MockLogin(BaseModel):
@@ -53,15 +53,12 @@ async def clients(user_id: CurrentUser, container: ContainerDep) -> list[str]:
 async def interpret(
     body: InterpretRequest, user_id: CurrentUser, container: ContainerDep
 ) -> InterpretResponse:
-    with domain_errors():
-        return await container.resolve(InterpretGateway).interpret(user_id, body)
+    return await container.resolve(InterpretGateway).interpret(user_id, body)
 
 
 @router.get("/profile/{client_id}")
 async def profile(client_id: str, user_id: CurrentUser, container: ContainerDep) -> ClientProfile:
-    with domain_errors():
-        await container.resolve(InterpretGateway).authorize(user_id, client_id)
-        return await container.resolve(ProfileService).get_profile(user_id, client_id)
+    return await container.resolve(ProfileService).get_profile(user_id, client_id)
 
 
 @router.patch("/profile/{client_id}/features/{name}")
@@ -72,11 +69,9 @@ async def patch_feature(
     user_id: CurrentUser,
     container: ContainerDep,
 ) -> ClientProfile:
-    with domain_errors():
-        await container.resolve(InterpretGateway).authorize(user_id, client_id)
-        return await container.resolve(ProfileService).apply_user_correction(
-            user_id, client_id, name, body.value
-        )
+    return await container.resolve(ProfileService).apply_user_correction(
+        user_id, client_id, name, body.value
+    )
 
 
 @router.post("/feedback")
