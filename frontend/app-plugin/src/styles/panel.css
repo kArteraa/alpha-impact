@@ -1,7 +1,7 @@
 .insight-panel {
   position: relative;
   display: grid;
-  gap: var(--s-4);
+  gap: var(--s-3);
   min-width: 0;
   font-family: var(--font-family);
   font-size: var(--fs-16);
@@ -17,7 +17,7 @@
 }
 
 .insight-panel a {
-  color: var(--info);
+  color: var(--link);
   text-decoration: none;
 }
 
@@ -37,8 +37,13 @@
   padding: var(--s-5);
   background: var(--bg-card);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
+  overflow: hidden;
   gap: var(--s-3);
+}
+
+.insight-panel .button-secondary {
+  justify-self: start;
 }
 
 .insight-skeleton {
@@ -84,15 +89,18 @@
 
 .panel-silent svg {
   flex: none;
-  padding: var(--s-1);
+  box-sizing: border-box;
+  width: var(--s-7);
+  height: var(--s-7);
+  padding: 6px;
   border-radius: var(--r-pill);
-  background: var(--bg-neutral);
-  color: var(--text-secondary);
+  background: var(--bg-success);
+  color: var(--success-text);
 }
 
 .insight-progress {
   position: absolute;
-  inset: 0 var(--s-4) auto;
+  inset: 0 var(--s-5) auto;
   height: 2px;
   overflow: hidden;
   border-radius: var(--r-pill);
@@ -125,11 +133,11 @@
 
 .insight-card {
   display: grid;
-  gap: var(--s-4);
-  padding: var(--s-5);
+  gap: var(--s-5);
+  padding: var(--s-6);
   background: var(--bg-card);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
   animation: insight-appear var(--t-base);
 }
 
@@ -153,6 +161,7 @@
   font-size: var(--fs-22);
   line-height: var(--lh-26);
   font-weight: var(--fw-bold);
+  letter-spacing: -0.2px;
 }
 
 .insight-block {
@@ -173,10 +182,15 @@
   gap: var(--s-2);
   padding: 0;
   border: 0;
+  border-radius: var(--r-sm);
   background: none;
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+.insight-block-toggle:hover {
+  color: var(--text-primary);
 }
 
 .insight-block-toggle::after {
@@ -227,6 +241,10 @@
   color: var(--bank);
 }
 
+.insight-block-bank .claim-badge[data-claim-type="bank"] {
+  background: var(--bg-card);
+}
+
 .bank-report {
   color: var(--text-primary);
   font-size: var(--fs-14);
@@ -256,35 +274,53 @@
 }
 
 .needs-review {
-  padding: var(--s-2) var(--s-3);
-  border-radius: var(--r-sm);
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
   background: var(--bg-warning);
-  font-size: var(--fs-14);
-}
-
-.product-offer {
-  display: grid;
-  gap: var(--s-1);
-  padding: var(--s-4) var(--s-5);
-  border-radius: var(--r-lg);
-  background: var(--bg-neutral);
-}
-
-.product-offer h4 {
-  font-size: var(--fs-14);
-  line-height: var(--lh-20);
-  font-weight: var(--fw-medium);
   color: var(--text-primary);
-}
-
-.product-reason {
   font-size: var(--fs-16);
   line-height: var(--lh-24);
 }
 
+.product-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-1);
+  column-gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-lg);
+  background: var(--bg-card);
+}
+
+.product-offer > :not(.button-secondary) {
+  grid-column: 1;
+}
+
+.product-offer h4 {
+  font-size: var(--fs-13);
+  line-height: var(--lh-18);
+  font-weight: var(--fw-medium);
+  color: var(--text-secondary);
+}
+
+.product-offer strong {
+  font-size: var(--fs-18);
+  line-height: var(--lh-26);
+  font-weight: var(--fw-medium);
+}
+
+.product-reason {
+  color: var(--text-secondary);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
+}
+
 .product-offer .button-secondary {
+  grid-column: 2;
+  grid-row: 1 / span 3;
   justify-self: start;
-  margin-top: var(--s-2);
+  margin-top: 0;
 }
 
 .card-footer {
@@ -293,6 +329,8 @@
   align-items: center;
   gap: var(--s-3);
   padding: 0 var(--s-2);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
 }
 
 .insight-feedback {
