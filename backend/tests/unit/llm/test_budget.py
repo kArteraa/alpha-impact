@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 
 from shared.contracts.errors import BudgetExceeded
-from tests.unit.llm.fakes import TODAY, MemoryStore, ModelServer, Usage, make_gateway
+from tests.unit.llm.fakes import TODAY, VECTOR, MemoryStore, ModelServer, Usage, make_gateway
 
 
 def spent(store: MemoryStore, cost_rub: float, days_ago: int = 0) -> None:
@@ -24,9 +24,9 @@ async def test_fresh_day_leaves_budget_minus_reserve() -> None:
     assert await gateway.budget_left_rub() == pytest.approx(450.0)
 
 
-async def test_call_is_charged_by_model_prices() -> None:
+async def test_call_is_charged_by_the_cost_in_the_answer() -> None:
     store = MemoryStore()
-    gateway = make_gateway(ModelServer(tokens_in=1000, tokens_out=500).http_client(), store)
+    gateway = make_gateway(ModelServer(cost_rub=0.25).http_client(), store)
     await gateway.complete("interpret", "system", "user")
     assert store.usages[0].cost_rub == pytest.approx(0.25)
     assert store.usages[0].model == "z-ai/glm-5.3-flash"
@@ -53,13 +53,11 @@ async def test_reserve_is_never_spent() -> None:
         await gateway.complete("interpret", "system", "user")
 
 
-async def test_exhausted_budget_blocks_embeddings() -> None:
-    server = ModelServer()
+async def test_exhausted_budget_does_not_block_embeddings() -> None:
     store = MemoryStore()
     spent(store, 450.0)
-    with pytest.raises(BudgetExceeded):
-        await make_gateway(server.http_client(), store).embed("text")
-    assert server.requests == []
+    assert await make_gateway(ModelServer().http_client(), store).embed("text") == VECTOR
+    assert len(store.usages) == 1
 
 
 async def test_cache_still_answers_when_budget_is_exhausted() -> None:

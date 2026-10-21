@@ -1,4 +1,4 @@
-from collections.abc import Callable
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -7,6 +7,7 @@ import httpx
 from apps.services.llm.errors import ModelUnavailable
 from shared.config.settings import Settings
 
+CHAT_PATH = "/chat/completions"
 MALFORMED_RESPONSE = (ValueError, KeyError, IndexError, TypeError)
 
 
@@ -15,12 +16,7 @@ class Completion:
     content: str | None
     tokens_in: int
     tokens_out: int
-
-
-@dataclass(frozen=True)
-class Embedding:
-    vector: list[float]
-    tokens: int
+    cost_rub: float
 
 
 class ModelClient:
@@ -47,24 +43,20 @@ class ModelClient:
             body["response_format"] = response_format
         if not reasoning:
             body["reasoning"] = {"enabled": False}
-        return await self._call("/chat/completions", body, read_completion)
-
-    async def embed(self, model: str, text: str) -> Embedding:
-        return await self._call("/embeddings", {"model": model, "input": text}, read_embedding)
-
-    async def _call[T](self, path: str, body: dict[str, Any], read: Callable[[Any], T]) -> T:
         try:
-            response = await self._http.post(path, json=body)
+            response = await self._http.post(CHAT_PATH, json=body)
             response.raise_for_status()
             data = response.json()
+        except httpx.TimeoutException as error:
+            message = f"model API {CHAT_PATH} timed out: {error!r}"
+            raise ModelUnavailable(message, cost_rub=None) from error
         except (httpx.HTTPError, ValueError) as error:
-            raise ModelUnavailable(f"model API {path} failed: {error!r}") from error
+            raise ModelUnavailable(f"model API {CHAT_PATH} failed: {error!r}") from error
         try:
-            return read(data)
+            return read_completion(data)
         except MALFORMED_RESPONSE as error:
-            tokens_in, tokens_out = read_usage(data)
-            message = f"model API {path} returned a malformed body: {error!r}"
-            raise ModelUnavailable(message, tokens_in, tokens_out) from error
+            message = f"model API {CHAT_PATH} returned a malformed body: {error!r}"
+            raise ModelUnavailable(message, *read_usage(data)) from error
 
 
 def token_count(value: Any) -> int:
@@ -79,12 +71,19 @@ def text_content(value: Any) -> str | None:
     return value
 
 
-def number_vector(value: Any) -> list[float]:
-    if not isinstance(value, list) or not value:
-        raise TypeError("embedding must be a non-empty list of numbers")
-    if any(isinstance(item, bool) or not isinstance(item, int | float) for item in value):
-        raise TypeError("embedding must contain only numbers")
-    return value
+def cost_value(value: Any) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise TypeError(f"cost must be a number, got {value!r}")
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"cost must be a finite non-negative number, got {value!r}")
+    return float(value)
+
+
+def counted_or_zero(usage: dict[str, Any], field: str) -> int:
+    try:
+        return token_count(usage[field])
+    except MALFORMED_RESPONSE:
+        return 0
 
 
 def read_completion(data: Any) -> Completion:
@@ -93,22 +92,20 @@ def read_completion(data: Any) -> Completion:
         content=text_content(data["choices"][0]["message"]["content"]),
         tokens_in=token_count(usage["prompt_tokens"]),
         tokens_out=token_count(usage["completion_tokens"]),
+        cost_rub=cost_value(usage["cost"]),
     )
 
 
-def read_usage(data: Any) -> tuple[int, int]:
+def read_usage(data: Any) -> tuple[int, int, float | None]:
+    usage = data.get("usage") if isinstance(data, dict) else None
+    if not isinstance(usage, dict):
+        return 0, 0, 0.0
     try:
-        usage = data["usage"]
-        return token_count(usage["prompt_tokens"]), token_count(usage.get("completion_tokens", 0))
+        cost = cost_value(usage["cost"])
     except MALFORMED_RESPONSE:
-        return 0, 0
-
-
-def read_embedding(data: Any) -> Embedding:
-    return Embedding(
-        vector=number_vector(data["data"][0]["embedding"]),
-        tokens=token_count(data["usage"]["prompt_tokens"]),
-    )
+        return 0, 0, None
+    tokens_in = counted_or_zero(usage, "prompt_tokens")
+    return tokens_in, counted_or_zero(usage, "completion_tokens"), cost
 
 
 def build_http_client(settings: Settings) -> httpx.AsyncClient:

@@ -21,7 +21,6 @@ class Settings(BaseSettings):
     MODEL_INTERPRET: str
     MODEL_CRITIC: str
     MODEL_FOLLOWUP: str
-    MODEL_EMBED: str
     RELEVANCE_THRESHOLD: float
     CACHE_TTL_SECONDS: int
     EXTENSION_TOKEN_TTL_SECONDS: int

@@ -29,6 +29,7 @@ test-results/
 # Data
 backend/data/raw/*
 !backend/data/raw/.gitkeep
+backend/models/
 
 # Editors and local agent settings
 .idea/

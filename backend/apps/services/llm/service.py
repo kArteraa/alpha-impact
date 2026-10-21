@@ -1,13 +1,15 @@
+import asyncio
 import hashlib
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from datetime import date
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
 from apps.services.llm.catalog import ModelCatalog
-from apps.services.llm.client import ModelClient
+from apps.services.llm.client import Completion, ModelClient
+from apps.services.llm.embedder import TextEmbedder
 from apps.services.llm.errors import (
     CacheNotWritten,
     ModelOutputInvalid,
@@ -36,6 +38,10 @@ def response_format(schema: type[BaseModel] | None) -> dict[str, Any] | None:
     }
 
 
+def spent(completion: Completion) -> tuple[int, int, float]:
+    return completion.tokens_in, completion.tokens_out, completion.cost_rub
+
+
 def cache_key(*parts: object) -> str:
     payload = json.dumps(parts, ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -61,6 +67,7 @@ class ModelGateway:
         self,
         catalog: ModelCatalog,
         client: ModelClient,
+        embedder: TextEmbedder,
         store: UsageStore,
         daily_budget_rub: float,
         reserve_share: float,
@@ -69,6 +76,7 @@ class ModelGateway:
     ) -> None:
         self._catalog = catalog
         self._client = client
+        self._embedder = embedder
         self._store = store
         self._spendable_rub = daily_budget_rub * (1 - reserve_share)
         self._call_reserve_rub = call_reserve_rub
@@ -87,33 +95,25 @@ class ModelGateway:
         if cached is not None:
             return parse(cached, output_schema), 0, 0
         reservation = await self._reserve(task, model)
-        completion = await self._called(
-            reservation,
-            model,
-            lambda: self._client.chat(model, system, user, output_format, reasoning),
-        )
-        tokens = (completion.tokens_in, completion.tokens_out)
+        completion = await self._chat(reservation, model, system, user, output_format, reasoning)
         try:
             content = answer_text(completion.content, model)
             result = parse(content, output_schema)
         except ModelOutputInvalid:
-            await self._record(reservation, model, *tokens)
+            await self._record(reservation, *spent(completion))
             raise
-        await self._remembered(reservation, model, key, content, tokens)
-        return result, *tokens
+        await self._remembered(reservation, key, content, completion)
+        return result, completion.tokens_in, completion.tokens_out
 
     async def embed(self, text: str) -> list[float]:
-        model = self._catalog.embedding_model
-        key = cache_key(EMBED_TASK, model, text)
+        key = cache_key(EMBED_TASK, self._embedder.spec.model_dump(), text)
         cached = await self._store.cached(key)
         if cached is not None:
-            vector: list[float] = json.loads(cached)
-            return vector
-        reservation = await self._reserve(EMBED_TASK, model)
-        embedding = await self._called(reservation, model, lambda: self._client.embed(model, text))
-        tokens = (embedding.tokens, 0)
-        await self._remembered(reservation, model, key, json.dumps(embedding.vector), tokens)
-        return embedding.vector
+            stored: list[float] = json.loads(cached)
+            return stored
+        vector = await asyncio.to_thread(self._embedder.encode, text)
+        await self._remember(key, json.dumps(vector))
+        return vector
 
     async def budget_left_rub(self) -> float:
         spent = await self._store.spent_rub(self._today())
@@ -127,29 +127,45 @@ class ModelGateway:
             raise BudgetExceeded(f"daily LLM budget of {self._spendable_rub:.2f} RUB is spent")
         return reservation
 
-    async def _called[T](self, reservation: int, model: str, call: Callable[[], Awaitable[T]]) -> T:
+    async def _chat(
+        self,
+        reservation: int,
+        model: str,
+        system: str,
+        user: str,
+        output_format: dict[str, Any] | None,
+        reasoning: bool,
+    ) -> Completion:
         try:
-            return await call()
+            return await self._client.chat(model, system, user, output_format, reasoning)
         except ModelUnavailable as error:
-            await self._record(reservation, model, error.tokens_in, error.tokens_out)
+            if error.cost_rub is not None:
+                await self._record(reservation, error.tokens_in, error.tokens_out, error.cost_rub)
             raise
         except BaseException:
             await self._store.settle(reservation, 0, 0, 0.0)
             raise
 
     async def _remembered(
-        self, reservation: int, model: str, key: str, content: str, tokens: tuple[int, int]
+        self, reservation: int, key: str, content: str, completion: Completion
     ) -> None:
+        try:
+            await self._remember(key, content)
+        except CacheNotWritten:
+            await self._record(reservation, *spent(completion))
+            raise
+        await self._record(reservation, *spent(completion))
+
+    async def _remember(self, key: str, content: str) -> None:
         try:
             await self._store.remember(key, content)
         except Exception as error:
-            await self._record(reservation, model, *tokens)
-            raise CacheNotWritten(f"answer of reservation {reservation} is not cached") from error
-        await self._record(reservation, model, *tokens)
+            raise CacheNotWritten(f"cache entry {key} is not written") from error
 
-    async def _record(self, reservation: int, model: str, tokens_in: int, tokens_out: int) -> None:
-        cost = self._catalog.cost_rub(model, tokens_in, tokens_out)
+    async def _record(
+        self, reservation: int, tokens_in: int, tokens_out: int, cost_rub: float
+    ) -> None:
         try:
-            await self._store.settle(reservation, tokens_in, tokens_out, cost)
+            await self._store.settle(reservation, tokens_in, tokens_out, cost_rub)
         except Exception as error:
             raise UsageNotRecorded(f"usage of reservation {reservation} is not recorded") from error

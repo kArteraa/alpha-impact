@@ -1,9 +1,8 @@
 models:
-  google/gemma-4-26b-a4b-it: {input_rub_per_1m: 20, output_rub_per_1m: 80}
-  z-ai/glm-5.3-flash: {input_rub_per_1m: 20, output_rub_per_1m: 80}
-  qwen/qwen3.6-35b-a3b: {input_rub_per_1m: 20, output_rub_per_1m: 80}
-  deepseek/deepseek-v4.1-flash: {input_rub_per_1m: 20, output_rub_per_1m: 80}
-  qwen/qwen3-vl-30b-a3b-instruct: {input_rub_per_1m: 20, output_rub_per_1m: 80}
-  moonshotai/kimi-k2.6: {input_rub_per_1m: 60, output_rub_per_1m: 250}
-  tbd-embedding-model: {input_rub_per_1m: 5, output_rub_per_1m: 5}
+  - google/gemma-4-26b-a4b-it
+  - z-ai/glm-5.3-flash
+  - qwen/qwen3.6-35b-a3b
+  - deepseek/deepseek-v4.1-flash
+  - qwen/qwen3-vl-30b-a3b-instruct
+  - moonshotai/kimi-k2.6
 reasoning_off_tasks: [extract]

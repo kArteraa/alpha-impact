@@ -97,7 +97,7 @@
 1. Инструменты: `git`, `docker`, `uv`, `node` (мажорная версия 22, как в CI), `gh`. Чего-то нет — показать список и после «да» поставить: Windows — `winget install --id <id>` для нужных из `Git.Git`, `Docker.DockerDesktop`, `astral-sh.uv`, `OpenJS.NodeJS.22`, `GitHub.cli`, затем перезапустить агента, чтобы обновился PATH; Linux — пакетный менеджер дистрибутива. Docker Desktop требует WSL2 (`wsl --install`) и может попросить перезагрузку — сказать об этом.
 2. `gh auth status`. Не вошёл — попросить пользователя выполнить `gh auth login` (в Claude Code — `! gh auth login`, в остальных агентах — в отдельном терминале). `git config user.name` и `user.email` пусты — спросить и задать.
 3. Нет `.env` в корне — `cp .env.example .env`. `LLM_API_KEY` пуст — попросить пользователя вписать ключ в `.env` самому (ключ не передаётся через чат).
-4. `cd backend && uv sync`, `cd frontend && npm ci`.
+4. `cd backend && uv sync && uv run python -m scripts.download_embedder` (модель эмбеддингов ~0,5 ГБ для тестов, один раз), `cd frontend && npm ci`.
 5. `docker info` не отвечает — на Windows запустить Docker Desktop (`cmd //c start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"`) и ждать `docker info` до 2 минут. Затем `docker compose up -d --build --wait` и `docker compose --profile seed run --rm seed`; `http://localhost:8000/health` и `http://localhost:5173` отвечают 200.
 6. Jira: инструменты MCP Atlassian доступны и поиск `project = KAN AND summary ~ "AH-49"` находит задачу. Иначе дать пользователю команду для своего агента, сервер `https://mcp.atlassian.com/v1/mcp`, вход через браузер учётной записью Jira, затем перезапуск агента:
    - Claude Code: `claude mcp add --transport http --scope user atlassian https://mcp.atlassian.com/v1/mcp`, затем `/mcp` → atlassian → вход (или коннектор Atlassian в настройках claude.ai);
@@ -118,6 +118,7 @@ uv run ruff format --check .
 uv run mypy --strict shared
 uv run mypy apps main.py scripts tests
 uv run lint-imports
+uv run python -m scripts.download_embedder
 uv run --env-file ../.env pytest
 cd ../frontend
 npm run gen:types
