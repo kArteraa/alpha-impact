@@ -141,9 +141,10 @@ def make_gateway(
     allowed: frozenset[str] = ALLOWED,
     today: Callable[[], date] = lambda: TODAY,
     embedder: TextEmbedder | None = None,
+    reasoning_off: frozenset[str] = frozenset(),
 ) -> ModelGateway:
     return ModelGateway(
-        catalog=ModelCatalog(allowed, ROUTES),
+        catalog=ModelCatalog(allowed, ROUTES, reasoning_off),
         client=ModelClient(http),
         embedder=embedder or CountingEmbedder(),
         store=store,

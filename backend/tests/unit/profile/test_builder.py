@@ -116,3 +116,13 @@ def test_foreign_ownership_is_flagged(profiles: dict[str, Payload]) -> None:
     assert profiles["U_1595"]["features"]["ownership"]["value"] == (
         "СОБСТВЕННОСТЬ ИНОСТРАННЫХ ЮРИДИЧЕСКИХ ЛИЦ"
     )
+
+
+def test_config_must_cover_shared_factors() -> None:
+    config = load_config()
+    missing = {name: rule for name, rule in config.exposures.items() if name != "regulation"}
+
+    with pytest.raises(ValueError, match="shared factors"):
+        type(config).model_validate({**config.model_dump(), "exposures": missing})
+    reordered = dict(reversed(list(config.exposures.items())))
+    assert type(config).model_validate({**config.model_dump(), "exposures": reordered})
