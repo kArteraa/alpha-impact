@@ -55,8 +55,9 @@ async def test_annotate_sends_text_cut_to_limit() -> None:
     assert llm.completions[0].count("я") == CONFIG.max_text_chars
 
 
-async def test_search_without_criteria_is_empty() -> None:
-    assert await index(FakeNewsLlm()).search([], None, None, None, date(2026, 10, 7)) == []
+async def test_search_rejects_nonpositive_limit_before_database_access() -> None:
+    with pytest.raises(ValueError, match="limit"):
+        await index(FakeNewsLlm()).search([], None, None, None, date(2026, 10, 7), limit=0)
 
 
 async def test_classify_points_to_task() -> None:
