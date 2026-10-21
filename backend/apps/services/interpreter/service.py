@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
-from apps.services.interpreter.context import current_claims, prompt_context, sources
+from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
 from apps.services.interpreter.drafting import Draft, build_card
 from apps.services.interpreter.journal import Journal, utc_now
 from apps.services.interpreter.planning import Plan, PlanConfig
@@ -15,6 +15,7 @@ from shared.config.factors import FACTORS
 from shared.contracts.errors import DomainError
 from shared.contracts.ports import (
     CounterpartyService,
+    Critic,
     HouseViewService,
     LLMGateway,
     NewsService,
@@ -22,8 +23,11 @@ from shared.contracts.ports import (
     TraceStore,
 )
 from shared.contracts.schemas import (
+    HouseViewClaim,
+    InsightCard,
     InterpretRequest,
     InterpretResponse,
+    NewsItem,
     PaymentContext,
     Trace,
     TraceStep,
@@ -39,6 +43,7 @@ class Agent:
         house_view: HouseViewService,
         llm: LLMGateway,
         traces: TraceStore,
+        critic: Critic,
         config: PlanConfig,
         threshold: float,
         model: str,
@@ -48,6 +53,7 @@ class Agent:
         self._house_view = house_view
         self._llm = llm
         self._traces = traces
+        self._critic = critic
         self._config = config
         self._model = model
         self._prefilter = Prefilter(news, house_view, threshold=threshold)
@@ -82,7 +88,7 @@ class Agent:
         trace.steps.append(
             TraceStep(
                 step="final",
-                name="silent" if response.silent else "draft",
+                name="silent" if response.silent else "card",
                 input_summary="",
                 output_summary=f"{len(response.cards)} cards",
                 started_at=utc_now(),
@@ -175,15 +181,46 @@ class Agent:
                 )
             for claim in current_claims(batch, as_of):
                 collected[claim.id] = claim
-        evidence = sources(
-            profile, counterparty, news, [collected[key] for key in sorted(collected)]
-        )
-        context = prompt_context(request, profile, counterparty, evidence)
+        current = [collected[key] for key in sorted(collected)]
+        evidence = sources(profile, counterparty, news, current)
+        payload: dict[str, object] = {
+            "plan": plan.model_dump(),
+            "context": prompt_context(request, profile, counterparty, evidence),
+        }
         draft = await journal.generate(
-            "draft",
-            DRAFT_SYSTEM,
-            json.dumps({"plan": plan.model_dump(), "context": context}, ensure_ascii=False),
-            Draft,
+            "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
         )
-        card = build_card(draft, evidence, card_id=str(uuid4()), trace_id=journal.trace.id)
+        card = await self._reviewed(journal, payload, draft, evidence, current, news)
         return InterpretResponse(silent=False, cards=[card])
+
+    async def _reviewed(
+        self,
+        journal: Journal,
+        payload: dict[str, object],
+        draft: Draft,
+        evidence: dict[str, Evidence],
+        house_view: list[HouseViewClaim],
+        news: list[NewsItem],
+    ) -> InsightCard:
+        card = build_card(draft, evidence, card_id=str(uuid4()), trace_id=journal.trace.id)
+        round_number = 1
+        try:
+            verdicts = await journal.review(round_number, self._critic, card, house_view, news)
+            if not verdicts:
+                return card
+            round_number = 2
+            redraft = await journal.generate(
+                "redraft",
+                DRAFT_SYSTEM,
+                json.dumps(
+                    {**payload, "previous_draft": draft.model_dump(), "critic_verdicts": verdicts},
+                    ensure_ascii=False,
+                ),
+                Draft,
+            )
+            card = build_card(redraft, evidence, card_id=card.id, trace_id=journal.trace.id)
+            verdicts = await journal.review(round_number, self._critic, card, house_view, news)
+        except (DomainError, ValidationError) as error:
+            journal.trace.critic_verdicts.append(f"{round_number}: error: {type(error).__name__}")
+            return card.model_copy(update={"needs_review": True})
+        return card.model_copy(update={"needs_review": bool(verdicts)})

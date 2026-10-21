@@ -28,9 +28,10 @@ def register(container: Container) -> None:
             house_view=c.resolve(HouseViewService),
             llm=c.resolve(LLMGateway),
             traces=c.resolve(TraceStore),
+            critic=c.resolve(Critic),
             config=config,
             threshold=c.resolve(Settings).RELEVANCE_THRESHOLD,
             model=c.resolve(Settings).MODEL_INTERPRET,
         ),
     )
-    container.register(Critic, lambda _: CriticAgent())
+    container.register(Critic, lambda c: CriticAgent(c.resolve(LLMGateway)))

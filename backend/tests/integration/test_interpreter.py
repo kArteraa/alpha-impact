@@ -25,7 +25,9 @@ def model() -> AsyncMock:
     ) -> tuple[BaseModel, int, int]:
         context = json.loads(user)
         answer: dict[str, object]
-        if "template" in context:
+        if task == "critic":
+            answer = {"items": []}
+        elif "template" in context:
             answer = {
                 "focus": "Уточнить сроки и тариф перевозчика",
                 "tools": [{"tool": "house_view.claims", "argument": "trade_logistics"}],
@@ -69,12 +71,13 @@ async def test_interpreter_end_to_end_through_di(
     card = relevant.cards[0]
     assert card.what_happened[0].source_ref.id == news.id
     assert card.bank_view[0].source_ref.kind == "house_view"
-    assert card.needs_review
+    assert not card.needs_review
     trace: Trace = traces.save.call_args.args[0]
     assert Trace.model_validate_json(trace.model_dump_json()).result == relevant
     assert trace.id == card.trace_id
     assert any(step.step == "plan" for step in trace.steps)
     assert any(step.name == "house_view.claims" for step in trace.steps)
+    assert trace.critic_verdicts == ["1: ok"]
     assert len(card.basis) >= 3
     assert all(
         claim.source_ref in card.basis

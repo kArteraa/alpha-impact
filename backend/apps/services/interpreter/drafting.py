@@ -4,6 +4,8 @@ from apps.services.interpreter.context import Evidence
 from shared.contracts.errors import DomainError
 from shared.contracts.schemas import Claim, ClaimType, InsightCard, SourceRef
 
+CLAIM_BLOCKS = ("what_happened", "why_for_you", "consequences", "actions", "bank_view")
+
 
 class DraftClaim(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -46,10 +48,7 @@ def build_card(
             result.append(Claim(text=claim.text, type=claim.type, source_ref=item.ref))
         return result
 
-    blocks = {
-        name: resolve(getattr(draft, name), name == "bank_view")
-        for name in ("what_happened", "why_for_you", "consequences", "actions", "bank_view")
-    }
+    blocks = {name: resolve(getattr(draft, name), name == "bank_view") for name in CLAIM_BLOCKS}
     return InsightCard(
         id=card_id,
         trace_id=trace_id,
@@ -61,5 +60,4 @@ def build_card(
         bank_view=blocks["bank_view"],
         basis=list(basis.values()),
         significance=draft.significance,
-        needs_review=True,
     )

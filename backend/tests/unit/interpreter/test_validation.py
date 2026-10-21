@@ -51,7 +51,7 @@ async def test_additional_claims_must_be_current_and_match_topic(
     )
     harness.house_view.claims.side_effect = [harness.seed.house_view, [extra]]
     await harness.agent.interpret(harness.request())
-    prompt = harness.llm.complete.await_args_list[-1].kwargs["user"]
+    prompt = harness.llm.complete.await_args_list[1].kwargs["user"]
     assert "house_view:extra" not in prompt
 
 
@@ -60,7 +60,7 @@ async def test_additional_evidence_enters_draft_context(harness: Harness) -> Non
     extra = harness.seed.house_view[0].model_copy(update={"id": "extra", "subject": "key_rate"})
     harness.house_view.claims.side_effect = [harness.seed.house_view, [extra]]
     await harness.agent.interpret(harness.request())
-    prompt = json.loads(harness.llm.complete.await_args_list[-1].kwargs["user"])
+    prompt = json.loads(harness.llm.complete.await_args_list[1].kwargs["user"])
     assert prompt["context"]["sources"]["house_view:extra"]["bank_text"] == extra.claim
 
 
