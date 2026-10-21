@@ -50,7 +50,10 @@ async def test_removed_claim_changes_version(
     house_view: HouseView, sessions: async_sessionmaker[AsyncSession], tmp_path: Path
 ) -> None:
     before = await house_view.version()
-    standalone = next(claim for claim in APPROVED if claim.subject == "gold")
+    successors = {claim.superseded_by for claim in APPROVED}
+    standalone = next(
+        claim for claim in APPROVED if claim.superseded_by is None and claim.id not in successors
+    )
     kept = [claim for claim in APPROVED if claim.id != standalone.id]
 
     await load_house_view(sessions, write_claims(tmp_path / "removed.json", kept), EXPIRED_DOCS)
