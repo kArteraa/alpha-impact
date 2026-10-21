@@ -67,7 +67,8 @@ async def test_retry_after_invalid_answer_calls_the_model_again() -> None:
 
 
 NOT_JSON = "<html>502 bad gateway</html>"
-USAGE = {"prompt_tokens": 1200, "completion_tokens": 300}
+USAGE = {"prompt_tokens": 1200, "completion_tokens": 300, "cost": 0.4}
+TOKENS = {"prompt_tokens": 1200, "completion_tokens": 300}
 
 
 @pytest.mark.parametrize(
@@ -104,7 +105,25 @@ async def test_broken_completion_with_usage_is_unavailable_but_charged(payload: 
     gateway = make_gateway(ModelServer(payload=payload).http_client(), store)
     with pytest.raises(ModelUnavailable):
         await gateway.complete("interpret", "sys", "usr")
-    assert [(u.task, u.tokens_in, u.tokens_out) for u in store.usages] == [("interpret", 1200, 300)]
+    assert [(u.task, u.tokens_in, u.tokens_out, u.cost_rub) for u in store.usages] == [
+        ("interpret", 1200, 300, 0.4)
+    ]
+    assert store.cache == {}
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [TOKENS, {**TOKENS, "cost": "0.4"}, {**TOKENS, "cost": -1}, {**TOKENS, "cost": True}],
+)
+async def test_answer_without_cost_is_unavailable_and_keeps_the_reservation(
+    usage: dict[str, object],
+) -> None:
+    store = MemoryStore()
+    payload = {"choices": [{"message": {"content": "ok"}}], "usage": usage}
+    gateway = make_gateway(ModelServer(payload=payload).http_client(), store, call_reserve_rub=1.0)
+    with pytest.raises(ModelUnavailable):
+        await gateway.complete("interpret", "sys", "usr")
+    assert [(u.tokens_in, u.cost_rub) for u in store.usages] == [(0, 1.0)]
     assert store.cache == {}
 
 

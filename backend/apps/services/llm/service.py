@@ -89,15 +89,14 @@ class ModelGateway:
             return parse(cached, output_schema), 0, 0
         reservation = await self._reserve(task, model)
         completion = await self._chat(reservation, model, system, user, output_format)
-        tokens = (completion.tokens_in, completion.tokens_out)
         try:
             content = answer_text(completion.content, model)
             result = parse(content, output_schema)
         except ModelOutputInvalid:
-            await self._record(reservation, model, *tokens)
+            await self._record(reservation, completion)
             raise
-        await self._remembered(reservation, model, key, content, tokens)
-        return result, *tokens
+        await self._remembered(reservation, key, content, completion)
+        return result, completion.tokens_in, completion.tokens_out
 
     async def embed(self, text: str) -> list[float]:
         key = cache_key(EMBED_TASK, self._embedder.spec.model_dump(), text)
@@ -132,21 +131,23 @@ class ModelGateway:
         try:
             return await self._client.chat(model, system, user, output_format)
         except ModelUnavailable as error:
-            await self._record(reservation, model, error.tokens_in, error.tokens_out)
+            if error.cost_rub is not None:
+                usage = Completion(None, error.tokens_in, error.tokens_out, error.cost_rub)
+                await self._record(reservation, usage)
             raise
         except BaseException:
             await self._store.settle(reservation, 0, 0, 0.0)
             raise
 
     async def _remembered(
-        self, reservation: int, model: str, key: str, content: str, tokens: tuple[int, int]
+        self, reservation: int, key: str, content: str, completion: Completion
     ) -> None:
         try:
             await self._remember(key, content)
         except CacheNotWritten:
-            await self._record(reservation, model, *tokens)
+            await self._record(reservation, completion)
             raise
-        await self._record(reservation, model, *tokens)
+        await self._record(reservation, completion)
 
     async def _remember(self, key: str, content: str) -> None:
         try:
@@ -154,9 +155,9 @@ class ModelGateway:
         except Exception as error:
             raise CacheNotWritten(f"cache entry {key} is not written") from error
 
-    async def _record(self, reservation: int, model: str, tokens_in: int, tokens_out: int) -> None:
-        cost = self._catalog.cost_rub(model, tokens_in, tokens_out)
+    async def _record(self, reservation: int, completion: Completion) -> None:
+        usage = (completion.tokens_in, completion.tokens_out, completion.cost_rub)
         try:
-            await self._store.settle(reservation, tokens_in, tokens_out, cost)
+            await self._store.settle(reservation, *usage)
         except Exception as error:
             raise UsageNotRecorded(f"usage of reservation {reservation} is not recorded") from error

@@ -24,9 +24,9 @@ async def test_fresh_day_leaves_budget_minus_reserve() -> None:
     assert await gateway.budget_left_rub() == pytest.approx(450.0)
 
 
-async def test_call_is_charged_by_model_prices() -> None:
+async def test_call_is_charged_by_the_cost_in_the_answer() -> None:
     store = MemoryStore()
-    gateway = make_gateway(ModelServer(tokens_in=1000, tokens_out=500).http_client(), store)
+    gateway = make_gateway(ModelServer(cost_rub=0.25).http_client(), store)
     await gateway.complete("interpret", "system", "user")
     assert store.usages[0].cost_rub == pytest.approx(0.25)
     assert store.usages[0].model == "z-ai/glm-5.3-flash"

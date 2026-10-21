@@ -59,10 +59,12 @@ async def test_reservation_is_held_during_the_call() -> None:
 
 async def test_reservation_is_replaced_by_the_actual_cost() -> None:
     store = MemoryStore()
-    gateway = make_gateway(ModelServer(tokens_in=1000, tokens_out=500).http_client(), store)
+    gateway = make_gateway(
+        ModelServer(tokens_in=1000, tokens_out=500, cost_rub=0.07).http_client(), store
+    )
     await gateway.complete("interpret", "sys", "usr")
     assert [(u.tokens_in, u.tokens_out, u.cost_rub) for u in store.usages] == [
-        (1000, 500, pytest.approx(0.25))
+        (1000, 500, pytest.approx(0.07))
     ]
 
 

@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from apps.services.llm.catalog import MODELS_PATH, build_catalog, load_prices
+from apps.services.llm.catalog import MODELS_PATH, build_catalog, load_models
 from apps.services.llm.client import ModelClient, build_http_client
 from apps.services.llm.embedder import build_embedder
 from apps.services.llm.service import ModelGateway
@@ -23,7 +23,7 @@ def build_gateway(container: Container) -> ModelGateway:
     http = build_http_client(settings)
     container.on_close(http.aclose)
     return ModelGateway(
-        catalog=build_catalog(settings, load_prices(MODELS_PATH)),
+        catalog=build_catalog(settings, load_models(MODELS_PATH)),
         client=ModelClient(http),
         embedder=build_embedder(),
         store=SqlUsageStore(container.resolve(async_sessionmaker), settings.LLM_CACHE_TTL_SECONDS),
