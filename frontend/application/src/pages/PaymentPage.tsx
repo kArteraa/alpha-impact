@@ -86,7 +86,7 @@ export function PaymentPage() {
               </small>
             )}
           </div>
-          <label className="field">
+          <label className="field field-static">
             <span className="muted">Назначение платежа</span>
             <textarea rows={3} value={form.purpose} onChange={(event) => update("purpose", event.target.value)} />
           </label>

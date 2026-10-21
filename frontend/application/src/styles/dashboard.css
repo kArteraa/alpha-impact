@@ -156,7 +156,7 @@
 }
 
 .account-amount {
-  font-size: clamp(26px, 8.5cqi, 52px);
+  font-size: clamp(20px, 8.5cqi, 52px);
   white-space: nowrap;
   line-height: 1.1;
   font-weight: var(--fw-bold);

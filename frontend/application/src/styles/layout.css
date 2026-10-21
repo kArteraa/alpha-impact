@@ -223,10 +223,6 @@
 }
 
 @media (max-width: 420px) {
-  .shell-top .brand-light {
-    display: none;
-  }
-
   .main-nav {
     gap: 0;
     padding: var(--s-1);
@@ -244,5 +240,17 @@
 
   .company-switcher {
     max-width: 150px;
+  }
+}
+
+@media (max-width: 360px) {
+  .main-nav a {
+    width: 36px;
+    height: 36px;
+  }
+
+  .main-nav a.active {
+    padding: 0 var(--s-2);
+    font-size: var(--fs-13);
   }
 }
