@@ -1,3 +1,4 @@
+import logging
 from time import perf_counter
 
 from apps.services.gateway.cache import InterpretCache, cache_key, context_hash
@@ -5,6 +6,8 @@ from apps.services.gateway.calls import CallJournal, CallRecord
 from shared.contracts.errors import AccessDenied
 from shared.contracts.ports import HouseViewService, Interpreter, ProfileService
 from shared.contracts.schemas import InterpretRequest, InterpretResponse
+
+logger = logging.getLogger(__name__)
 
 
 class InterpretGateway:
@@ -22,16 +25,12 @@ class InterpretGateway:
         self._cache = cache
         self._journal = journal
 
-    async def _authorize(self, user_id: str, client_id: str) -> None:
-        if client_id not in await self._profiles.list_clients(user_id):
-            raise AccessDenied(f"User {user_id} has no access to client {client_id}")
-
     async def interpret(self, user_id: str, request: InterpretRequest) -> InterpretResponse:
         if request.user_id != user_id:
             raise AccessDenied(f"User {user_id} cannot interpret for {request.user_id}")
-        await self._authorize(user_id, request.client_id)
+        profile = await self._profiles.get_profile(user_id, request.client_id)
         start = perf_counter()
-        key = cache_key(request, await self._house_view.version())
+        key = cache_key(request, profile.version, await self._house_view.version())
         response = await self._cache.get(key)
         cached = response is not None
         try:
@@ -39,11 +38,17 @@ class InterpretGateway:
                 response = await self._interpreter.interpret(request)
                 await self._cache.put(key, response)
         except Exception as error:
-            await self._journal.record(self._call(request, start, type(error).__name__))
+            await self._record(self._call(request, start, type(error).__name__))
             raise
         trace_id = response.cards[0].trace_id if response.cards else None
-        await self._journal.record(self._call(request, start, "ok", cached, trace_id))
+        await self._record(self._call(request, start, "ok", cached, trace_id))
         return response.model_copy(update={"cached": cached})
+
+    async def _record(self, call: CallRecord) -> None:
+        try:
+            await self._journal.record(call)
+        except Exception:
+            logger.exception("Gateway call journal write failed for trace %s", call.trace_id)
 
     def _call(
         self,
