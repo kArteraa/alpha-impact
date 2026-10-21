@@ -1,5 +1,6 @@
 import json
-from collections.abc import Sequence
+from collections import Counter
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 from apps.services.house_view.statuses import APPROVED
@@ -19,10 +20,16 @@ def check_link(claim: HouseViewClaim, successor: HouseViewClaim) -> None:
         raise ChainError(f"{successor.id} is earlier than the claim {claim.id} it supersedes")
 
 
+def repeated(values: Iterable[str]) -> list[str]:
+    return sorted(value for value, count in Counter(values).items() if count > 1)
+
+
 def validate_chains(claims: Sequence[HouseViewClaim]) -> None:
+    duplicates = repeated(claim.id for claim in claims)
+    if duplicates:
+        raise ChainError(f"claim ids are not unique: {duplicates}")
     by_id = {claim.id: claim for claim in claims}
-    successors = [claim.superseded_by for claim in claims if claim.superseded_by is not None]
-    merged = sorted({successor for successor in successors if successors.count(successor) > 1})
+    merged = repeated(claim.superseded_by for claim in claims if claim.superseded_by is not None)
     if merged:
         raise ChainError(f"claims superseded by more than one claim: {merged}")
     for claim in claims:
