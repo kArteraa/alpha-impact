@@ -24,11 +24,14 @@ CLIENT = "U_1"
 class MemoryCache:
     def __init__(self) -> None:
         self.entries: dict[str, InterpretResponse] = {}
+        self.broken = False
 
     async def get(self, key: str) -> InterpretResponse | None:
         return self.entries.get(key)
 
     async def put(self, key: str, response: InterpretResponse) -> None:
+        if self.broken:
+            raise RuntimeError("cache is down")
         self.entries[key] = response
 
 
@@ -212,3 +215,17 @@ async def test_broken_journal_keeps_original_error(harness: Harness) -> None:
     harness.interpreter.interpret.side_effect = BudgetExceeded("no budget")
     with pytest.raises(BudgetExceeded):
         await harness.gateway.interpret(USER, request())
+
+
+async def test_broken_cache_write_does_not_break_response(
+    harness: Harness, caplog: pytest.LogCaptureFixture
+) -> None:
+    harness.cache.broken = True
+    response = await harness.gateway.interpret(USER, request())
+    assert response.cards == [card()]
+    assert response.cached is False
+    harness.interpreter.interpret.assert_awaited_once()
+    record = harness.journal.records[0]
+    assert (record.outcome, record.cached) == ("ok", False)
+    assert "cache write failed" in caplog.text
+    assert "cache is down" in caplog.text
