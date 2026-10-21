@@ -1,5 +1,6 @@
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { RUB_WHOLE } from "../money";
 import { renderWithCompany } from "../testing";
 import { DashboardPage } from "./DashboardPage";
 
@@ -29,6 +30,15 @@ describe("DashboardPage", () => {
     renderWithCompany(<DashboardPage />);
 
     expect(within(widget()).getByRole("link", { name: "Все события" }).getAttribute("href")).toBe("/events");
+  });
+
+  it("sums up deposits and loans on their tiles", () => {
+    renderWithCompany(<DashboardPage />);
+
+    expect(screen.getByRole("link", { name: /^Депозит/ }).textContent).toContain("до 15,2%");
+    const loans = screen.getByRole("link", { name: /^Кредиты/ }).textContent;
+    expect(loans).toContain(RUB_WHOLE.format(173_400_000));
+    expect(loans).toContain("в портфеле · 3 продукта");
   });
 
   it.each([

@@ -7,6 +7,7 @@ import "./styles/base.css";
 import "./styles/layout.css";
 import "./styles/forms.css";
 import "./styles/pages.css";
+import "./styles/dashboard.css";
 import { App } from "./App";
 
 createRoot(document.getElementById("root")!).render(
