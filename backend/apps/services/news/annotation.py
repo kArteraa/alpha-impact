@@ -7,7 +7,13 @@ from pydantic.json_schema import JsonDict
 from apps.services.news.config import NewsConfig
 from apps.services.news.feed import FeedEntry
 from shared.config.factors import FACTORS
-from shared.config.geography import COUNTRIES, REGIONS, country_code, name_key, region_name
+from shared.config.geography import (
+    COUNTRIES,
+    REGION_LABELS,
+    country_code,
+    name_key,
+    region_name,
+)
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem
 
@@ -60,7 +66,7 @@ def annotation_schema(config: NewsConfig) -> type[Annotation]:
             json_schema_extra=vocabulary(list(config.industry_hints)),
         )
         regions: list[str] = Field(
-            max_length=config.max_entities, json_schema_extra=vocabulary(list(REGIONS.values()))
+            max_length=config.max_entities, json_schema_extra=vocabulary(REGION_LABELS)
         )
         countries: list[str] = Field(
             max_length=config.max_entities, json_schema_extra=vocabulary(list(COUNTRIES))

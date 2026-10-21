@@ -5,6 +5,7 @@ import pytest
 
 from shared.config.geography import (
     COUNTRIES,
+    REGION_LABELS,
     REGIONS,
     country_code,
     name_key,
@@ -76,6 +77,8 @@ def test_russia_is_neither_region_nor_country() -> None:
         ("Якутия", "Саха (Республика) (Якутия)"),
         ("Адыгея", "Адыгея (Республика) (Адыгея)"),
         ("Чувашия", "Чувашская Республика-Чувашия"),
+        ("Республика Саха (Якутия)", "Саха (Республика) (Якутия)"),
+        ("Республика Адыгея", "Адыгея (Республика) (Адыгея)"),
         ("Севастополь", "Севастополь"),
     ],
 )
@@ -83,9 +86,12 @@ def test_region_is_returned_as_written_in_csv(name: str, region: str) -> None:
     assert region_name(name) == region
 
 
-def test_model_sees_common_names_of_every_subject() -> None:
+def test_model_sees_common_and_official_names_of_every_subject() -> None:
+    labels = {"Якутия", "Республика Саха (Якутия)", "Татарстан", "Москва", "Херсонская область"}
+
     assert len(REGIONS) == 90
-    assert {"Якутия", "Татарстан", "Москва", "Херсонская область"} <= set(REGIONS.values())
+    assert labels <= set(REGION_LABELS)
+    assert "Саха (Республика) (Якутия)" not in REGION_LABELS
 
 
 def test_name_shared_by_two_places_is_rejected() -> None:

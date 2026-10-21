@@ -7,7 +7,7 @@ from apps.services.news.annotation import annotation_schema, news_id, to_news_it
 from apps.services.news.config import load_config
 from apps.services.news.feed import FeedEntry
 from shared.config.factors import FACTORS
-from shared.config.geography import COUNTRIES, REGIONS
+from shared.config.geography import COUNTRIES, REGION_LABELS
 from tests.news_data import KEY_RATE_ANSWER, NOW
 
 CONFIG = load_config()
@@ -46,7 +46,7 @@ def test_schema_shows_vocabularies_to_the_model() -> None:
 
     assert all(name in schema for name in FACTORS)
     assert all(name in schema for name in CONFIG.industry_hints)
-    assert all(label in schema for label in REGIONS.values())
+    assert all(label in schema for label in REGION_LABELS)
     assert all(f"'{code}'" in schema for code in COUNTRIES)
 
 

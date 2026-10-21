@@ -36,10 +36,11 @@ def load_yaml(path: Path) -> object:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-REGIONS: Mapping[str, str] = MappingProxyType(
-    TypeAdapter(dict[str, str]).validate_python(load_yaml(REGIONS_FILE))
+REGIONS: Mapping[str, tuple[str, ...]] = MappingProxyType(
+    TypeAdapter(dict[str, tuple[str, ...]]).validate_python(load_yaml(REGIONS_FILE))
 )
-REGION_NAMES = names_index({name: (name, label) for name, label in REGIONS.items()})
+REGION_LABELS = tuple(label for labels in REGIONS.values() for label in labels)
+REGION_NAMES = names_index({name: (name, *labels) for name, labels in REGIONS.items()})
 COUNTRIES: Mapping[str, Country] = MappingProxyType(
     TypeAdapter(dict[str, Country]).validate_python(load_yaml(COUNTRIES_FILE))
 )
