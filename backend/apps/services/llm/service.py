@@ -37,6 +37,10 @@ def response_format(schema: type[BaseModel] | None) -> dict[str, Any] | None:
     }
 
 
+def spent(completion: Completion) -> tuple[int, int, float]:
+    return completion.tokens_in, completion.tokens_out, completion.cost_rub
+
+
 def cache_key(*parts: object) -> str:
     payload = json.dumps(parts, ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -93,7 +97,7 @@ class ModelGateway:
             content = answer_text(completion.content, model)
             result = parse(content, output_schema)
         except ModelOutputInvalid:
-            await self._record(reservation, completion)
+            await self._record(reservation, *spent(completion))
             raise
         await self._remembered(reservation, key, content, completion)
         return result, completion.tokens_in, completion.tokens_out
@@ -132,8 +136,7 @@ class ModelGateway:
             return await self._client.chat(model, system, user, output_format)
         except ModelUnavailable as error:
             if error.cost_rub is not None:
-                usage = Completion(None, error.tokens_in, error.tokens_out, error.cost_rub)
-                await self._record(reservation, usage)
+                await self._record(reservation, error.tokens_in, error.tokens_out, error.cost_rub)
             raise
         except BaseException:
             await self._store.settle(reservation, 0, 0, 0.0)
@@ -145,9 +148,9 @@ class ModelGateway:
         try:
             await self._remember(key, content)
         except CacheNotWritten:
-            await self._record(reservation, completion)
+            await self._record(reservation, *spent(completion))
             raise
-        await self._record(reservation, completion)
+        await self._record(reservation, *spent(completion))
 
     async def _remember(self, key: str, content: str) -> None:
         try:
@@ -155,9 +158,10 @@ class ModelGateway:
         except Exception as error:
             raise CacheNotWritten(f"cache entry {key} is not written") from error
 
-    async def _record(self, reservation: int, completion: Completion) -> None:
-        usage = (completion.tokens_in, completion.tokens_out, completion.cost_rub)
+    async def _record(
+        self, reservation: int, tokens_in: int, tokens_out: int, cost_rub: float
+    ) -> None:
         try:
-            await self._store.settle(reservation, *usage)
+            await self._store.settle(reservation, tokens_in, tokens_out, cost_rub)
         except Exception as error:
             raise UsageNotRecorded(f"usage of reservation {reservation} is not recorded") from error

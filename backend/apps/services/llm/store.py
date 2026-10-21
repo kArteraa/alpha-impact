@@ -65,7 +65,7 @@ class SqlUsageStore:
     ) -> None:
         target = LlmUsageRow.id == reservation
         async with self._sessions() as session, session.begin():
-            if tokens_in == 0 and tokens_out == 0:
+            if tokens_in == 0 and tokens_out == 0 and cost_rub == 0:
                 await session.execute(delete(LlmUsageRow).where(target))
                 return
             values = {

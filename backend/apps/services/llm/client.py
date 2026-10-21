@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from typing import Any
 
@@ -39,6 +40,9 @@ class ModelClient:
             response = await self._http.post(CHAT_PATH, json=body)
             response.raise_for_status()
             data = response.json()
+        except httpx.TimeoutException as error:
+            message = f"model API {CHAT_PATH} timed out: {error!r}"
+            raise ModelUnavailable(message, cost_rub=None) from error
         except (httpx.HTTPError, ValueError) as error:
             raise ModelUnavailable(f"model API {CHAT_PATH} failed: {error!r}") from error
         try:
@@ -61,9 +65,18 @@ def text_content(value: Any) -> str | None:
 
 
 def cost_value(value: Any) -> float:
-    if isinstance(value, bool) or not isinstance(value, int | float) or value < 0:
-        raise TypeError(f"cost must be a non-negative number, got {value!r}")
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise TypeError(f"cost must be a number, got {value!r}")
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"cost must be a finite non-negative number, got {value!r}")
     return float(value)
+
+
+def counted_or_zero(usage: dict[str, Any], field: str) -> int:
+    try:
+        return token_count(usage[field])
+    except MALFORMED_RESPONSE:
+        return 0
 
 
 def read_completion(data: Any) -> Completion:
@@ -77,16 +90,15 @@ def read_completion(data: Any) -> Completion:
 
 
 def read_usage(data: Any) -> tuple[int, int, float | None]:
-    try:
-        usage = data["usage"]
-        tokens_in = token_count(usage["prompt_tokens"])
-        tokens_out = token_count(usage.get("completion_tokens", 0))
-    except MALFORMED_RESPONSE:
+    usage = data.get("usage") if isinstance(data, dict) else None
+    if not isinstance(usage, dict):
         return 0, 0, 0.0
     try:
-        return tokens_in, tokens_out, cost_value(usage["cost"])
+        cost = cost_value(usage["cost"])
     except MALFORMED_RESPONSE:
-        return tokens_in, tokens_out, None
+        return 0, 0, None
+    tokens_in = counted_or_zero(usage, "prompt_tokens")
+    return tokens_in, counted_or_zero(usage, "completion_tokens"), cost
 
 
 def build_http_client(settings: Settings) -> httpx.AsyncClient:

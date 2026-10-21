@@ -74,7 +74,7 @@ class MemoryStore:
     async def settle(
         self, reservation: int, tokens_in: int, tokens_out: int, cost_rub: float
     ) -> None:
-        if tokens_in == 0 and tokens_out == 0:
+        if tokens_in == 0 and tokens_out == 0 and cost_rub == 0:
             del self.rows[reservation]
             return
         self.rows[reservation] = replace(

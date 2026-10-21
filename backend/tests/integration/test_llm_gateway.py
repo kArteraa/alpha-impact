@@ -97,6 +97,18 @@ async def test_structured_call_is_recorded_in_usage(
     assert await gateway.budget_left_rub() == pytest.approx(449.95)
 
 
+async def test_charged_answer_without_token_counts_keeps_its_cost(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    store = SqlUsageStore(sessions, CACHE_TTL_SECONDS)
+    reservation = await store.reserve(utc_today(), "interpret", "z-ai/glm-5.3-flash", 1.0, 450.0)
+    assert reservation is not None
+    await store.settle(reservation, 0, 0, 0.02)
+    async with sessions() as session:
+        row = (await session.scalars(select(LlmUsageRow))).one()
+    assert float(row.cost_rub) == pytest.approx(0.02)
+
+
 async def test_cache_survives_a_new_gateway_instance(
     make_gateway: Callable[..., ModelGateway],
     server: MockModelServer,
