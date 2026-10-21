@@ -44,4 +44,13 @@ docker compose up -d --build --wait && cd frontend && npm run e2e               
 
 Проверка перед коммитом (ruff, mypy, import-linter, pytest, vitest, сборка) — раздел «Проверка» в [docs/PIPELINE.md](docs/PIPELINE.md).
 
+Предфильтр AH-15 проверяется без LLM и реального индекса новостей. Из `backend/`:
+
+```
+uv run python -m scripts.prefilter_mocks
+uv run --env-file ../.env pytest tests/unit/interpreter/test_prefilter.py tests/integration/test_prefilter.py
+```
+
+Первая команда создаёт синтетические профили, агрегаты контрагентов, новость и house view в `backend/data/local/ah15/seed.json` (папка в `.gitignore`). Тесты воспроизводят тот же набор во временной папке и работают на чистом клоне; реальные данные не нужны. Сценарии: для перевозчика есть кандидаты, для поставщика канцтоваров — пусто; 200 мок-новостей обрабатываются за < 200 мс. Проверка с настоящим индексом и подключение к `POST /interpret` требуют AH-13 и AH-18.
+
 Репозиторий разделён на `backend/` (Python-монолит: `uv`, `pytest`, `alembic` запускаются оттуда) и `frontend/` (npm workspace: `application`, `app-plugin`, Playwright). Структура — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), правила для агентов — [AGENTS.md](AGENTS.md), процесс задачи — [docs/PIPELINE.md](docs/PIPELINE.md), задачи — [docs/BACKLOG.md](docs/BACKLOG.md).
