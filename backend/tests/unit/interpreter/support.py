@@ -10,6 +10,7 @@ from scripts.prefilter_mocks import MockSeed, make_seed
 from shared.config.settings import Settings
 from shared.contracts.ports import (
     CounterpartyService,
+    Critic,
     HouseViewService,
     Interpreter,
     LLMGateway,
@@ -82,6 +83,12 @@ class Harness:
             action_context=self.seed.payment.model_copy(update={"beneficiary_id": beneficiary}),
         )
 
+    def use_critic(self, *verdicts: list[str]) -> AsyncMock:
+        critic = AsyncMock(spec=Critic)
+        critic.review.side_effect = list(verdicts)
+        self.container.register(Critic, constant(critic))
+        return critic
+
     @property
     def agent(self) -> Interpreter:
         return self.container.resolve(Interpreter)
@@ -111,7 +118,7 @@ def make_harness(settings: Settings) -> Harness:
     house_view.chain.return_value = seed.house_view
     llm = AsyncMock(spec=LLMGateway)
     traces = AsyncMock(spec=TraceStore)
-    answers = [plan_answer(), draft_answer()]
+    answers = [plan_answer(), draft_answer(), {"items": []}]
 
     async def complete(
         task: str, system: str, user: str, schema: type[BaseModel]
