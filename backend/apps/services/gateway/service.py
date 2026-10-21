@@ -6,8 +6,6 @@ from shared.contracts.errors import AccessDenied
 from shared.contracts.ports import HouseViewService, Interpreter, ProfileService
 from shared.contracts.schemas import InterpretRequest, InterpretResponse
 
-SUCCESS = "ok"
-
 
 class InterpretGateway:
     def __init__(
@@ -24,14 +22,14 @@ class InterpretGateway:
         self._cache = cache
         self._journal = journal
 
-    async def authorize(self, user_id: str, client_id: str) -> None:
+    async def _authorize(self, user_id: str, client_id: str) -> None:
         if client_id not in await self._profiles.list_clients(user_id):
             raise AccessDenied(f"User {user_id} has no access to client {client_id}")
 
     async def interpret(self, user_id: str, request: InterpretRequest) -> InterpretResponse:
         if request.user_id != user_id:
             raise AccessDenied(f"User {user_id} cannot interpret for {request.user_id}")
-        await self.authorize(user_id, request.client_id)
+        await self._authorize(user_id, request.client_id)
         start = perf_counter()
         key = cache_key(request, await self._house_view.version())
         response = await self._cache.get(key)
@@ -41,28 +39,26 @@ class InterpretGateway:
                 response = await self._interpreter.interpret(request)
                 await self._cache.put(key, response)
         except Exception as error:
-            await self._journal.record(
-                self._call(request, None, False, type(error).__name__, start)
-            )
+            await self._journal.record(self._call(request, start, type(error).__name__))
             raise
-        await self._journal.record(self._call(request, response, cached, SUCCESS, start))
+        trace_id = response.cards[0].trace_id if response.cards else None
+        await self._journal.record(self._call(request, start, "ok", cached, trace_id))
         return response.model_copy(update={"cached": cached})
 
     def _call(
         self,
         request: InterpretRequest,
-        response: InterpretResponse | None,
-        cached: bool,
-        outcome: str,
         start: float,
+        outcome: str,
+        cached: bool = False,
+        trace_id: str | None = None,
     ) -> CallRecord:
-        cards = [] if response is None else response.cards
         return CallRecord(
             user_id=request.user_id,
             client_id=request.client_id,
             action_type=request.action_context.type,
             context_hash=context_hash(request.action_context),
-            trace_id=cards[0].trace_id if cards else None,
+            trace_id=trace_id,
             cached=cached,
             outcome=outcome,
             duration_ms=int((perf_counter() - start) * 1000),
