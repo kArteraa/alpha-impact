@@ -7,21 +7,20 @@ from pydantic.json_schema import JsonDict
 from apps.services.news.config import NewsConfig
 from apps.services.news.feed import FeedEntry
 from shared.config.factors import FACTORS
-from shared.config.geography import (
-    COUNTRIES,
-    REGION_LABELS,
-    country_code,
-    name_key,
-    region_name,
+from shared.config.geography import COUNTRIES, REGION_LABELS, country_code, name_key, region_name
+from shared.config.news_entities import (
+    COMPANY,
+    COUNTRY,
+    INDUSTRY,
+    PRODUCT,
+    PRODUCTS,
+    REGION,
+    entity,
 )
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem
 
 ID_LENGTH = 32
-INDUSTRY = "industry"
-REGION = "region"
-COUNTRY = "country"
-COMPANY = "company"
 
 
 def resolved(values: list[str], resolve: Callable[[str], str | None], kind: str) -> list[str]:
@@ -43,6 +42,7 @@ class Annotation(BaseModel):
     regions: Sequence[str]
     countries: Sequence[str]
     companies: Sequence[str]
+    products: Sequence[str]
 
 
 def annotation_schema(config: NewsConfig) -> type[Annotation]:
@@ -72,6 +72,18 @@ def annotation_schema(config: NewsConfig) -> type[Annotation]:
             max_length=config.max_entities, json_schema_extra=vocabulary(list(COUNTRIES))
         )
         companies: list[str] = Field(max_length=config.max_entities)
+        products: list[str] = Field(
+            max_length=config.max_entities,
+            json_schema_extra={"items": {"type": "string", "enum": list(PRODUCTS)}},
+        )
+
+        @field_validator("products")
+        @classmethod
+        def known_products(cls, values: list[str]) -> list[str]:
+            unknown = [value for value in values if value not in PRODUCTS]
+            if unknown:
+                raise ValueError(f"unknown products {unknown!r}")
+            return values
 
         @field_validator("industries")
         @classmethod
@@ -94,16 +106,8 @@ def annotation_schema(config: NewsConfig) -> type[Annotation]:
     return NewsAnnotation
 
 
-def normalized(value: str) -> str:
-    return " ".join(value.split()).casefold()
-
-
 def news_id(title: str) -> str:
-    return hashlib.sha256(normalized(title).encode()).hexdigest()[:ID_LENGTH]
-
-
-def entity(kind: str, value: str) -> str:
-    return f"{kind}:{name_key(value)}"
+    return hashlib.sha256(name_key(title).encode()).hexdigest()[:ID_LENGTH]
 
 
 def entities(annotation: Annotation) -> list[str]:
@@ -112,8 +116,9 @@ def entities(annotation: Annotation) -> list[str]:
         (REGION, annotation.regions),
         (COUNTRY, annotation.countries),
         (COMPANY, annotation.companies),
+        (PRODUCT, annotation.products),
     )
-    keys = [entity(kind, value) for kind, values in groups for value in values if value.strip()]
+    keys = [key for kind, values in groups for value in values if (key := entity(kind, value))]
     return list(dict.fromkeys(keys))
 
 

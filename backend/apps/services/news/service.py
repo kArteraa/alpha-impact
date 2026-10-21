@@ -3,19 +3,11 @@ from datetime import UTC, date, datetime, time
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.news.annotation import (
-    COUNTRY,
-    INDUSTRY,
-    REGION,
-    annotate,
-    annotation_schema,
-    entity,
-    to_news_item,
-)
+from apps.services.news.annotation import annotate, annotation_schema, to_news_item
 from apps.services.news.config import NewsConfig
 from apps.services.news.feed import FeedEntry
 from apps.services.news.repository import matching
-from shared.config.geography import country_code, region_name
+from shared.config.news_entities import COUNTRY, INDUSTRY, REGION, entity
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem, PageContext
 
@@ -23,10 +15,8 @@ MANUAL_SOURCE = "manual"
 
 
 def query_entities(industry: str | None, region: str | None, country: str | None) -> list[str]:
-    subject = region_name(region) if region else None
-    code = country_code(country) if country else None
-    wanted = ((INDUSTRY, industry), (REGION, subject), (COUNTRY, code))
-    return [entity(kind, value) for kind, value in wanted if value]
+    wanted = ((INDUSTRY, industry), (REGION, region), (COUNTRY, country))
+    return [key for kind, value in wanted if value and (key := entity(kind, value))]
 
 
 def score(item: NewsItem, factors: Collection[str], entities: Collection[str]) -> float:
@@ -57,12 +47,14 @@ class NewsIndex:
         since: date,
         limit: int = 10,
     ) -> list[NewsItem]:
+        if limit <= 0:
+            raise ValueError("Search limit must be positive")
         entities = query_entities(industry, region, country)
-        if not factors and not entities:
+        if not factors and not entities and any((industry, region, country)):
             return []
         start = datetime.combine(since, time.min, tzinfo=UTC)
         async with self._sessions() as session:
-            rows = await matching(session, factors, entities, start)
+            rows = await matching(session, factors, entities, start, limit)
         items = [NewsItem.model_validate(row, from_attributes=True) for row in rows]
         wanted, keys = set(factors), set(entities)
         ranked = sorted(

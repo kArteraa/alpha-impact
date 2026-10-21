@@ -7,7 +7,7 @@ from email.utils import parsedate_to_datetime
 
 import httpx
 
-TAG = re.compile(r"<[^>]+>")
+TAG = re.compile(r"</?[A-Za-z][^>]*>")
 
 
 class FeedTooLarge(ValueError):

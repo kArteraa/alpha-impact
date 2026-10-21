@@ -92,3 +92,38 @@ def test_answer_becomes_news_item_with_prefixed_entities() -> None:
 def test_news_id_ignores_case_and_spacing_of_title() -> None:
     assert news_id("ЦБ  снизил ставку ") == news_id("цб снизил ставку")
     assert news_id("ЦБ снизил ставку") != news_id("ЦБ повысил ставку")
+
+
+def test_products_are_encoded_as_canonical_entities() -> None:
+    annotation = SCHEMA.model_validate(answer(products=["loan", "deposit", "loan"]))
+    entry = FeedEntry("Кредит", "Текст", "https://a.example/product", NOW, "a.example")
+    news = to_news_item(entry, annotation)
+    assert [value for value in news.entities if value.startswith("product:")] == [
+        "product:loan",
+        "product:deposit",
+    ]
+
+
+def test_schema_rejects_product_outside_vocabulary() -> None:
+    with pytest.raises(ValidationError, match="crypto"):
+        SCHEMA.model_validate(answer(products=["crypto"]))
+
+
+def test_product_vocabulary_is_in_schema_and_prompt() -> None:
+    schema = SCHEMA.model_json_schema()
+    assert schema["properties"]["products"]["items"]["enum"] == [
+        "settlement",
+        "guarantee",
+        "loan",
+        "leasing",
+        "deposit",
+        "payroll",
+        "factoring",
+    ]
+    assert "- loan:" in CONFIG.prompt
+
+
+def test_products_are_required_in_new_annotation_format() -> None:
+    missing = {key: value for key, value in KEY_RATE_ANSWER.items() if key != "products"}
+    with pytest.raises(ValidationError, match="products"):
+        SCHEMA.model_validate(missing)
