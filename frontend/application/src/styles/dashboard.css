@@ -1,14 +1,11 @@
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr)) repeat(2, minmax(0, 0.9fr));
-  grid-template-rows: repeat(4, minmax(132px, 1fr));
   grid-template-areas:
-    "feed  feed  feed  acct    acct"
     "feed  feed  feed  acct    acct"
     "feed  feed  feed  pay     pay"
     "loans loans loans deposit deposit";
   gap: var(--s-4);
-  min-height: calc(100vh - var(--shell-top-h) - var(--s-4) - var(--s-12));
 }
 
 .quick-actions {
@@ -42,15 +39,6 @@
   list-style: none;
 }
 
-.feed-widget .events {
-  flex: 1;
-  grid-auto-rows: 1fr;
-}
-
-.feed-widget .event {
-  align-content: center;
-  padding: var(--s-3);
-}
 
 .event {
   display: grid;
@@ -117,20 +105,22 @@
   top: var(--s-6);
   right: var(--s-6);
   z-index: -1;
-  width: 104px;
-  height: 120px;
+  width: 72px;
+  height: 80px;
   background:
-    linear-gradient(var(--accent), var(--accent)) right bottom / 24px 100% no-repeat,
-    linear-gradient(#ffffff26, #ffffff26) right 40px bottom / 24px 68% no-repeat,
-    linear-gradient(#ffffff14, #ffffff14) right 80px bottom / 24px 38% no-repeat;
+    linear-gradient(var(--accent), var(--accent)) right bottom / 16px 100% no-repeat,
+    linear-gradient(#ffffff26, #ffffff26) right 28px bottom / 16px 68% no-repeat,
+    linear-gradient(#ffffff14, #ffffff14) right 56px bottom / 16px 38% no-repeat;
   border-radius: var(--r-sm);
   opacity: 0.9;
 }
 
 .account-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--s-3);
+  gap: 0 var(--s-3);
+  padding-right: calc(72px + var(--s-4));
   font-size: var(--fs-16);
   line-height: var(--lh-24);
 }
@@ -291,19 +281,11 @@
 @media (max-width: 1180px) {
   .dashboard-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    grid-template-rows: none;
-    grid-auto-rows: minmax(120px, auto);
     grid-template-areas:
-      "feed    feed    acct"
       "feed    feed    acct"
       "pay     pay     pay"
       "deposit deposit deposit"
       "loans   loans   loans";
-    min-height: 0;
-  }
-
-  .quick-action {
-    min-height: 112px;
   }
 }
 
@@ -319,9 +301,6 @@
       "loans";
   }
 
-  .account {
-    min-height: 200px;
-  }
 
   .quick-action {
     flex-wrap: wrap;

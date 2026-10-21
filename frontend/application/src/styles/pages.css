@@ -27,7 +27,7 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
   gap: var(--s-4);
   margin-bottom: var(--s-4);
 }
@@ -309,6 +309,7 @@
 
 .login-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--s-3);
@@ -319,9 +320,31 @@
 }
 
 @media (max-width: 960px) {
-  .page-grid,
-  .stats {
+  .page-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .stat strong {
+    font-size: var(--fs-22);
+    line-height: var(--lh-26);
+  }
+
+  .stat:first-child strong {
+    font-size: var(--fs-30);
+    line-height: var(--lh-36);
+  }
+
+  .portfolio th,
+  .portfolio td {
+    white-space: nowrap;
   }
 
   .page-grid > .form,
@@ -329,5 +352,20 @@
   .trace-card,
   .login {
     padding: var(--s-6);
+  }
+
+  .trace-step summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .trace-step summary::after {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: var(--s-3);
+  }
+
+  .trace-step-meta {
+    grid-column: 1;
   }
 }

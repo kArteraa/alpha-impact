@@ -35,13 +35,6 @@ h1 {
   letter-spacing: -0.2px;
 }
 
-.form > h2,
-.table-head h2 {
-  font-size: var(--fs-30);
-  line-height: var(--lh-36);
-  letter-spacing: -0.45px;
-}
-
 a {
   color: var(--link);
   text-decoration: none;

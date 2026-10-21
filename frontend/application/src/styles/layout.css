@@ -161,6 +161,10 @@
   color: var(--text-primary);
 }
 
+.main-nav a.active:has(.nav-count) {
+  gap: var(--s-4);
+}
+
 .main-nav a.active {
   width: auto;
   padding: 0 var(--s-4) 0 var(--s-3);
