@@ -68,6 +68,13 @@ async def test_reservation_is_replaced_by_the_actual_cost() -> None:
     ]
 
 
+async def test_charged_answer_without_token_counts_keeps_its_cost() -> None:
+    store = MemoryStore()
+    server = ModelServer(tokens_in=0, tokens_out=0, cost_rub=0.02)
+    await make_gateway(server.http_client(), store).complete("interpret", "sys", "usr")
+    assert [(u.tokens_in, u.cost_rub) for u in store.usages] == [(0, 0.02)]
+
+
 async def test_unavailable_model_releases_the_reservation() -> None:
     store = MemoryStore()
     gateway = make_gateway(ModelServer(status=503).http_client(), store)
