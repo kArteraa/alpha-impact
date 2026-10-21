@@ -67,13 +67,15 @@ def test_duplicate_and_unknown_factors_do_not_inflate_score(seed: MockSeed) -> N
 @pytest.mark.parametrize(
     ("entities", "expected"),
     [
-        (["logistics"], 1.1),
-        (["Москва"], 1.1),
-        (["CN"], 1.1),
-        (["settlement"], 1.1),
-        (["logistics", "Москва", "CN", "settlement"], 4.1),
-        (["logistics", "logistics"], 1.1),
-        (["transport_logistics", "CN-extra", "settlement_extra"], 0.1),
+        (["industry:logistics"], 1.1),
+        (["region:москва"], 1.1),
+        (["country:китай"], 1.1),
+        (["product:settlement"], 1.1),
+        (["industry:logistics", "region:москва", "country:китай", "product:settlement"], 4.1),
+        (["industry:logistics", "industry:logistics"], 1.1),
+        (["industry:transport_logistics", "country:китай-extra", "product:settlement_extra"], 0.1),
+        (["logistics", "Москва", "КИТАЙ", "settlement"], 0.1),
+        (["company:logistics", "industry:settlement"], 0.1),
         ([], 0.1),
     ],
 )
@@ -102,13 +104,13 @@ def test_operation_product_is_an_exact_match(
     seed: MockSeed, action: DepositContext | LoanContext
 ) -> None:
     product = "deposit" if isinstance(action, DepositContext) else action.product
-    item = seed.news[0].model_copy(update={"entities": [product], "factors": []})
+    item = seed.news[0].model_copy(update={"entities": [f"product:{product}"], "factors": []})
     assert score_news(item, seed.profile, None, action) == 1.0
 
 
 def test_fx_country_is_an_exact_match_without_profile_feature(seed: MockSeed) -> None:
     profile = seed.profile.model_copy(update={"features": {}})
-    item = seed.news[0].model_copy(update={"entities": ["IN"], "factors": []})
+    item = seed.news[0].model_copy(update={"entities": ["country:in"], "factors": []})
     assert score_news(item, profile, None, FxContext(amount=1, currency="INR", country="IN")) == 1.0
 
 
@@ -118,16 +120,22 @@ def test_absent_features_and_exposures_are_not_evidence(seed: MockSeed) -> None:
 
 
 def test_dashboard_uses_client_industry_and_region(seed: MockSeed) -> None:
-    item = seed.news[0].model_copy(update={"entities": ["it", "Санкт-Петербург"], "factors": []})
+    item = seed.news[0].model_copy(
+        update={"entities": ["industry:it", "region:санкт-петербург"], "factors": []}
+    )
     assert score_news(item, seed.profile, None, DashboardContext()) == 2.0
 
 
 def test_multiple_values_in_one_dimension_add_only_one(seed: MockSeed) -> None:
-    feature = seed.profile.features["import_countries"].model_copy(update={"value": ["CN", "IN"]})
+    feature = seed.profile.features["import_countries"].model_copy(
+        update={"value": ["КИТАЙ", "ИНДИЯ"]}
+    )
     profile = seed.profile.model_copy(
         update={"features": {**seed.profile.features, "import_countries": feature}}
     )
-    item = seed.news[0].model_copy(update={"entities": ["CN", "IN"], "factors": []})
+    item = seed.news[0].model_copy(
+        update={"entities": ["country:китай", "country:индия"], "factors": []}
+    )
     assert score_news(item, profile, None, seed.payment) == 1.0
 
 

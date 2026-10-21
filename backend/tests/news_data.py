@@ -17,6 +17,7 @@ EMPTY_ANSWER: dict[str, Any] = {
     "regions": [],
     "countries": [],
     "companies": [],
+    "products": [],
 }
 KEY_RATE_ANSWER: dict[str, Any] = {
     "factors": [{"name": "key_rate", "direction": "down", "strength": 0.8, "horizon": "quarter"}],
@@ -24,6 +25,7 @@ KEY_RATE_ANSWER: dict[str, Any] = {
     "regions": ["Москва"],
     "countries": ["Китай"],
     "companies": ["Сбербанк"],
+    "products": [],
 }
 
 

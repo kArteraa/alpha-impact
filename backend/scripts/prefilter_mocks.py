@@ -33,7 +33,7 @@ def make_seed() -> MockSeed:
         name: Feature(value=value, source="bank", confidence=0.9, updated_at=timestamp)
         for name, value in {
             "products": ["settlement"],
-            "import_countries": ["CN"],
+            "import_countries": ["КИТАЙ"],
             "industry_class": "it",
             "region": "Санкт-Петербург",
         }.items()
@@ -84,7 +84,7 @@ def make_seed() -> MockSeed:
                 url="https://example.invalid/logistics-news",
                 published_at=timestamp,
                 source="synthetic",
-                entities=["logistics"],
+                entities=["industry:logistics"],
                 factors=[
                     Factor(name="trade_logistics", direction="up", strength=1.0, horizon="month")
                 ],
