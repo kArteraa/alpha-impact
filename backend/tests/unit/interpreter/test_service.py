@@ -2,6 +2,7 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from pydantic import BaseModel
 
 from shared.config.settings import Settings
 from shared.contracts.errors import AccessDenied, BudgetExceeded, DomainError
@@ -318,13 +319,80 @@ async def test_card_failing_second_round_needs_review(harness: Harness) -> None:
     assert trace.result == response
 
 
-async def test_critic_error_is_traced_and_propagated(harness: Harness) -> None:
+def saved(harness: Harness) -> Trace:
+    trace: Trace = harness.traces.save.call_args.args[0]
+    return trace
+
+
+async def test_critic_budget_error_returns_first_card_for_review(harness: Harness) -> None:
     critic = harness.use_critic()
     critic.review.side_effect = BudgetExceeded("spent")
-    with pytest.raises(BudgetExceeded):
-        await harness.agent.interpret(harness.request())
-    trace: Trace = harness.traces.save.call_args.args[0]
-    assert trace.result is None
+    response = await harness.agent.interpret(harness.request())
+    card = response.cards[0]
+    assert card.needs_review
+    assert card.headline == draft_answer()["headline"]
+    trace = saved(harness)
+    assert trace.result == response
+    assert trace.critic_verdicts == ["1: error: BudgetExceeded"]
     assert any(
         step.step == "critic" and step.output_summary == "BudgetExceeded" for step in trace.steps
     )
+
+
+async def test_redraft_with_unknown_source_returns_first_card_for_review(
+    harness: Harness,
+) -> None:
+    harness.use_critic(["retelling: нужен признак клиента"])
+    broken = draft_answer() | {"headline": "Сломанный черновик"}
+    broken["what_happened"] = [
+        {"text": "Выдуманная новость", "type": "fact", "source": "news:invented"}
+    ]
+    harness.answers.append(broken)
+    response = await harness.agent.interpret(harness.request())
+    card = response.cards[0]
+    assert card.needs_review
+    assert card.headline == draft_answer()["headline"]
+    assert saved(harness).critic_verdicts == [
+        "1: retelling: нужен признак клиента",
+        "2: error: DomainError",
+    ]
+
+
+async def test_redraft_model_error_returns_first_card_for_review(harness: Harness) -> None:
+    harness.use_critic(["source: a"])
+    complete = harness.llm.complete.side_effect
+
+    async def failing_redraft(
+        task: str, system: str, user: str, schema: type[BaseModel]
+    ) -> tuple[BaseModel, int, int]:
+        if "previous_draft" in user:
+            raise DomainError("model unavailable")
+        return await complete(task=task, system=system, user=user, schema=schema)
+
+    harness.llm.complete.side_effect = failing_redraft
+    response = await harness.agent.interpret(harness.request())
+    assert response.cards[0].needs_review
+    assert response.cards[0].headline == draft_answer()["headline"]
+    trace = saved(harness)
+    assert trace.critic_verdicts == ["1: source: a", "2: error: DomainError"]
+    assert any(
+        step.name == "redraft" and step.output_summary == "DomainError" for step in trace.steps
+    )
+
+
+async def test_second_round_critic_error_returns_redraft_for_review(harness: Harness) -> None:
+    critic = harness.use_critic()
+    critic.review.side_effect = [["source: a"], BudgetExceeded("spent")]
+    harness.answers.append(draft_answer() | {"headline": "Исправленный заголовок"})
+    response = await harness.agent.interpret(harness.request())
+    assert response.cards[0].needs_review
+    assert response.cards[0].headline == "Исправленный заголовок"
+    assert saved(harness).critic_verdicts == ["1: source: a", "2: error: BudgetExceeded"]
+
+
+async def test_unexpected_critic_failure_is_traced_and_propagated(harness: Harness) -> None:
+    critic = harness.use_critic()
+    critic.review.side_effect = RuntimeError("critic bug")
+    with pytest.raises(RuntimeError, match="critic bug"):
+        await harness.agent.interpret(harness.request())
+    assert saved(harness).result is None
