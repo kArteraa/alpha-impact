@@ -24,6 +24,7 @@ from shared.db.models import GatewayCallRow, UserClientRow, UserRow
 
 USER = "user_cfo_wholesale"
 OTHER_USER = "user_owner_retail"
+COLLEAGUE = "user_treasurer_wholesale"
 CONTRACTS = Path(__file__).resolve().parents[3] / "docs" / "CONTRACTS.md"
 HTTP_ROW = re.compile(r"^\| (GET|POST|PATCH|PUT|DELETE) \| `([^`]+)` \|", re.MULTILINE)
 
@@ -50,7 +51,7 @@ class FakeInterpreter:
             bank_view=[],
             basis=[claim.source_ref],
             significance=0.5,
-            trace_id="trace-1",
+            trace_id=f"trace-{len(self.calls)}",
         )
         return InterpretResponse(silent=False, cards=[card])
 
@@ -83,7 +84,11 @@ async def app(
 
     async with sessions() as session, session.begin():
         session.add_all(
-            [UserRow(id=USER, name="Финансовый директор"), UserRow(id=OTHER_USER, name="Владелец")]
+            [
+                UserRow(id=USER, name="Финансовый директор"),
+                UserRow(id=OTHER_USER, name="Владелец"),
+                UserRow(id=COLLEAGUE, name="Казначей"),
+            ]
         )
         await session.flush()
         session.add_all(
@@ -91,6 +96,7 @@ async def app(
                 UserClientRow(user_id=USER, client_id="U_1"),
                 UserClientRow(user_id=USER, client_id="U_2"),
                 UserClientRow(user_id=OTHER_USER, client_id="U_9"),
+                UserClientRow(user_id=COLLEAGUE, client_id="U_1"),
             ]
         )
     application = create_app()
@@ -199,6 +205,34 @@ async def test_changed_context_or_house_view_misses_cache(
     assert other.json()["cached"] is False
     assert renewed.json()["cached"] is False
     assert len(interpreter.calls) == 3
+
+
+async def test_profile_correction_misses_cache(
+    logged_in: httpx.AsyncClient, interpreter: FakeInterpreter
+) -> None:
+    await logged_in.post("/interpret", json=interpret_body())
+    await logged_in.patch("/profile/U_1/features/industry_class", json={"value": "retail"})
+    response = await logged_in.post("/interpret", json=interpret_body())
+    assert response.json()["cached"] is False
+    assert len(interpreter.calls) == 2
+
+
+async def test_colleague_gets_own_trace_not_cached_one(
+    logged_in: httpx.AsyncClient,
+    interpreter: FakeInterpreter,
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    await logged_in.post("/interpret", json=interpret_body())
+    await logged_in.post("/auth/mock", json={"user_id": COLLEAGUE})
+    response = await logged_in.post("/interpret", json=interpret_body(user_id=COLLEAGUE))
+    assert response.json()["cached"] is False
+    assert response.json()["cards"][0]["trace_id"] == "trace-2"
+    async with sessions() as session:
+        rows = (await session.scalars(select(GatewayCallRow).order_by(GatewayCallRow.id))).all()
+    assert [(row.user_id, row.trace_id) for row in rows] == [
+        (USER, "trace-1"),
+        (COLLEAGUE, "trace-2"),
+    ]
 
 
 async def test_expired_cache_entry_is_not_served(

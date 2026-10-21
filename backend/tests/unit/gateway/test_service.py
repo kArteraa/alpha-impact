@@ -4,10 +4,11 @@ import pytest
 
 from apps.services.gateway.calls import CallRecord
 from apps.services.gateway.service import InterpretGateway
-from shared.contracts.errors import AccessDenied, DomainError
+from shared.contracts.errors import AccessDenied, BudgetExceeded, DomainError
 from shared.contracts.schemas import (
     Claim,
     ClaimType,
+    ClientProfile,
     InsightCard,
     InterpretRequest,
     InterpretResponse,
@@ -34,9 +35,32 @@ class MemoryCache:
 class MemoryJournal:
     def __init__(self) -> None:
         self.records: list[CallRecord] = []
+        self.broken = False
 
     async def record(self, call: CallRecord) -> None:
+        if self.broken:
+            raise RuntimeError("journal is down")
         self.records.append(call)
+
+
+class Profiles:
+    def __init__(self) -> None:
+        self.version = 1
+        self.calls: list[tuple[str, str]] = []
+
+    async def get_profile(self, user_id: str, client_id: str) -> ClientProfile:
+        self.calls.append((user_id, client_id))
+        if client_id != CLIENT:
+            raise AccessDenied(f"User {user_id} has no access to client {client_id}")
+        return ClientProfile(
+            client_id=client_id,
+            group_id=None,
+            group_members=[],
+            features={},
+            exposures={},
+            flags={},
+            version=self.version,
+        )
 
 
 def card() -> InsightCard:
@@ -74,8 +98,7 @@ class Harness:
         self.interpreter.interpret.return_value = InterpretResponse(silent=False, cards=[card()])
         self.house_view = AsyncMock()
         self.house_view.version.return_value = "v1"
-        self.profiles = AsyncMock()
-        self.profiles.list_clients.return_value = [CLIENT]
+        self.profiles = Profiles()
         self.cache = MemoryCache()
         self.journal = MemoryJournal()
         self.gateway = InterpretGateway(
@@ -96,7 +119,7 @@ async def test_foreign_client_is_denied_before_interpreter(harness: Harness) -> 
     with pytest.raises(AccessDenied):
         await harness.gateway.interpret(USER, request(client_id="U_9"))
     harness.interpreter.interpret.assert_not_awaited()
-    harness.profiles.list_clients.assert_awaited_once_with(USER)
+    assert harness.profiles.calls == [(USER, "U_9")]
     assert harness.journal.records == []
 
 
@@ -148,3 +171,32 @@ async def test_interpreter_error_is_journaled_and_not_cached(harness: Harness) -
     assert harness.cache.entries == {}
     assert harness.journal.records[0].outcome == "DomainError"
     assert harness.journal.records[0].cached is False
+
+
+async def test_profile_correction_misses_cache(harness: Harness) -> None:
+    await harness.gateway.interpret(USER, request())
+    harness.profiles.version = 2
+    response = await harness.gateway.interpret(USER, request())
+    assert response.cached is False
+    assert harness.interpreter.interpret.await_count == 2
+
+
+async def test_cache_is_not_shared_between_users(harness: Harness) -> None:
+    await harness.gateway.interpret(USER, request())
+    response = await harness.gateway.interpret("colleague", request(user_id="colleague"))
+    assert response.cached is False
+    assert harness.interpreter.interpret.await_count == 2
+
+
+async def test_broken_journal_does_not_break_response(harness: Harness) -> None:
+    harness.journal.broken = True
+    response = await harness.gateway.interpret(USER, request())
+    assert response.cards == [card()]
+    assert len(harness.cache.entries) == 1
+
+
+async def test_broken_journal_keeps_original_error(harness: Harness) -> None:
+    harness.journal.broken = True
+    harness.interpreter.interpret.side_effect = BudgetExceeded("no budget")
+    with pytest.raises(BudgetExceeded):
+        await harness.gateway.interpret(USER, request())
