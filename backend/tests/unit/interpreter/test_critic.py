@@ -133,6 +133,18 @@ async def test_contradiction_marked_as_divergence_is_accepted() -> None:
     assert marked not in llm.complete.await_args.kwargs["user"]
 
 
+async def test_negated_divergence_mark_does_not_hide_contradiction() -> None:
+    negated = f"Это не расхождение с позицией банка: {RISK}"
+    claim = Claim(text=negated, type=ClaimType.AI, source_ref=NEWS)
+    llm = model([{"claim": negated, "house_view_id": CURRENT.id, "reason": "банк ждёт иного"}])
+    assert codes(await review(card(consequences=[claim]), llm)) == {"contradiction"}
+
+
+async def test_repeated_contradiction_gives_one_verdict() -> None:
+    item = {"claim": RISK, "house_view_id": CURRENT.id, "reason": "банк ждёт иного"}
+    assert len(await review(card(), model([item, item]))) == 1
+
+
 @pytest.mark.parametrize(
     "item",
     [
