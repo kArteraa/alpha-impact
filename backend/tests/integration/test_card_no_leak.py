@@ -2,24 +2,23 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from apps.services.counterparty.batch import rebuild_graph
-from apps.services.counterparty.config import load_config as load_counterparty_config
 from apps.services.profile.batch import rebuild_profiles
 from apps.services.profile.config import load_config as load_profile_config
 from main import build_container
 from scripts.seed import RAW_DIR, seed_users
-from shared.contracts.ports import (
-    CounterpartyService,
-    Interpreter,
-    ProductRulesService,
-    ProfileService,
-)
+from shared.contracts.ports import CounterpartyService, ProductRulesService, ProfileService
 from shared.contracts.schemas import InsightCard, InterpretRequest, PaymentContext, Role
-from tests.leak import PAYMENTS_FILE, assert_no_foreign_data, load_foreign_data, seed_clients
+from tests.leak import (
+    CONFIG,
+    PAYMENTS_FILE,
+    assert_no_foreign_data,
+    probes,
+    seed_clients,
+    seed_foreign_data,
+)
 from tests.mocks.interpreter import MockInterpreter
 
 PAYMENT_AMOUNT = 1_500_000.0
-UNKNOWN_COMPANY = "U_999999999"
-UNKNOWN_INN = "7707083893"
 
 
 def sourced(card: InsightCard) -> bool:
@@ -39,24 +38,18 @@ async def test_seed_cards_contain_no_foreign_data(
 ) -> None:
     await seed_users(sessions)
     await rebuild_profiles(sessions, RAW_DIR, load_profile_config())
-    await rebuild_graph(sessions, RAW_DIR, load_counterparty_config())
+    await rebuild_graph(sessions, RAW_DIR, CONFIG)
     container = build_container()
-    container.register(
-        Interpreter,
-        lambda c: MockInterpreter(
-            c.resolve(CounterpartyService), c.resolve(ProfileService), c.resolve(ProductRulesService)
-        ),
+    interpreter = MockInterpreter(
+        container.resolve(CounterpartyService),
+        container.resolve(ProfileService),
+        container.resolve(ProductRulesService),
     )
-    interpreter = container.resolve(Interpreter)
     users = seed_clients()
 
     try:
-        for client_id, foreign in load_foreign_data(users).items():
-            for beneficiary_id, inn in [
-                *((recipient, None) for recipient in sorted(foreign.recipients)),
-                (UNKNOWN_COMPANY, None),
-                (None, UNKNOWN_INN),
-            ]:
+        for client_id, foreign in seed_foreign_data().items():
+            for beneficiary_id, inn in probes(foreign):
                 request = InterpretRequest(
                     user_id=users[client_id],
                     client_id=client_id,
