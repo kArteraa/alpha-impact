@@ -29,7 +29,7 @@ alpha-impact/
         openapi/               экспорт схем в JSON Schema для фронта (генерируется, коммитится)
       db/
         engine.py session.py   SQLAlchemy 2 async
-        models/                таблицы по сервисам (profiles, profile_corrections, counterparty_cards, client_graphs, news, report_pages, house_view_claims, traces, feedback, users, llm_cache, llm_usage)
+        models/                таблицы по сервисам (profiles, profile_corrections, counterparty_cards, client_graphs, news, report_pages, house_view_claims, traces, feedback, users, llm_cache, llm_usage, interpret_cache, gateway_calls)
         migrations/            Alembic
       di/
         container.py           Container: register(port, factory) / resolve(port); scope per request; on_close / aclose — закрытие ресурсов при остановке
@@ -86,7 +86,7 @@ alpha-impact/
 
 ```
 контейнер (application / extension) → POST /interpret {user_id, client_id, role, action_context}
-gateway: auth → права → нормализация → ключ кэша (client, role, type, hash(context), house_view_version) → попадание? ответ
+gateway: auth → права → нормализация → ключ кэша (user, client, role, type, hash(context), profile_version, house_view_version) → попадание? ответ
 interpreter.interpret():
   1 prefilter (без LLM): кандидаты-новости по отрасли/региону контрагента или факторам клиента, утверждения house view по теме; пусто → silent
   2 plan: шаблон по типу действия + дополнение моделью; план в трассу
@@ -97,6 +97,8 @@ interpreter.interpret():
 ```
 
 AH-18 реализует шаги до черновика: профиль читается с проверкой доступа, для платежа запрашиваются агрегаты получателя, затем выполняется предфильтр AH-15. Пустой отбор даёт `silent: true` без вызова LLM. В `interpreter/plans.yaml` заданы шаблоны для `payment`, `deposit`, `fx`, `loan`, `payroll`, `dashboard`, окно 14 дней, выборка 200 новостей и максимум 4 дополнительных вызова. `page` и `followup` пока дают явную доменную ошибку — их отдельные сценарии ещё не подключены.
+
+AH-19 подключает этот поток к HTTP. Сессия — cookie `alfa_session` с id пользователя из `POST /auth/mock` (только прототип); без cookie или с неизвестным пользователем — 401. Права user → client и версию профиля gateway берёт одним вызовом `ProfileService.get_profile`: чужой `client_id` и `user_id` в теле, не совпадающий с сессией, — 403, проверка идёт до кэша. Ключ кэша — sha256 от пользователя, клиента, роли, типа действия, sha256 канонического JSON контекста, `ClientProfile.version` (растёт при каждой правке профиля) и `HouseViewService.version()`; обе версии читаются на каждый запрос. Кэш не общий между пользователями одного клиента: ответ из кэша несёт `trace_id` собственного прошлого запроса пользователя. Ответы хранятся в `interpret_cache` (Postgres, срок `CACHE_TTL_SECONDS`, просроченные удаляются при записи); кэшируется любой успешный ответ, включая `silent`, ошибки — нет; попадание отдаёт ответ с `cached: true` без вызова interpreter. Каждый авторизованный `/interpret` пишется в `gateway_calls`: пользователь, клиент, тип действия, хэш контекста (не сам текст), `trace_id` первой карточки, попадание в кэш, итог (`ok` или класс ошибки), длительность; модель и токены — в трассе. Сбои записи в кэш и в журнал пишутся в лог: ответ отдаётся (итог в журнале — `ok`), ошибка interpreter не подменяется. Доменные ошибки переводятся в HTTP: `AccessDenied` — 403, `NotFound` — 404, `BudgetExceeded` — 503, прочий `DomainError` — 422.
 
 План и черновик — два структурированных вызова `LLMGateway.complete(task="interpret")`. Модель уточняет акцент шаблона и запрашивает только `HouseViewService.claims` по известным факторам или `chain` по уже полученным актуальным утверждениям. Весь план проверяется до выполнения; неизвестные операции, аргументы, повторы и превышение лимита отклоняются. Результаты вызовов объединяются с профилем, агрегатами и кандидатами в единый контекст; в черновик попадают только актуальные `approved`-утверждения. Идентификаторы пользователя, клиента, группы и получателя, ИНН и сырые строки CSV в промпты не передаются.
 
