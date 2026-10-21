@@ -284,7 +284,7 @@ async def test_clean_card_passes_one_critic_round(harness: Harness) -> None:
 async def test_rejected_draft_is_rewritten_with_critic_verdicts(harness: Harness) -> None:
     critic = harness.use_critic(["retelling: нужен признак клиента"], [])
     rewritten = draft_answer() | {"headline": "Исправленный заголовок"}
-    harness.answers[2:] = [rewritten]
+    harness.answers.append(rewritten)
     response = await harness.agent.interpret(harness.request())
     card = response.cards[0]
     assert card.headline == "Исправленный заголовок"
@@ -300,7 +300,7 @@ async def test_rejected_draft_is_rewritten_with_critic_verdicts(harness: Harness
 
 async def test_card_failing_second_round_needs_review(harness: Harness) -> None:
     critic = harness.use_critic(["source: a"], ["bank: b", "contradiction: c"])
-    harness.answers[2:] = [draft_answer()]
+    harness.answers.append(draft_answer())
     response = await harness.agent.interpret(harness.request())
     assert response.cards[0].needs_review
     assert critic.review.await_count == 2
