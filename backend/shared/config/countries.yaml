@@ -1,0 +1,251 @@
+ab: {ru: Абхазия, en: Abkhazia, aliases: []}
+ad: {ru: Андорра, en: Andorra, aliases: []}
+ae: {ru: Объединённые Арабские Эмираты, en: United Arab Emirates, aliases: [ОАЭ]}
+af: {ru: Афганистан, en: Afghanistan, aliases: []}
+ag: {ru: Антигуа и Барбуда, en: Antigua and Barbuda, aliases: []}
+ai: {ru: Ангилья, en: Anguilla, aliases: []}
+al: {ru: Албания, en: Albania, aliases: []}
+am: {ru: Армения, en: Armenia, aliases: []}
+ao: {ru: Ангола, en: Angola, aliases: []}
+aq: {ru: Антарктида, en: Antarctica, aliases: []}
+ar: {ru: Аргентина, en: Argentina, aliases: []}
+as: {ru: Американское Самоа, en: American Samoa, aliases: []}
+at: {ru: Австрия, en: Austria, aliases: []}
+au: {ru: Австралия, en: Australia, aliases: []}
+aw: {ru: Аруба, en: Aruba, aliases: []}
+ax: {ru: Аландские острова, en: Aland Islands, aliases: []}
+az: {ru: Азербайджан, en: Azerbaijan, aliases: []}
+ba: {ru: Босния и Герцеговина, en: Bosnia and Herzegovina, aliases: []}
+bb: {ru: Барбадос, en: Barbados, aliases: []}
+bd: {ru: Бангладеш, en: Bangladesh, aliases: []}
+be: {ru: Бельгия, en: Belgium, aliases: []}
+bf: {ru: Буркина-Фасо, en: Burkina Faso, aliases: []}
+bg: {ru: Болгария, en: Bulgaria, aliases: []}
+bh: {ru: Бахрейн, en: Bahrain, aliases: []}
+bi: {ru: Бурунди, en: Burundi, aliases: []}
+bj: {ru: Бенин, en: Benin, aliases: []}
+bl: {ru: Сен-Бартелеми, en: Saint Barthelemy, aliases: []}
+bm: {ru: Бермудские Острова, en: Bermuda, aliases: []}
+bn: {ru: Бруней, en: Brunei, aliases: []}
+bo: {ru: Боливия, en: Bolivia, aliases: []}
+bq: {ru: 'Бонайре, Синт-Эстатиус и Саба', en: 'Bonaire, Sint Eustatius and Saba', aliases: []}
+br: {ru: Бразилия, en: Brazil, aliases: []}
+bs: {ru: Багамские Острова, en: Bahamas, aliases: []}
+bt: {ru: Бутан, en: Bhutan, aliases: []}
+bv: {ru: Остров Буве, en: Bouvet Island, aliases: []}
+bw: {ru: Ботсвана, en: Botswana, aliases: []}
+by: {ru: Белоруссия, en: Belarus, aliases: [БЕЛАРУСЬ]}
+bz: {ru: Белиз, en: Belize, aliases: []}
+ca: {ru: Канада, en: Canada, aliases: []}
+cc: {ru: Кокосовые острова, en: Cocos (Keeling) Islands, aliases: []}
+cd: {ru: Демократическая Республика Конго, en: Democratic Republic of the Congo, aliases: []}
+cf: {ru: Центральноафриканская Республика, en: Central African Republic, aliases: []}
+cg: {ru: Республика Конго, en: Republic of the Congo, aliases: [КОНГО]}
+ch: {ru: Швейцария, en: Switzerland, aliases: []}
+ci: {ru: Кот-д’Ивуар, en: Cote d'Ivoire, aliases: [КОТ Д'ИВУАР]}
+ck: {ru: Острова Кука, en: Cook Islands, aliases: []}
+cl: {ru: Чили, en: Chile, aliases: []}
+cm: {ru: Камерун, en: Cameroon, aliases: []}
+cn: {ru: Китай, en: China, aliases: []}
+co: {ru: Колумбия, en: Colombia, aliases: []}
+cr: {ru: Коста-Рика, en: Costa Rica, aliases: []}
+cu: {ru: Куба, en: Cuba, aliases: []}
+cv: {ru: Кабо-Верде, en: Cabo Verde, aliases: []}
+cw: {ru: Кюрасао, en: Curacao, aliases: []}
+cx: {ru: Остров Рождества, en: Christmas Island, aliases: []}
+cy: {ru: Республика Кипр, en: Cyprus, aliases: [КИПР]}
+cz: {ru: Чехия, en: Czechia, aliases: []}
+de: {ru: Германия, en: Germany, aliases: []}
+dj: {ru: Джибути, en: Djibouti, aliases: []}
+dk: {ru: Дания, en: Denmark, aliases: []}
+dm: {ru: Доминика, en: Dominica, aliases: []}
+do: {ru: Доминиканская Республика, en: Dominican Republic, aliases: []}
+dz: {ru: Алжир, en: Algeria, aliases: []}
+ec: {ru: Эквадор, en: Ecuador, aliases: []}
+ee: {ru: Эстония, en: Estonia, aliases: []}
+eg: {ru: Египет, en: Egypt, aliases: []}
+eh: {ru: Западная Сахара, en: Western Sahara, aliases: []}
+er: {ru: Эритрея, en: Eritrea, aliases: []}
+es: {ru: Испания, en: Spain, aliases: []}
+et: {ru: Эфиопия, en: Ethiopia, aliases: []}
+fi: {ru: Финляндия, en: Finland, aliases: []}
+fj: {ru: Фиджи, en: Fiji, aliases: []}
+fk: {ru: Фолклендские острова, en: Falkland Islands, aliases: []}
+fm: {ru: Федеративные Штаты Микронезии, en: Micronesia, aliases: []}
+fo: {ru: Фарерские острова, en: Faroe Islands, aliases: []}
+fr: {ru: Франция, en: France, aliases: []}
+ga: {ru: Габон, en: Gabon, aliases: []}
+gb: {ru: Великобритания, en: United Kingdom, aliases: []}
+gd: {ru: Гренада, en: Grenada, aliases: []}
+ge: {ru: Грузия, en: Georgia, aliases: []}
+gf: {ru: Гвиана, en: French Guiana, aliases: []}
+gg: {ru: Гернси, en: Guernsey, aliases: []}
+gh: {ru: Гана, en: Ghana, aliases: []}
+gi: {ru: Гибралтар, en: Gibraltar, aliases: []}
+gl: {ru: Гренландия, en: Greenland, aliases: []}
+gm: {ru: Гамбия, en: Gambia, aliases: []}
+gn: {ru: Гвинея, en: Guinea, aliases: []}
+gp: {ru: Гваделупа, en: Guadeloupe, aliases: []}
+gq: {ru: Экваториальная Гвинея, en: Equatorial Guinea, aliases: []}
+gr: {ru: Греция, en: Greece, aliases: []}
+gs: {ru: Южная Георгия и Южные Сандвичевы Острова, en: South Georgia and the South Sandwich Islands, aliases: []}
+gt: {ru: Гватемала, en: Guatemala, aliases: []}
+gu: {ru: Гуам, en: Guam, aliases: []}
+gw: {ru: Гвинея-Бисау, en: Guinea-Bissau, aliases: []}
+gy: {ru: Гайана, en: Guyana, aliases: []}
+hk: {ru: Гонконг, en: Hong Kong, aliases: []}
+hm: {ru: Остров Херд и острова Макдональд, en: Heard Island and McDonald Islands, aliases: []}
+hn: {ru: Гондурас, en: Honduras, aliases: []}
+hr: {ru: Хорватия, en: Croatia, aliases: []}
+ht: {ru: Республика Гаити, en: Haiti, aliases: []}
+hu: {ru: Венгрия, en: Hungary, aliases: []}
+id: {ru: Индонезия, en: Indonesia, aliases: []}
+ie: {ru: Ирландия, en: Ireland, aliases: []}
+il: {ru: Израиль, en: Israel, aliases: []}
+im: {ru: Остров Мэн, en: Isle of Man, aliases: []}
+in: {ru: Индия, en: India, aliases: []}
+io: {ru: Британская Территория в Индийском Океане, en: British Indian Ocean Territory, aliases: []}
+iq: {ru: Ирак, en: Iraq, aliases: []}
+ir: {ru: Иран, en: Iran, aliases: []}
+is: {ru: Исландия, en: Iceland, aliases: []}
+it: {ru: Италия, en: Italy, aliases: []}
+je: {ru: Джерси, en: Jersey, aliases: []}
+jm: {ru: Ямайка, en: Jamaica, aliases: []}
+jo: {ru: Иордания, en: Jordan, aliases: []}
+jp: {ru: Япония, en: Japan, aliases: []}
+ke: {ru: Кения, en: Kenya, aliases: []}
+kg: {ru: Киргизия, en: Kyrgyzstan, aliases: []}
+kh: {ru: Камбоджа, en: Cambodia, aliases: []}
+ki: {ru: Кирибати, en: Kiribati, aliases: []}
+km: {ru: Коморы, en: Comoros, aliases: []}
+kn: {ru: Сент-Китс и Невис, en: Saint Kitts and Nevis, aliases: []}
+kp: {ru: Корейская Народно-Демократическая Республика, en: North Korea, aliases: [СЕВЕРНАЯ КОРЕЯ]}
+kr: {ru: Республика Корея, en: South Korea, aliases: [ЮЖНАЯ КОРЕЯ]}
+kw: {ru: Кувейт, en: Kuwait, aliases: []}
+ky: {ru: Острова Кайман, en: Cayman Islands, aliases: []}
+kz: {ru: Казахстан, en: Kazakhstan, aliases: []}
+la: {ru: Лаос, en: Laos, aliases: []}
+lb: {ru: Ливан, en: Lebanon, aliases: []}
+lc: {ru: Сент-Люсия, en: Saint Lucia, aliases: []}
+li: {ru: Лихтенштейн, en: Liechtenstein, aliases: []}
+lk: {ru: Шри-Ланка, en: Sri Lanka, aliases: []}
+lr: {ru: Либерия, en: Liberia, aliases: []}
+ls: {ru: Лесото, en: Lesotho, aliases: []}
+lt: {ru: Литва, en: Lithuania, aliases: []}
+lu: {ru: Люксембург, en: Luxembourg, aliases: []}
+lv: {ru: Латвия, en: Latvia, aliases: []}
+ly: {ru: Ливия, en: Libya, aliases: []}
+ma: {ru: Марокко, en: Morocco, aliases: []}
+mc: {ru: Монако, en: Monaco, aliases: []}
+md: {ru: Молдавия, en: Moldova, aliases: [МОЛДОВА]}
+me: {ru: Черногория, en: Montenegro, aliases: []}
+mf: {ru: Сен-Мартен, en: Saint Martin, aliases: []}
+mg: {ru: Мадагаскар, en: Madagascar, aliases: []}
+mh: {ru: Маршалловы Острова, en: Marshall Islands, aliases: []}
+mk: {ru: Северная Македония, en: North Macedonia, aliases: []}
+ml: {ru: Мали, en: Mali, aliases: []}
+mm: {ru: Мьянма, en: Myanmar, aliases: []}
+mn: {ru: Монголия, en: Mongolia, aliases: []}
+mo: {ru: Макао, en: Macao, aliases: []}
+mp: {ru: Северные Марианские Острова, en: Northern Mariana Islands, aliases: []}
+mq: {ru: Мартиника, en: Martinique, aliases: []}
+mr: {ru: Мавритания, en: Mauritania, aliases: []}
+ms: {ru: Монтсеррат, en: Montserrat, aliases: []}
+mt: {ru: Мальта, en: Malta, aliases: []}
+mu: {ru: Маврикий, en: Mauritius, aliases: []}
+mv: {ru: Мальдивы, en: Maldives, aliases: []}
+mw: {ru: Малави, en: Malawi, aliases: []}
+mx: {ru: Мексика, en: Mexico, aliases: []}
+my: {ru: Малайзия, en: Malaysia, aliases: []}
+mz: {ru: Мозамбик, en: Mozambique, aliases: []}
+na: {ru: Намибия, en: Namibia, aliases: []}
+nc: {ru: Новая Каледония, en: New Caledonia, aliases: []}
+ne: {ru: Нигер, en: Niger, aliases: []}
+nf: {ru: Остров Норфолк, en: Norfolk Island, aliases: []}
+ng: {ru: Нигерия, en: Nigeria, aliases: []}
+ni: {ru: Никарагуа, en: Nicaragua, aliases: []}
+nl: {ru: Королевство Нидерландов, en: Netherlands, aliases: [НИДЕРЛАНДЫ]}
+'no': {ru: Норвегия, en: Norway, aliases: []}
+np: {ru: Непал, en: Nepal, aliases: []}
+nr: {ru: Науру, en: Nauru, aliases: []}
+nu: {ru: Ниуэ, en: Niue, aliases: []}
+nz: {ru: Новая Зеландия, en: New Zealand, aliases: []}
+om: {ru: Оман, en: Oman, aliases: []}
+os: {ru: Южная Осетия, en: South Ossetia, aliases: []}
+pa: {ru: Панама, en: Panama, aliases: []}
+pe: {ru: Перу, en: Peru, aliases: []}
+pf: {ru: Французская Полинезия, en: French Polynesia, aliases: []}
+pg: {ru: Папуа — Новая Гвинея, en: Papua New Guinea, aliases: []}
+ph: {ru: Филиппины, en: Philippines, aliases: []}
+pk: {ru: Пакистан, en: Pakistan, aliases: []}
+pl: {ru: Польша, en: Poland, aliases: []}
+pm: {ru: Сен-Пьер и Микелон, en: Saint Pierre and Miquelon, aliases: []}
+pn: {ru: Острова Питкэрн, en: Pitcairn Islands, aliases: []}
+pr: {ru: Пуэрто-Рико, en: Puerto Rico, aliases: []}
+ps: {ru: Государство Палестина, en: Palestine, aliases: []}
+pt: {ru: Португалия, en: Portugal, aliases: []}
+pw: {ru: Палау, en: Palau, aliases: []}
+py: {ru: Парагвай, en: Paraguay, aliases: []}
+qa: {ru: Катар, en: Qatar, aliases: []}
+re: {ru: Реюньон, en: Reunion, aliases: []}
+ro: {ru: Румыния, en: Romania, aliases: []}
+rs: {ru: Сербия, en: Serbia, aliases: []}
+rw: {ru: Руанда, en: Rwanda, aliases: []}
+sa: {ru: Саудовская Аравия, en: Saudi Arabia, aliases: []}
+sb: {ru: Соломоновы Острова, en: Solomon Islands, aliases: []}
+sc: {ru: Сейшельские Острова, en: Seychelles, aliases: [СЕЙШЕЛЫ]}
+sd: {ru: Судан, en: Sudan, aliases: []}
+se: {ru: Швеция, en: Sweden, aliases: []}
+sg: {ru: Сингапур, en: Singapore, aliases: []}
+sh: {ru: 'Острова Святой Елены, Вознесения и Тристан-да-Кунья', en: 'Saint Helena, Ascension and Tristan da Cunha', aliases: []}
+si: {ru: Словения, en: Slovenia, aliases: []}
+sj: {ru: Шпицберген и Ян-Майен, en: Svalbard and Jan Mayen, aliases: []}
+sk: {ru: Словакия, en: Slovakia, aliases: []}
+sl: {ru: Сьерра-Леоне, en: Sierra Leone, aliases: []}
+sm: {ru: Сан-Марино, en: San Marino, aliases: []}
+sn: {ru: Сенегал, en: Senegal, aliases: []}
+so: {ru: Сомали, en: Somalia, aliases: []}
+sr: {ru: Суринам, en: Suriname, aliases: []}
+ss: {ru: Южный Судан, en: South Sudan, aliases: []}
+st: {ru: Сан-Томе и Принсипи, en: Sao Tome and Principe, aliases: []}
+sv: {ru: Сальвадор, en: El Salvador, aliases: []}
+sx: {ru: Синт-Мартен, en: Sint Maarten, aliases: []}
+sy: {ru: Сирия, en: Syria, aliases: []}
+sz: {ru: Эсватини, en: Eswatini, aliases: []}
+tc: {ru: Теркс и Кайкос, en: Turks and Caicos Islands, aliases: []}
+td: {ru: Чад, en: Chad, aliases: []}
+tf: {ru: Французские Южные и Антарктические территории, en: French Southern Territories, aliases: []}
+tg: {ru: Того, en: Togo, aliases: []}
+th: {ru: Таиланд, en: Thailand, aliases: []}
+tj: {ru: Таджикистан, en: Tajikistan, aliases: []}
+tk: {ru: Токелау, en: Tokelau, aliases: []}
+tl: {ru: Восточный Тимор, en: Timor-Leste, aliases: []}
+tm: {ru: Туркменистан, en: Turkmenistan, aliases: []}
+tn: {ru: Тунис, en: Tunisia, aliases: []}
+to: {ru: Тонга, en: Tonga, aliases: []}
+tr: {ru: Турция, en: Turkey, aliases: []}
+tt: {ru: Тринидад и Тобаго, en: Trinidad and Tobago, aliases: []}
+tv: {ru: Тувалу, en: Tuvalu, aliases: []}
+tw: {ru: Китайская Республика (Тайвань), en: Taiwan, aliases: [ТАЙВАНЬ]}
+tz: {ru: Танзания, en: Tanzania, aliases: []}
+ua: {ru: Украина, en: Ukraine, aliases: []}
+ug: {ru: Уганда, en: Uganda, aliases: []}
+um: {ru: Внешние малые острова США, en: United States Minor Outlying Islands, aliases: []}
+us: {ru: Соединённые Штаты Америки, en: United States, aliases: [США]}
+uy: {ru: Уругвай, en: Uruguay, aliases: []}
+uz: {ru: Узбекистан, en: Uzbekistan, aliases: []}
+va: {ru: Ватикан, en: Vatican City, aliases: []}
+vc: {ru: Сент-Винсент и Гренадины, en: Saint Vincent and the Grenadines, aliases: []}
+ve: {ru: Венесуэла, en: Venezuela, aliases: []}
+vg: {ru: Виргинские Острова (Великобритания), en: British Virgin Islands, aliases: []}
+vi: {ru: Виргинские Острова (США), en: U.S. Virgin Islands, aliases: []}
+vn: {ru: Вьетнам, en: Vietnam, aliases: []}
+vu: {ru: Вануату, en: Vanuatu, aliases: []}
+wf: {ru: Уоллис и Футуна, en: Wallis and Futuna, aliases: []}
+ws: {ru: Самоа, en: Samoa, aliases: []}
+xk: {ru: Республика Косово, en: Kosovo, aliases: []}
+ye: {ru: Йемен, en: Yemen, aliases: []}
+yt: {ru: Майотта, en: Mayotte, aliases: []}
+za: {ru: Южно-Африканская Республика, en: South Africa, aliases: [ЮЖНАЯ АФРИКА]}
+zm: {ru: Замбия, en: Zambia, aliases: []}
+zw: {ru: Зимбабве, en: Zimbabwe, aliases: []}

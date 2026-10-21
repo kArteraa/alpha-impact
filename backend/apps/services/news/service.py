@@ -15,6 +15,7 @@ from apps.services.news.annotation import (
 from apps.services.news.config import NewsConfig
 from apps.services.news.feed import FeedEntry
 from apps.services.news.repository import matching
+from shared.config.geography import country_code
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem, PageContext
 
@@ -22,7 +23,8 @@ MANUAL_SOURCE = "manual"
 
 
 def query_entities(industry: str | None, region: str | None, country: str | None) -> list[str]:
-    wanted = ((INDUSTRY, industry), (REGION, region), (COUNTRY, country))
+    code = country_code(country) if country else None
+    wanted = ((INDUSTRY, industry), (REGION, region), (COUNTRY, code))
     return [entity(kind, value) for kind, value in wanted if value]
 
 

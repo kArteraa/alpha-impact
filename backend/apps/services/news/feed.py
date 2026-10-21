@@ -24,7 +24,7 @@ class FeedEntry:
 
 
 def plain(value: str | None) -> str:
-    return " ".join(html.unescape(TAG.sub(" ", value or "")).split())
+    return " ".join(TAG.sub(" ", html.unescape(value or "")).split())
 
 
 def published(value: str | None) -> datetime | None:

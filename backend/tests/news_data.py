@@ -59,10 +59,12 @@ class FakeNewsLlm:
         vectors: dict[str, list[float]] | None = None,
         answers: dict[str, dict[str, Any]] | None = None,
         errors: dict[str, DomainError] | None = None,
+        embed_errors: dict[str, DomainError] | None = None,
     ) -> None:
         self.vectors = vectors or {}
         self.answers = answers or {}
         self.errors = errors or {}
+        self.embed_errors = embed_errors or {}
         self.completions: list[str] = []
         self.embedded: list[str] = []
         self.tasks: list[str] = []
@@ -82,6 +84,9 @@ class FakeNewsLlm:
 
     async def embed(self, text: str) -> list[float]:
         self.embedded.append(text)
+        failing = next((key for key in self.embed_errors if key in text), None)
+        if failing is not None:
+            raise self.embed_errors.pop(failing)
         vector = next((value for key, value in self.vectors.items() if key in text), None)
         if vector is not None:
             return vector

@@ -96,11 +96,11 @@ async def ingest_news(
     added = duplicates = tokens_in = tokens_out = 0
     failed: list[str] = []
     for entry in candidates:
-        vector = await llm.embed(body(entry.title, entry.text))
-        if await repeats_indexed(sessions, entry, vector, config):
-            duplicates += 1
-            continue
         try:
+            vector = await llm.embed(body(entry.title, entry.text))
+            if await repeats_indexed(sessions, entry, vector, config):
+                duplicates += 1
+                continue
             annotation, used_in, used_out = await annotate(
                 llm, config, schema, entry.title, entry.text
             )
