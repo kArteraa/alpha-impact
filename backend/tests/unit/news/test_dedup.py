@@ -22,7 +22,13 @@ def test_month_is_part_of_the_date() -> None:
 
 
 def test_words_starting_like_months_are_not_dates() -> None:
-    assert numbers("маркетплейс и маяк") == numbers("")
+    assert numbers("маркетплейс, маяк, Мартынов и мартовский") == numbers("")
+    assert numbers("в марте и в мае") == numbers("март, май")
+
+
+def test_same_value_written_differently_is_the_same_number() -> None:
+    assert numbers("ставка 16%") == numbers("ставка 16,0%")
+    assert numbers("выпуск на 1000 млн") != numbers("выпуск на 1 млрд")
 
 
 def test_duplicate_needs_close_vectors_and_same_numbers() -> None:

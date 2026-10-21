@@ -110,8 +110,7 @@ async def ingest_news(
             failed.append(entry.url)
             continue
         async with sessions() as session, session.begin():
-            await add_news(session, to_news_item(entry, annotation), vector)
-        added += 1
+            added += await add_news(session, to_news_item(entry, annotation), vector)
         tokens_in += used_in
         tokens_out += used_out
     async with sessions() as session:

@@ -32,13 +32,14 @@ async def neighbours(
     return [(title, text, 1 - float(value)) for title, text, value in rows]
 
 
-async def add_news(session: AsyncSession, item: NewsItem, vector: list[float]) -> None:
+async def add_news(session: AsyncSession, item: NewsItem, vector: list[float]) -> bool:
     values = {
         **item.model_dump(),
         "factor_names": [factor.name for factor in item.factors],
         "embedding": vector,
     }
-    await session.execute(insert(NewsRow).values(**values).on_conflict_do_nothing())
+    statement = insert(NewsRow).values(**values).on_conflict_do_nothing().returning(NewsRow.id)
+    return (await session.execute(statement)).first() is not None
 
 
 async def matching(
