@@ -53,4 +53,15 @@ docker compose --profile seed run --build --rm -e LLM_TIMEOUT_SECONDS=30 seed py
 
 Проверка перед коммитом (ruff, mypy, import-linter, pytest, vitest, сборка) — раздел «Проверка» в [docs/PIPELINE.md](docs/PIPELINE.md).
 
+Предфильтр AH-15 работает без LLM через реальные порты новостей и house view. Проверка из `backend/` (тестовая PostgreSQL поднята по пайплайну):
+
+```
+uv run python -m scripts.prefilter_mocks
+uv run --env-file ../.env pytest tests/unit/interpreter/test_prefilter.py tests/integration/test_prefilter.py tests/integration/test_prefilter_services.py
+```
+
+Первая команда создаёт синтетические профили, агрегаты контрагентов, новость и house view в `backend/data/local/ah15/seed.json` (папка в `.gitignore`). Тесты работают на чистом клоне: наборы данных создаются во временной папке. `test_prefilter_services.py` строит профили и граф из тестовых CSV, загружает подтверждённый house view из seed, разрешает настоящие сервисы через DI и читает индекс PostgreSQL. Сценарии: для перевозчика есть кандидаты, для поставщика канцтоваров — пусто; 200 новостей обрабатываются за < 200 мс вместе с запросами индекса и house view. Данные тестовые, реализации портов и БД настоящие. Подключение к `POST /interpret` относится к AH-18.
+
+Сущности новостей имеют вид `industry:logistics`, `region:москва`, `country:китай`, `product:loan`; нормализация общая для индекса и предфильтра. Новая разметка выдаёт также продукты. Уже сохранённые новости не переразмечаются автоматически: старые записи продолжают отбираться по факторам и прежним сущностям, а совпадение по продукту возможно, когда у новости есть `product:…`. Поиск без критериев возвращает последние новости с `since` в пределах `limit`, поэтому предфильтр ранжирует полученную выборку, а не весь индекс.
+
 Репозиторий разделён на `backend/` (Python-монолит: `uv`, `pytest`, `alembic` запускаются оттуда) и `frontend/` (npm workspace: `application`, `app-plugin`, Playwright). Структура — [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), правила для агентов — [AGENTS.md](AGENTS.md), процесс задачи — [docs/PIPELINE.md](docs/PIPELINE.md), задачи — [docs/BACKLOG.md](docs/BACKLOG.md).

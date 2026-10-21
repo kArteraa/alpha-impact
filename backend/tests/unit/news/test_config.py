@@ -24,3 +24,9 @@ def test_config_rejects_unknown_industry_hint() -> None:
 def test_prompt_lists_factors_and_industries() -> None:
     assert all(f"- {name}:" in CONFIG.prompt for name in FACTORS)
     assert all(f"- {name}:" in CONFIG.prompt for name in CONFIG.industry_hints)
+
+
+def test_config_rejects_missing_product_hint() -> None:
+    hints = {"loan": "кредит"}
+    with pytest.raises(ValidationError, match="product_hints"):
+        type(CONFIG).model_validate({**CONFIG.model_dump(), "product_hints": hints})

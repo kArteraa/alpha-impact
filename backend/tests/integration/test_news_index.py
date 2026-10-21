@@ -284,6 +284,19 @@ async def test_search_without_matches_is_empty(index: NewsIndex) -> None:
     assert await titles(index, ["labor_market"], industry="pharma") == []
 
 
+async def test_search_without_criteria_returns_recent_news_with_limit(index: NewsIndex) -> None:
+    result = await index.search([], None, None, None, SINCE, limit=2)
+    assert len(result) == 2
+    assert all(news.published_at == NOW for news in result)
+    assert len(await index.search([], None, None, None, SINCE, limit=200)) == 5
+
+
+async def test_search_without_criteria_respects_since(index: NewsIndex) -> None:
+    result = await index.search([], None, None, None, (NOW - timedelta(days=3)).date(), limit=200)
+    assert len(result) == 4
+    assert "Давняя ставка" not in [news.title for news in result]
+
+
 async def test_adding_known_news_again_reports_nothing_added(
     sessions: async_sessionmaker[AsyncSession],
 ) -> None:
