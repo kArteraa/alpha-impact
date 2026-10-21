@@ -8,6 +8,7 @@ from shared.contracts.schemas import (
 )
 
 VERSION = "a1b2c3d4e5f60718"
+PROFILE = 3
 
 
 def payment(
@@ -22,24 +23,22 @@ def payment(
 
 
 def test_same_request_gives_same_key() -> None:
-    assert cache_key(payment(), VERSION) == cache_key(payment(), VERSION)
+    assert cache_key(payment(), PROFILE, VERSION) == cache_key(payment(), PROFILE, VERSION)
 
 
-def test_key_does_not_depend_on_user() -> None:
-    other = payment().model_copy(update={"user_id": "another"})
-    assert cache_key(other, VERSION) == cache_key(payment(), VERSION)
-
-
-def test_key_depends_on_client_role_context_and_house_view_version() -> None:
-    base = cache_key(payment(), VERSION)
+def test_key_depends_on_every_part() -> None:
+    base = cache_key(payment(), PROFILE, VERSION)
+    other_user = payment().model_copy(update={"user_id": "another"})
     deposit = payment().model_copy(
         update={"action_context": DepositContext(amount=100.0, term_days=90)}
     )
-    assert cache_key(payment(client_id="U_2"), VERSION) != base
-    assert cache_key(payment(role=Role.OWNER), VERSION) != base
-    assert cache_key(payment(amount=101.0), VERSION) != base
-    assert cache_key(deposit, VERSION) != base
-    assert cache_key(payment(), "0000000000000000") != base
+    assert cache_key(other_user, PROFILE, VERSION) != base
+    assert cache_key(payment(client_id="U_2"), PROFILE, VERSION) != base
+    assert cache_key(payment(role=Role.OWNER), PROFILE, VERSION) != base
+    assert cache_key(payment(amount=101.0), PROFILE, VERSION) != base
+    assert cache_key(deposit, PROFILE, VERSION) != base
+    assert cache_key(payment(), PROFILE + 1, VERSION) != base
+    assert cache_key(payment(), PROFILE, "0000000000000000") != base
 
 
 def test_context_hash_is_canonical_and_hides_page_text() -> None:
