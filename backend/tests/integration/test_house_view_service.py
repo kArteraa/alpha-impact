@@ -29,14 +29,16 @@ DRAFT = HouseViewClaim(
     superseded_by=None,
     status="draft",
 )
+EXPIRED_DOC = "steel.pdf"
+TODAY = date(2026, 9, 15)
 
 
 @pytest.fixture
 async def house_view(sessions: async_sessionmaker[AsyncSession]) -> HouseView:
     async with sessions() as session, session.begin():
         session.add(HouseViewClaimRow(**DRAFT.model_dump()))
-    await load_house_view(sessions, APPROVED_FILE)
-    return HouseView(sessions)
+    await load_house_view(sessions, APPROVED_FILE, {EXPIRED_DOC})
+    return HouseView(sessions, lambda: TODAY)
 
 
 def current(claims: list[HouseViewClaim]) -> set[tuple[date, str, str | None]]:
@@ -109,6 +111,20 @@ async def test_chain_runs_from_first_forecast_to_last(house_view: HouseView) -> 
     assert [item.status for item in chain] == ["superseded", "superseded", "superseded", "approved"]
 
 
+async def test_chain_marks_last_forecast_expired_after_valid_until(
+    sessions: async_sessionmaker[AsyncSession], house_view: HouseView
+) -> None:
+    last = next(
+        item for item in APPROVED if item.subject == "key_rate" and item.date == date(2026, 9, 11)
+    )
+    later = HouseView(sessions, lambda: date(2027, 1, 10))
+
+    chain = await later.chain(last.id)
+
+    assert chain[-1].valid_until is not None and chain[-1].valid_until < date(2027, 1, 10)
+    assert chain[-1].status == "expired"
+
+
 async def test_unknown_claim_is_not_found(house_view: HouseView) -> None:
     with pytest.raises(NotFound):
         await house_view.chain("missing")
@@ -119,7 +135,7 @@ async def test_unknown_claim_is_not_found(house_view: HouseView) -> None:
 async def test_reload_adds_no_duplicates(
     house_view: HouseView, sessions: async_sessionmaker[AsyncSession]
 ) -> None:
-    await load_house_view(sessions, APPROVED_FILE)
+    await load_house_view(sessions, APPROVED_FILE, {EXPIRED_DOC})
 
     async with sessions() as session:
         count = await session.scalar(select(func.count()).select_from(HouseViewClaimRow))
@@ -136,7 +152,7 @@ async def test_claim_removed_from_file_is_no_longer_approved(
         encoding="utf-8",
     )
 
-    await load_house_view(sessions, path)
+    await load_house_view(sessions, path, {EXPIRED_DOC})
 
     assert await house_view.claims("gold", date(2026, 8, 15)) == []
     async with sessions() as session:
@@ -152,5 +168,25 @@ async def test_empty_file_demotes_every_approved_claim(
     path = tmp_path / "approved.json"
     path.write_text("[]", encoding="utf-8")
 
-    assert await load_house_view(sessions, path) == 0
+    assert await load_house_view(sessions, path, {EXPIRED_DOC}) == 0
     assert await house_view.claims("key_rate", date(2026, 9, 15)) == []
+
+
+async def test_claim_from_expired_document_goes_back_as_expired(
+    house_view: HouseView, sessions: async_sessionmaker[AsyncSession], tmp_path: Path
+) -> None:
+    steel = DRAFT.model_copy(
+        update={"id": "steel", "source_doc": EXPIRED_DOC, "status": "approved"}
+    )
+    path = tmp_path / "approved.json"
+    path.write_text(json.dumps([steel.model_dump(mode="json")]), encoding="utf-8")
+    await load_house_view(sessions, path, {EXPIRED_DOC})
+    path.write_text("[]", encoding="utf-8")
+
+    await load_house_view(sessions, path, {EXPIRED_DOC})
+
+    async with sessions() as session:
+        status = await session.scalar(
+            select(HouseViewClaimRow.status).where(HouseViewClaimRow.id == steel.id)
+        )
+    assert status == "expired"

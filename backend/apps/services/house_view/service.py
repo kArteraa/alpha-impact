@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -39,8 +39,11 @@ def ordered_chain(
 
 
 class HouseView:
-    def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self, sessions: async_sessionmaker[AsyncSession], today: Callable[[], date]
+    ) -> None:
         self._sessions = sessions
+        self._today = today
 
     async def claims(self, subject: str, as_of: date) -> list[HouseViewClaim]:
         async with self._sessions() as session:
@@ -54,7 +57,6 @@ class HouseView:
             if start is None:
                 raise NotFound(f"Approved house view claim {claim_id} not found")
             rows = await approved_claims(session, start.subject)
-        return [
-            as_claim(row, SUPERSEDED if row.superseded_by else APPROVED)
-            for row in ordered_chain(start, rows)
-        ]
+        by_id = {row.id: row for row in rows}
+        day = self._today()
+        return [as_claim(row, status_on(row, by_id, day)) for row in ordered_chain(start, rows)]

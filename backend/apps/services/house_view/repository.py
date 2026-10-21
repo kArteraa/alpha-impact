@@ -1,22 +1,25 @@
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 
-from sqlalchemy import select, update
+from sqlalchemy import case, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from apps.services.house_view.statuses import APPROVED, DRAFT
+from apps.services.house_view.statuses import APPROVED, DRAFT, EXPIRED
 from shared.contracts.schemas import HouseViewClaim
 from shared.db.models import HouseViewClaimRow
 
 
-async def replace_approved(session: AsyncSession, claims: Sequence[HouseViewClaim]) -> None:
+async def replace_approved(
+    session: AsyncSession, claims: Sequence[HouseViewClaim], expired_docs: Collection[str]
+) -> None:
+    machine_status = case((HouseViewClaimRow.source_doc.in_(expired_docs), EXPIRED), else_=DRAFT)
     await session.execute(
         update(HouseViewClaimRow)
         .where(
             HouseViewClaimRow.status == APPROVED,
             HouseViewClaimRow.id.not_in([claim.id for claim in claims]),
         )
-        .values(status=DRAFT, superseded_by=None)
+        .values(status=machine_status, superseded_by=None)
     )
     if not claims:
         return

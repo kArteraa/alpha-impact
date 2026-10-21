@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from apps.services.counterparty.batch import rebuild_graph
 from apps.services.counterparty.config import load_config as load_counterparty_config
 from apps.services.house_view.batch import load_house_view
+from apps.services.house_view.ingest.config import load_config as load_ingest_config
 from apps.services.profile.batch import rebuild_profiles
 from apps.services.profile.config import load_config
 from shared.config.settings import Settings
@@ -41,7 +42,8 @@ async def main() -> None:
         sessions = make_session_factory(engine)
         users = await seed_users(sessions)
         print(f"users: {users}")
-        claims = await load_house_view(sessions, SEED_DIR / APPROVED_HOUSE_VIEW)
+        expired_docs = {doc.file for doc in load_ingest_config().documents if doc.expired}
+        claims = await load_house_view(sessions, SEED_DIR / APPROVED_HOUSE_VIEW, expired_docs)
         print(f"house view claims: {claims}")
         profiles = await rebuild_profiles(sessions, RAW_DIR, load_config())
         print(f"profiles: {profiles}")

@@ -90,6 +90,11 @@ def test_file_with_draft_status_is_rejected(tmp_path: Path) -> None:
         load_approved(path)
 
 
+def test_duplicate_ids_are_rejected() -> None:
+    with pytest.raises(ChainError, match="not unique"):
+        validate_chains([claim("a"), claim("a", value="13%")])
+
+
 def test_chain_cannot_merge_two_predecessors() -> None:
     claims = [
         claim("a", superseded_by="c"),
