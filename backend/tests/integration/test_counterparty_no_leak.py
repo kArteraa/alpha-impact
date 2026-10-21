@@ -8,12 +8,24 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from apps.services.counterparty.batch import rebuild_graph
 from apps.services.counterparty.config import load_config
 from apps.services.counterparty.service import CounterpartyAggregates
+from scripts.seed import RAW_DIR, seed_users
 from shared.contracts.schemas import CounterpartyContext
 from shared.db.models import ClientGraphRow, CounterpartyCardRow
+from tests.leak import PAYMENTS_FILE, assert_no_foreign_data, load_foreign_data, seed_clients
 from tests.unit.counterparty.fixtures import AMOUNTS, CLIENT, FIXTURES_DIR
 
 CONFIG = load_config()
 LOW = CONFIG.confidence.low
+UNKNOWN_COMPANY = "U_999999999"
+UNKNOWN_INN = "7707083893"
+AGGREGATE_FIELDS = {
+    "industry_class",
+    "region",
+    "size_bucket",
+    "share_of_client_outflow",
+    "share_of_counterparty_inflow",
+    "confidence",
+}
 STALE = "U_800"
 STALE_CARD = {
     "company_id": STALE,
@@ -151,3 +163,23 @@ async def test_rebuild_drops_rows_missing_from_data(
     assert await table_sizes(sessions) == (5, 1)
     assert (await service.context(CLIENT, STALE, None)).confidence == LOW
     assert (await service.context(STALE, "U_902", None)).share_of_client_outflow is None
+
+
+@pytest.mark.skipif(not PAYMENTS_FILE.exists(), reason="data/raw is not present")
+async def test_seed_clients_see_only_aggregates_of_their_recipients(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    await seed_users(sessions)
+    await rebuild_graph(sessions, RAW_DIR, CONFIG)
+    service = CounterpartyAggregates(sessions, CONFIG)
+
+    for client_id, foreign in load_foreign_data(seed_clients()).items():
+        assert foreign.recipients
+        for beneficiary_id, inn in [
+            *((recipient, None) for recipient in sorted(foreign.recipients)),
+            (UNKNOWN_COMPANY, None),
+            (None, UNKNOWN_INN),
+        ]:
+            context = await service.context(client_id, beneficiary_id, inn)
+            assert set(context.model_dump()) == AGGREGATE_FIELDS
+            assert_no_foreign_data(context, client_id, foreign)
