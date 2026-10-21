@@ -159,7 +159,7 @@ async def test_real_index_matches_fx_country_case_and_whitespace(
 ) -> None:
     seed = make_seed()
     await persist(
-        sessions, seed.news[0].model_copy(update={"entities": ["country:китай"], "factors": []})
+        sessions, seed.news[0].model_copy(update={"entities": ["country:cn"], "factors": []})
     )
     profile = await services.resolve(ProfileService).get_profile(USER, CLIENT)
     result = await Prefilter(

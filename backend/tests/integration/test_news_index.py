@@ -185,6 +185,21 @@ async def test_model_error_skips_news_until_next_run(
     assert (second.added, second.failed, second.total) == (1, (), 2)
 
 
+async def test_embedding_error_skips_news_and_keeps_the_run(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    llm = FakeNewsLlm(embed_errors={"Сбойная": ModelUnavailable("x")})
+    feed = rss(
+        item("Сбойная", "https://www.kommersant.ru/1", NOW),
+        item("Нормальная", "https://www.kommersant.ru/2", NOW),
+    )
+
+    result = await ingest(sessions, llm, {KOMMERSANT: feed})
+
+    assert (result.added, result.failed) == (1, ("https://www.kommersant.ru/1",))
+    assert await stored(sessions) == ["Нормальная"]
+
+
 async def test_exhausted_budget_stops_the_run(sessions: async_sessionmaker[AsyncSession]) -> None:
     llm = FakeNewsLlm(errors={"Вторая": BudgetExceeded("spent")})
     feed = rss(
@@ -228,6 +243,9 @@ async def index(sessions: async_sessionmaker[AsyncSession]) -> NewsIndex:
             regions=["Санкт-Петербург"],
         ),
         "Импорт из Китая": answer(countries=["Китай"]),
+        "Улан-Удэ": answer(regions=["бурятия (республика)"]),
+        "Казань": answer(regions=["Республика татарстан"]),
+        "Дубай": answer(countries=["ae"]),
         "Давняя ставка": answer(factors=[factor("key_rate", 1.0)], industries=["finance"]),
     }
     feed = rss(
@@ -235,6 +253,9 @@ async def index(sessions: async_sessionmaker[AsyncSession]) -> NewsIndex:
         item("Ставка и банки", "https://www.kommersant.ru/2", NOW - timedelta(hours=5)),
         item("Перевозчики Петербурга", "https://www.kommersant.ru/3", NOW),
         item("Импорт из Китая", "https://www.kommersant.ru/4", NOW),
+        item("Улан-Удэ строит терминал", "https://www.kommersant.ru/6", NOW),
+        item("Казань выпускает облигации", "https://www.kommersant.ru/7", NOW),
+        item("Дубай снижает пошлины", "https://www.kommersant.ru/8", NOW),
         item("Давняя ставка", "https://www.kommersant.ru/5", NOW - timedelta(days=10)),
     )
     llm = FakeNewsLlm(answers=answers)
@@ -265,6 +286,25 @@ async def test_search_by_region_and_country_ignores_case(index: NewsIndex) -> No
     assert await titles(index, [], country="КИТАЙ") == ["Импорт из Китая"]
 
 
+async def test_search_finds_region_and_country_as_written_in_csv(index: NewsIndex) -> None:
+    assert await titles(index, [], region="Бурятия (Республика)") == ["Улан-Удэ строит терминал"]
+    assert await titles(index, [], region="Республика Татарстан") == ["Казань выпускает облигации"]
+    assert await titles(index, [], country="ОАЭ") == ["Дубай снижает пошлины"]
+    assert await titles(index, [], country="Объединённые Арабские Эмираты") == [
+        "Дубай снижает пошлины"
+    ]
+
+
+async def test_search_finds_region_by_its_common_name(index: NewsIndex) -> None:
+    assert await titles(index, [], region="Татарстан") == ["Казань выпускает облигации"]
+    assert await titles(index, [], region="Бурятия") == ["Улан-Удэ строит терминал"]
+
+
+async def test_search_by_place_outside_vocabulary_finds_nothing(index: NewsIndex) -> None:
+    assert await titles(index, [], country="Атлантида") == []
+    assert await titles(index, [], region="Алеппо") == []
+
+
 async def test_search_skips_news_before_since(index: NewsIndex) -> None:
     since = (NOW - timedelta(days=3)).date()
 
@@ -288,12 +328,12 @@ async def test_search_without_criteria_returns_recent_news_with_limit(index: New
     result = await index.search([], None, None, None, SINCE, limit=2)
     assert len(result) == 2
     assert all(news.published_at == NOW for news in result)
-    assert len(await index.search([], None, None, None, SINCE, limit=200)) == 5
+    assert len(await index.search([], None, None, None, SINCE, limit=200)) == 8
 
 
 async def test_search_without_criteria_respects_since(index: NewsIndex) -> None:
     result = await index.search([], None, None, None, (NOW - timedelta(days=3)).date(), limit=200)
-    assert len(result) == 4
+    assert len(result) == 7
     assert "Давняя ставка" not in [news.title for news in result]
 
 

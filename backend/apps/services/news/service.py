@@ -16,7 +16,7 @@ MANUAL_SOURCE = "manual"
 
 def query_entities(industry: str | None, region: str | None, country: str | None) -> list[str]:
     wanted = ((INDUSTRY, industry), (REGION, region), (COUNTRY, country))
-    return [entity(kind, value) for kind, value in wanted if value]
+    return [key for kind, value in wanted if value and (key := entity(kind, value))]
 
 
 def score(item: NewsItem, factors: Collection[str], entities: Collection[str]) -> float:
@@ -50,6 +50,8 @@ class NewsIndex:
         if limit <= 0:
             raise ValueError("Search limit must be positive")
         entities = query_entities(industry, region, country)
+        if not factors and not entities and any((industry, region, country)):
+            return []
         start = datetime.combine(since, time.min, tzinfo=UTC)
         async with self._sessions() as session:
             rows = await matching(session, factors, entities, start, limit)

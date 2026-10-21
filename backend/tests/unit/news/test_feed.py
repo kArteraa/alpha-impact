@@ -45,6 +45,23 @@ def test_cdata_link_and_html_description_are_read() -> None:
     assert entry.text == "Юань подорожал"
 
 
+def test_escaped_tags_are_unescaped_and_removed() -> None:
+    description = "&amp;lt;p&amp;gt;Юань &amp;lt;b&amp;gt;подорожал&amp;lt;/b&amp;gt;"
+    content = rss(item("Курс", "https://tass.ru/1", NOW, description))
+
+    [entry] = parse_feed(content, "tass.ru")
+
+    assert entry.text == "Юань подорожал"
+
+
+def test_literal_angle_brackets_keep_the_text_between_them() -> None:
+    content = rss(item("Курс", "https://tass.ru/1", NOW, "Ставка &amp;lt; 16%, курс &amp;gt; 90"))
+
+    [entry] = parse_feed(content, "tass.ru")
+
+    assert entry.text == "Ставка < 16%, курс > 90"
+
+
 def test_item_without_description_has_empty_text() -> None:
     content = rss(item("Только заголовок", "https://www.vedomosti.ru/1", NOW))
 

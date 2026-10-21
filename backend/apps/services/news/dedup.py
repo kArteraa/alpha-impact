@@ -18,7 +18,7 @@ def number_key(value: str) -> str:
 def numbers(text: str) -> tuple[str, ...]:
     digits = [number_key(value) for value in NUMBER.findall(THOUSANDS.sub("", text))]
     months = [f"month:{match.group(1).lower()}" for match in MONTH.finditer(text)]
-    return tuple(sorted(digits + months))
+    return tuple(sorted(set(digits + months)))
 
 
 def is_duplicate(

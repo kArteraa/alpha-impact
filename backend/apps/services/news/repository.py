@@ -1,12 +1,12 @@
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
-from shared.contracts.schemas import NewsItem
+from shared.contracts.schemas import Factor, NewsItem
 from shared.db.models import NewsRow
 
 
@@ -56,3 +56,25 @@ async def matching(
 
 async def news_count(session: AsyncSession) -> int:
     return (await session.execute(select(func.count()).select_from(NewsRow))).scalar_one()
+
+
+async def stored_news(session: AsyncSession) -> list[tuple[str, str, str, str]]:
+    query = select(NewsRow.id, NewsRow.url, NewsRow.title, NewsRow.text).order_by(
+        NewsRow.published_at
+    )
+    return [(row.id, row.url, row.title, row.text) for row in (await session.execute(query)).all()]
+
+
+async def update_annotation(
+    session: AsyncSession, news_id: str, entities: list[str], factors: list[Factor]
+) -> None:
+    statement = (
+        update(NewsRow)
+        .where(NewsRow.id == news_id)
+        .values(
+            entities=entities,
+            factors=[factor.model_dump() for factor in factors],
+            factor_names=[factor.name for factor in factors],
+        )
+    )
+    await session.execute(statement)

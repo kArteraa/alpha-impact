@@ -3,17 +3,23 @@ from unittest.mock import AsyncMock
 import pytest
 
 from apps.services.interpreter.prefilter import Prefilter, score_news
+from apps.services.news.annotation import annotation_schema, to_news_item
+from apps.services.news.config import load_config
+from apps.services.news.feed import FeedEntry
 from scripts.prefilter_mocks import MockSeed, make_seed
 from shared.contracts.ports import HouseViewService, NewsService
 from shared.contracts.schemas import (
+    ClientProfile,
     DashboardContext,
     DepositContext,
     Factor,
     Feature,
     FxContext,
     LoanContext,
+    NewsItem,
     PaymentContext,
 )
+from tests.news_data import EMPTY_ANSWER
 
 
 @pytest.fixture
@@ -69,11 +75,11 @@ def test_duplicate_and_unknown_factors_do_not_inflate_score(seed: MockSeed) -> N
     [
         (["industry:logistics"], 1.1),
         (["region:москва"], 1.1),
-        (["country:китай"], 1.1),
+        (["country:cn"], 1.1),
         (["product:settlement"], 1.1),
-        (["industry:logistics", "region:москва", "country:китай", "product:settlement"], 4.1),
+        (["industry:logistics", "region:москва", "country:cn", "product:settlement"], 4.1),
         (["industry:logistics", "industry:logistics"], 1.1),
-        (["industry:transport_logistics", "country:китай-extra", "product:settlement_extra"], 0.1),
+        (["industry:transport_logistics", "country:cn-extra", "product:settlement_extra"], 0.1),
         (["logistics", "Москва", "КИТАЙ", "settlement"], 0.1),
         (["company:logistics", "industry:settlement"], 0.1),
         ([], 0.1),
@@ -133,10 +139,33 @@ def test_multiple_values_in_one_dimension_add_only_one(seed: MockSeed) -> None:
     profile = seed.profile.model_copy(
         update={"features": {**seed.profile.features, "import_countries": feature}}
     )
-    item = seed.news[0].model_copy(
-        update={"entities": ["country:китай", "country:индия"], "factors": []}
-    )
+    item = seed.news[0].model_copy(update={"entities": ["country:cn", "country:in"], "factors": []})
     assert score_news(item, profile, None, seed.payment) == 1.0
+
+
+def annotated(seed: MockSeed, **answer: list[str]) -> NewsItem:
+    annotation = annotation_schema(load_config()).model_validate({**EMPTY_ANSWER, **answer})
+    entry = FeedEntry("Новость", "", "https://a.example/1", seed.news[0].published_at, "a.example")
+    return to_news_item(entry, annotation)
+
+
+def with_feature(seed: MockSeed, name: str, value: object) -> ClientProfile:
+    feature = seed.profile.features[name].model_copy(update={"value": value})
+    return seed.profile.model_copy(update={"features": {name: feature}})
+
+
+def test_profile_country_as_in_csv_matches_country_annotated_in_news(seed: MockSeed) -> None:
+    item = annotated(seed, countries=["Объединённые Арабские Эмираты"])
+    profile = with_feature(seed, "import_countries", ["ОАЭ"])
+
+    assert score_news(item, profile, None, seed.payment) == 1.0
+
+
+def test_profile_region_as_in_csv_matches_region_annotated_in_news(seed: MockSeed) -> None:
+    item = annotated(seed, regions=["Бурятия"])
+    profile = with_feature(seed, "region", "Бурятия (Республика)")
+
+    assert score_news(item, profile, None, DashboardContext()) == 1.0
 
 
 @pytest.mark.parametrize("threshold", [-1.0, 0.0, float("nan"), float("inf")])
