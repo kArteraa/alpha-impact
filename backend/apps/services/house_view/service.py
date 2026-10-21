@@ -1,13 +1,17 @@
+import hashlib
+import json
 from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.house_view.repository import approved_claims, find_approved
+from apps.services.house_view.repository import all_approved, approved_claims, find_approved
 from apps.services.house_view.statuses import APPROVED, EXPIRED, SUPERSEDED
 from shared.contracts.errors import NotFound
 from shared.contracts.schemas import HouseViewClaim
 from shared.db.models import HouseViewClaimRow
+
+VERSION_LENGTH = 16
 
 
 def as_claim(row: HouseViewClaimRow, status: str) -> HouseViewClaim:
@@ -60,3 +64,10 @@ class HouseView:
         by_id = {row.id: row for row in rows}
         day = self._today()
         return [as_claim(row, status_on(row, by_id, day)) for row in ordered_chain(start, rows)]
+
+    async def version(self) -> str:
+        async with self._sessions() as session:
+            rows = await all_approved(session)
+        snapshot = [as_claim(row, APPROVED).model_dump(mode="json") for row in rows]
+        digest = hashlib.sha256(json.dumps(snapshot, ensure_ascii=False, sort_keys=True).encode())
+        return digest.hexdigest()[:VERSION_LENGTH]

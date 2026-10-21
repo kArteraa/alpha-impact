@@ -261,6 +261,7 @@ class PageContextService(Protocol):
 class HouseViewService(Protocol):
     async def claims(self, subject: str, as_of: date) -> list[HouseViewClaim]: ...
     async def chain(self, claim_id: str) -> list[HouseViewClaim]: ...
+    async def version(self) -> str: ...
 
 
 class WhatIfService(Protocol):
@@ -292,6 +293,8 @@ class Critic(Protocol):
 class Interpreter(Protocol):
     async def interpret(self, request: InterpretRequest) -> InterpretResponse: ...
 ```
+
+`HouseViewService.version()` — версия подтверждённого house view: первые 16 символов sha256 от всех утверждений со статусом `approved` (все поля, по порядку `id`). Меняется при любой правке подтверждённого набора, не меняется при повторном `seed` и от черновиков; статусы `superseded`/`expired`, вычисляемые на дату, в неё не входят. Gateway кладёт её в ключ кэша карточки.
 
 ## HTTP (gateway)
 
