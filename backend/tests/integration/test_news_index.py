@@ -7,8 +7,11 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from apps.services.llm.errors import ModelUnavailable
+from apps.services.news.annotation import annotation_schema, to_news_item
 from apps.services.news.config import load_config
+from apps.services.news.feed import FeedEntry
 from apps.services.news.ingest import IngestResult, ingest_news
+from apps.services.news.repository import add_news
 from apps.services.news.service import NewsIndex
 from shared.config.embedding import EMBEDDING_DIMENSION
 from shared.contracts.errors import BudgetExceeded
@@ -27,6 +30,7 @@ from tests.news_data import (
 )
 
 CONFIG = load_config()
+SCHEMA = annotation_schema(CONFIG)
 KOMMERSANT = "https://www.kommersant.ru/rss/section-economics.xml"
 VEDOMOSTI = "https://www.vedomosti.ru/rss/rubric/economics"
 SINCE = (NOW - timedelta(days=14)).date()
@@ -278,6 +282,19 @@ async def test_search_respects_limit_and_returns_contract_items(index: NewsIndex
 
 async def test_search_without_matches_is_empty(index: NewsIndex) -> None:
     assert await titles(index, ["labor_market"], industry="pharma") == []
+
+
+async def test_adding_known_news_again_reports_nothing_added(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    entry = FeedEntry("Ставка", "", "https://www.kommersant.ru/1", NOW, "kommersant.ru")
+    news = to_news_item(entry, SCHEMA.model_validate(KEY_RATE_ANSWER))
+
+    async with sessions() as session, session.begin():
+        first = await add_news(session, news, unit(0))
+        second = await add_news(session, news, unit(1))
+
+    assert (first, second) == (True, False)
 
 
 async def test_embedding_column_has_model_dimension(
