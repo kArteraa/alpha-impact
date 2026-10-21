@@ -130,6 +130,7 @@ async def test_contradiction_marked_as_divergence_is_accepted() -> None:
     claim = Claim(text=marked, type=ClaimType.AI, source_ref=NEWS)
     llm = model([{"claim": marked, "house_view_id": CURRENT.id, "reason": "банк ждёт иного"}])
     assert await review(card(consequences=[claim]), llm) == []
+    assert marked not in llm.complete.await_args.kwargs["user"]
 
 
 @pytest.mark.parametrize(

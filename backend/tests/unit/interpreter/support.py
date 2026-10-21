@@ -118,12 +118,13 @@ def make_harness(settings: Settings) -> Harness:
     house_view.chain.return_value = seed.house_view
     llm = AsyncMock(spec=LLMGateway)
     traces = AsyncMock(spec=TraceStore)
-    answers: list[dict[str, object]] = [plan_answer(), draft_answer(), {"items": []}]
+    answers = [plan_answer(), draft_answer()]
 
     async def complete(
         task: str, system: str, user: str, schema: type[BaseModel]
     ) -> tuple[BaseModel, int, int]:
-        return schema.model_validate(answers.pop(0)), 120, 40
+        answer = {"items": []} if task == "critic" else answers.pop(0)
+        return schema.model_validate(answer), 120, 40
 
     llm.complete.side_effect = complete
     container = Container()

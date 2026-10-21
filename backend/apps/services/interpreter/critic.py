@@ -2,6 +2,7 @@ import json
 
 from pydantic import BaseModel, ConfigDict
 
+from apps.services.interpreter.drafting import CLAIM_BLOCKS
 from apps.services.interpreter.prompts import CRITIC_SYSTEM
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Claim, ClaimType, HouseViewClaim, InsightCard, NewsItem
@@ -23,30 +24,26 @@ class Contradictions(BaseModel):
 
 
 def claims(card: InsightCard) -> list[Claim]:
-    return [
-        *card.what_happened,
-        *card.why_for_you,
-        *card.consequences,
-        *card.actions,
-        *card.bank_view,
-    ]
+    return [claim for name in CLAIM_BLOCKS for claim in getattr(card, name)]
 
 
 def source_verdicts(
-    card: InsightCard, house_view: list[HouseViewClaim], news: list[NewsItem]
+    card: InsightCard, checked: list[Claim], house_view: list[HouseViewClaim], news: list[NewsItem]
 ) -> list[str]:
     known = {"news": {item.id for item in news}, "house_view": {claim.id for claim in house_view}}
     result = []
-    for claim in claims(card):
+    for claim in checked:
         ref = claim.source_ref
-        if not ref.id or ref.id not in known.get(ref.kind, {ref.id}):
+        if not ref.id or (ref.kind in known and ref.id not in known[ref.kind]):
             result.append(f"source: «{claim.text}» ссылается на неизвестный источник {ref.kind}")
         elif ref not in card.basis:
             result.append(f"source: источник «{claim.text}» не указан в basis")
     return result
 
 
-def bank_verdicts(card: InsightCard, house_view: list[HouseViewClaim]) -> list[str]:
+def bank_verdicts(
+    card: InsightCard, checked: list[Claim], house_view: list[HouseViewClaim]
+) -> list[str]:
     current = {
         claim.id: claim
         for claim in house_view
@@ -57,7 +54,7 @@ def bank_verdicts(card: InsightCard, house_view: list[HouseViewClaim]) -> list[s
         for claim in card.bank_view
         if claim.type != ClaimType.BANK
     ]
-    for claim in claims(card):
+    for claim in checked:
         if claim.type != ClaimType.BANK:
             continue
         quoted = current.get(claim.source_ref.id) if claim.source_ref.kind == "house_view" else None
@@ -68,8 +65,8 @@ def bank_verdicts(card: InsightCard, house_view: list[HouseViewClaim]) -> list[s
     return result
 
 
-def retelling_verdicts(card: InsightCard) -> list[str]:
-    refs = {(claim.source_ref.kind, claim.source_ref.id) for claim in claims(card)}
+def retelling_verdicts(checked: list[Claim]) -> list[str]:
+    refs = {(claim.source_ref.kind, claim.source_ref.id) for claim in checked}
     result = []
     if len(refs) < 2:
         result.append("retelling: карточка опирается меньше чем на два источника")
@@ -85,22 +82,27 @@ class CriticAgent:
     async def review(
         self, card: InsightCard, house_view: list[HouseViewClaim], news: list[NewsItem]
     ) -> list[str]:
+        checked = claims(card)
         return [
-            *source_verdicts(card, house_view, news),
-            *bank_verdicts(card, house_view),
-            *await self._contradictions(card, house_view),
-            *retelling_verdicts(card),
+            *source_verdicts(card, checked, house_view, news),
+            *bank_verdicts(card, checked, house_view),
+            *await self._contradictions(checked, house_view),
+            *retelling_verdicts(checked),
         ]
 
     async def _contradictions(
-        self, card: InsightCard, house_view: list[HouseViewClaim]
+        self, checked: list[Claim], house_view: list[HouseViewClaim]
     ) -> list[str]:
-        if not house_view:
+        unmarked = {
+            claim.text
+            for claim in checked
+            if claim.type != ClaimType.BANK and DIVERGENCE_MARK not in claim.text.lower()
+        }
+        if not house_view or not unmarked:
             return []
-        checked = {claim.text for claim in claims(card) if claim.type != ClaimType.BANK}
         user = json.dumps(
             {
-                "claims": sorted(checked),
+                "claims": sorted(unmarked),
                 "house_view": [
                     {
                         "id": claim.id,
@@ -120,7 +122,5 @@ class CriticAgent:
         return [
             f"contradiction: «{item.claim}» противоречит {item.house_view_id}: {item.reason}"
             for item in Contradictions.model_validate(raw).items
-            if item.claim in checked
-            and item.house_view_id in known
-            and DIVERGENCE_MARK not in item.claim.lower()
+            if item.claim in unmarked and item.house_view_id in known
         ]

@@ -202,8 +202,7 @@ class Agent:
         house_view: list[HouseViewClaim],
         news: list[NewsItem],
     ) -> InsightCard:
-        card_id = str(uuid4())
-        card = build_card(draft, evidence, card_id=card_id, trace_id=journal.trace.id)
+        card = build_card(draft, evidence, card_id=str(uuid4()), trace_id=journal.trace.id)
         verdicts = await journal.review(1, self._critic, card, house_view, news)
         if not verdicts:
             return card
@@ -216,6 +215,6 @@ class Agent:
             ),
             Draft,
         )
-        card = build_card(redraft, evidence, card_id=card_id, trace_id=journal.trace.id)
+        card = build_card(redraft, evidence, card_id=card.id, trace_id=journal.trace.id)
         verdicts = await journal.review(2, self._critic, card, house_view, news)
         return card.model_copy(update={"needs_review": bool(verdicts)})
