@@ -70,7 +70,7 @@ class Journal:
                 started_at=utc_now(),
             )
         ) as step:
-            raw, step.tokens_in, step.tokens_out = await self.llm.complete(
+            raw, step.tokens_in, step.tokens_out, step.cost_rub = await self.llm.complete(
                 task=self.task, system=system, user=user, schema=schema
             )
             result = schema.model_validate(raw)
@@ -94,7 +94,9 @@ class Journal:
                 started_at=utc_now(),
             )
         ) as step:
-            verdicts = await critic.review(card, house_view, news)
+            verdicts, step.tokens_in, step.tokens_out, step.cost_rub = await critic.review(
+                card, house_view, news
+            )
             step.output_summary = json.dumps(verdicts, ensure_ascii=False)
             self.trace.critic_verdicts.extend(
                 [f"{round_number}: {verdict}" for verdict in verdicts] or [f"{round_number}: ok"]

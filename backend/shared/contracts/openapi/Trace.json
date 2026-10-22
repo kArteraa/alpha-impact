@@ -521,6 +521,10 @@
     },
     "TraceStep": {
       "properties": {
+        "cost_rub": {
+          "default": 0.0,
+          "type": "number"
+        },
         "duration_ms": {
           "default": 0,
           "type": "integer"

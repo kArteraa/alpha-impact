@@ -206,6 +206,7 @@ class TraceStep(BaseModel):
     model: str | None = None
     tokens_in: int = 0
     tokens_out: int = 0
+    cost_rub: float = 0.0
     duration_ms: int = 0
     started_at: dt.datetime
 
