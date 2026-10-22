@@ -117,10 +117,11 @@ class Agent:
                 self._counterparties.context(request.client_id, action.beneficiary_id, action.inn),
             )
         as_of = journal.trace.created_at.date()
-        page = await self._pasted_news(request, journal)
+        pasted = await self._pasted_news(request, journal)
         prefilter_started_at = utc_now()
         start = perf_counter()
-        if page is None:
+        if pasted is None:
+            scope = f"limit={self._config.search_limit}"
             selection = await self._prefilter.select(
                 profile,
                 request.action_context,
@@ -130,14 +131,15 @@ class Agent:
                 limit=self._config.search_limit,
             )
         else:
-            selection = await self._prefilter.assess(
-                page, profile, request.action_context, as_of=as_of
+            scope = f"pasted={pasted.id}"
+            selection = await self._prefilter.rank(
+                [pasted], profile, request.action_context, counterparty, as_of=as_of
             )
         journal.trace.steps.append(
             TraceStep(
                 step="prefilter",
                 name="relevance",
-                input_summary=f"limit={self._config.search_limit}",
+                input_summary=scope,
                 output_summary=json.dumps(
                     {
                         "candidates": [c.news.id for c in selection.candidates],
@@ -204,14 +206,14 @@ class Agent:
     async def _pasted_news(self, request: InterpretRequest, journal: Journal) -> NewsItem | None:
         if not isinstance(request.action_context, PageContext):
             return None
-        page = request.action_context
-        title, _, body = page.text.strip().partition("\n")
-        if not title.strip():
+        text = request.action_context.text.strip()
+        if not text:
             raise DomainError("Page text is empty")
+        title, _, body = text.partition("\n")
         return await journal.tool(
             "news.annotate",
             "pasted page text",
-            self._news.annotate(title.strip(), body.strip(), page.url),
+            self._news.annotate(title.rstrip(), body.strip(), request.action_context.url),
         )
 
     async def _reviewed(

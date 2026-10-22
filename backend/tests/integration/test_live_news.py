@@ -1,4 +1,3 @@
-import csv
 import json
 from collections.abc import AsyncIterator
 from pathlib import Path
@@ -12,19 +11,13 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from apps.services.counterparty.batch import rebuild_graph
-from apps.services.counterparty.config import load_config as counterparty_config
-from apps.services.house_view.batch import load_house_view
-from apps.services.house_view.ingest.config import load_config as house_view_config
 from apps.services.news.annotation import news_id
 from apps.services.news.config import load_config as news_config
 from apps.services.news.service import MANUAL_SOURCE
-from apps.services.profile.batch import rebuild_profiles
-from apps.services.profile.config import load_config as profile_config
 from shared.contracts.ports import LLMGateway, TraceStore
 from shared.contracts.schemas import ClaimType, InterpretResponse
-from shared.db.models import NewsRow, UserClientRow, UserRow
-from tests.integration.test_prefilter_services import BACKEND, CLIENT, USER, company_files
+from shared.db.models import NewsRow
+from tests.integration.test_prefilter_services import CLIENT, USER, seed_client
 from tests.news_data import KEY_RATE_ANSWER, unit
 
 TITLE = "ЦБ снизил ключевую ставку до 16%"
@@ -73,19 +66,6 @@ def draft(sources: dict[str, Any]) -> dict[str, object]:
     }
 
 
-def give_client_a_loan(directory: Path) -> None:
-    path = directory / "df_Uid_data_hack.csv"
-    with path.open(encoding="utf-8", newline="") as file:
-        rows = list(csv.DictReader(file, delimiter=";"))
-    for row in rows:
-        if row["SYNTHETIC_U"] == CLIENT:
-            row["CL_PRODUCT_LOA_MARK"] = "1.0"
-    with path.open("w", encoding="utf-8", newline="") as file:
-        writer = csv.DictWriter(file, fieldnames=list(rows[0]), delimiter=";")
-        writer.writeheader()
-        writer.writerows(rows)
-
-
 @pytest.fixture
 def model() -> LiveNewsModel:
     return LiveNewsModel()
@@ -97,17 +77,7 @@ async def client(
 ) -> AsyncIterator[httpx.AsyncClient]:
     from main import create_app
 
-    company_files(tmp_path)
-    give_client_a_loan(tmp_path)
-    async with sessions() as session, session.begin():
-        session.add(UserRow(id=USER, name="CFO"))
-        await session.flush()
-        session.add(UserClientRow(user_id=USER, client_id=CLIENT))
-    await rebuild_profiles(sessions, tmp_path, profile_config())
-    await rebuild_graph(sessions, tmp_path, counterparty_config())
-    await load_house_view(
-        sessions, BACKEND / "data/seed/house_view_approved.json", house_view_config().expired_docs
-    )
+    await seed_client(sessions, tmp_path, "CL_PRODUCT_LOA_MARK")
     application: FastAPI = create_app()
     application.state.container.register(LLMGateway, lambda _: model)
     application.state.container.register(TraceStore, lambda _: AsyncMock(spec=TraceStore))

@@ -3,11 +3,11 @@ from datetime import UTC, date, datetime, time
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.news.annotation import annotate, annotation_schema, news_id, to_news_item
+from apps.services.news.annotation import annotation_schema, news_id
 from apps.services.news.config import NewsConfig
 from apps.services.news.feed import FeedEntry
-from apps.services.news.ingest import body, repeat_of
-from apps.services.news.repository import add_news, find_news, matching
+from apps.services.news.ingest import index_entry
+from apps.services.news.repository import find_news, matching
 from shared.config.news_entities import COUNTRY, INDUSTRY, REGION, entity
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem, PageContext
@@ -70,15 +70,8 @@ class NewsIndex:
             known = await find_news(session, key, entry.url)
         if known is not None:
             return NewsItem.model_validate(known, from_attributes=True)
-        vector = await self._llm.embed(body(title, text))
-        repeat = await repeat_of(self._sessions, entry, vector, self._config)
-        if repeat is not None:
-            return NewsItem.model_validate(repeat, from_attributes=True)
-        annotation, _, _ = await annotate(self._llm, self._config, self._schema, title, text)
-        item = to_news_item(entry, annotation)
-        async with self._sessions() as session, session.begin():
-            await add_news(session, item, vector)
-        return item
+        indexed = await index_entry(self._sessions, self._llm, self._config, self._schema, entry)
+        return indexed.item
 
 
 class PageClassifier:

@@ -176,17 +176,17 @@ def test_invalid_threshold_is_rejected(threshold: float) -> None:
         )
 
 
-def assessor(seed: MockSeed, threshold: float) -> tuple[Prefilter, AsyncMock, AsyncMock]:
+def ranker(seed: MockSeed, threshold: float) -> tuple[Prefilter, AsyncMock, AsyncMock]:
     news = AsyncMock(spec=NewsService)
     house_view = AsyncMock(spec=HouseViewService)
     house_view.claims.return_value = seed.house_view
     return Prefilter(news, house_view, threshold=threshold), news, house_view
 
 
-async def test_assess_keeps_relevant_item_with_current_house_view(seed: MockSeed) -> None:
-    prefilter, news, house_view = assessor(seed, threshold=1.0)
+async def test_rank_keeps_relevant_item_with_current_house_view(seed: MockSeed) -> None:
+    prefilter, news, house_view = ranker(seed, threshold=1.0)
     item = seed.news[0].model_copy(update={"entities": ["product:settlement"]})
-    result = await prefilter.assess(item, seed.profile, DashboardContext(), as_of=seed.as_of)
+    result = await prefilter.rank([item], seed.profile, DashboardContext(), None, as_of=seed.as_of)
     assert [candidate.news for candidate in result.candidates] == [item]
     assert result.candidates[0].score == pytest.approx(1.1)
     assert [claim.id for claim in result.house_view] == ["logistics-approved"]
@@ -194,19 +194,19 @@ async def test_assess_keeps_relevant_item_with_current_house_view(seed: MockSeed
     news.search.assert_not_awaited()
 
 
-async def test_assess_below_threshold_is_empty_without_house_view(seed: MockSeed) -> None:
-    prefilter, _, house_view = assessor(seed, threshold=1.0)
+async def test_rank_below_threshold_is_empty_without_house_view(seed: MockSeed) -> None:
+    prefilter, _, house_view = ranker(seed, threshold=1.0)
     item = seed.news[0].model_copy(update={"entities": []})
-    result = await prefilter.assess(item, seed.profile, DashboardContext(), as_of=seed.as_of)
+    result = await prefilter.rank([item], seed.profile, DashboardContext(), None, as_of=seed.as_of)
     assert result.candidates == []
     assert result.house_view == []
     house_view.claims.assert_not_awaited()
 
 
-async def test_assess_ignores_publication_window(seed: MockSeed) -> None:
-    prefilter, _, _ = assessor(seed, threshold=0.1)
+async def test_rank_ignores_publication_window(seed: MockSeed) -> None:
+    prefilter, _, _ = ranker(seed, threshold=0.1)
     item = seed.news[0].model_copy(
         update={"published_at": seed.news[0].published_at.replace(year=2020)}
     )
-    result = await prefilter.assess(item, seed.profile, DashboardContext(), as_of=seed.as_of)
+    result = await prefilter.rank([item], seed.profile, DashboardContext(), None, as_of=seed.as_of)
     assert len(result.candidates) == 1
