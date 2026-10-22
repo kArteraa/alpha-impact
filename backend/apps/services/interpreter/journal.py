@@ -66,9 +66,7 @@ class Journal:
                 task="interpret", system=system, user=user, schema=schema
             )
             result = schema.model_validate(raw)
-            step.output_summary = (
-                result.model_dump_json() if name == "plan" else self._summary(result)
-            )
+            step.output_summary = self._summary(result)
             return result
 
     async def review(

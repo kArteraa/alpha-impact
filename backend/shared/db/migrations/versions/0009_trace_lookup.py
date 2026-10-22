@@ -1,4 +1,4 @@
-"""traces payload GIN index, one feedback per card
+"""traces payload GIN and created_at indexes, one feedback per card
 
 Revision ID: 0009
 Revises: 0008
@@ -24,6 +24,7 @@ def upgrade() -> None:
         postgresql_using="gin",
         postgresql_ops={"payload": "jsonb_path_ops"},
     )
+    op.create_index("ix_traces_created_at", "traces", ["created_at"])
     op.drop_index("ix_feedback_card_id", table_name="feedback")
     op.create_index("ix_feedback_card_id", "feedback", ["card_id"], unique=True)
 
@@ -31,4 +32,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_feedback_card_id", table_name="feedback")
     op.create_index("ix_feedback_card_id", "feedback", ["card_id"])
+    op.drop_index("ix_traces_created_at", table_name="traces")
     op.drop_index("ix_traces_payload", table_name="traces")

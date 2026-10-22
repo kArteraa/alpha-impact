@@ -119,14 +119,15 @@ async def test_feedback_is_recorded_and_replaced(
     ]
 
 
-async def test_feedback_on_foreign_card_is_forbidden(logged_in: httpx.AsyncClient) -> None:
-    response = await logged_in.post("/feedback", json={"card_id": "card-foreign", "useful": True})
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-
-
-async def test_feedback_on_unknown_card_is_not_found(logged_in: httpx.AsyncClient) -> None:
-    response = await logged_in.post("/feedback", json={"card_id": "card-z", "useful": True})
-    assert response.status_code == status.HTTP_404_NOT_FOUND
+@pytest.mark.parametrize(
+    ("card_id", "code"),
+    [("card-foreign", status.HTTP_403_FORBIDDEN), ("card-z", status.HTTP_404_NOT_FOUND)],
+)
+async def test_feedback_errors_map_to_http(
+    logged_in: httpx.AsyncClient, card_id: str, code: int
+) -> None:
+    response = await logged_in.post("/feedback", json={"card_id": card_id, "useful": True})
+    assert response.status_code == code
 
 
 def test_openapi_matches_trace_contracts(app: FastAPI) -> None:
