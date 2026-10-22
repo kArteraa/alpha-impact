@@ -8,7 +8,7 @@ from apps.services import trace
 from shared.contracts.ports import TraceStore
 from shared.di.container import Container
 
-PORT_METHODS = ("save", "get", "metrics", "feedback")
+PORT_METHODS = ("save", "get", "metrics", "feedback", "find_by_card")
 
 
 def resolve() -> TraceStore:
@@ -36,3 +36,8 @@ def test_registered_store_matches_port_signature(name: str) -> None:
     assert inspect.signature(implementation, eval_str=True) == port_method.replace(
         parameters=list(port_method.parameters.values())[1:]
     )
+
+
+async def test_find_by_card_points_to_implementing_task() -> None:
+    with pytest.raises(NotImplementedError, match="AH-26"):
+        await resolve().find_by_card("u1", "card-1")
