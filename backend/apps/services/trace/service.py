@@ -12,3 +12,6 @@ class TraceRepository:
 
     async def metrics(self, since: date) -> dict[str, float]:
         raise NotImplementedError("AH-23")
+
+    async def feedback(self, user_id: str, card_id: str, useful: bool, comment: str | None) -> None:
+        raise NotImplementedError("AH-23")
