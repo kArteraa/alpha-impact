@@ -27,7 +27,7 @@ async def test_paid_answer_is_cached_when_usage_cannot_be_recorded() -> None:
     assert isinstance(raised.value.__cause__, RuntimeError)
     assert len(store.cache) == 1
     assert [usage.cost_rub for usage in store.usages] == [1.0]
-    assert await gateway.complete("critic", "sys", "usr", Verdict) == (Verdict(ok=True), 0, 0)
+    assert await gateway.complete("critic", "sys", "usr", Verdict) == (Verdict(ok=True), 0, 0, 0.0)
     assert len(server.requests) == 1
 
 

@@ -66,7 +66,7 @@ async def test_cache_still_answers_when_budget_is_exhausted() -> None:
     gateway = make_gateway(server.http_client(), store)
     await gateway.complete("interpret", "system", "user")
     spent(store, 450.0)
-    assert await gateway.complete("interpret", "system", "user") == ("cached answer", 0, 0)
+    assert await gateway.complete("interpret", "system", "user") == ("cached answer", 0, 0, 0.0)
     assert len(server.requests) == 1
 
 

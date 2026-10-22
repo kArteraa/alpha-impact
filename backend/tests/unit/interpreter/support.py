@@ -21,6 +21,8 @@ from shared.contracts.ports import (
 from shared.contracts.schemas import InterpretRequest, Role
 from shared.di.container import Container
 
+CALL_COST = 0.05
+
 
 def constant(value: object) -> Callable[[Container], object]:
     def factory(_: Container) -> object:
@@ -83,9 +85,11 @@ class Harness:
             action_context=self.seed.payment.model_copy(update={"beneficiary_id": beneficiary}),
         )
 
-    def use_critic(self, *verdicts: list[str]) -> AsyncMock:
+    def use_critic(self, *verdicts: list[str] | tuple[list[str], int, int, float]) -> AsyncMock:
         critic = AsyncMock(spec=Critic)
-        critic.review.side_effect = list(verdicts)
+        critic.review.side_effect = [
+            verdict if isinstance(verdict, tuple) else (verdict, 0, 0, 0.0) for verdict in verdicts
+        ]
         self.container.register(Critic, constant(critic))
         return critic
 
@@ -122,9 +126,9 @@ def make_harness(settings: Settings) -> Harness:
 
     async def complete(
         task: str, system: str, user: str, schema: type[BaseModel]
-    ) -> tuple[BaseModel, int, int]:
+    ) -> tuple[BaseModel, int, int, float]:
         answer = {"items": []} if task == "critic" else answers.pop(0)
-        return schema.model_validate(answer), 120, 40
+        return schema.model_validate(answer), 120, 40, CALL_COST
 
     llm.complete.side_effect = complete
     container = Container()

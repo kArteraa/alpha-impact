@@ -7,6 +7,7 @@ from time import perf_counter
 from pydantic import BaseModel
 from pydantic_core import to_jsonable_python
 
+from shared.contracts.errors import ChargedModelError
 from shared.contracts.ports import Critic, LLMGateway
 from shared.contracts.schemas import HouseViewClaim, InsightCard, NewsItem, Trace, TraceStep
 
@@ -36,6 +37,9 @@ class Journal:
             yield step
         except Exception as error:
             step.output_summary = type(error).__name__
+            if isinstance(error, ChargedModelError):
+                step.tokens_in, step.tokens_out = error.tokens_in, error.tokens_out
+                step.cost_rub = error.cost_rub
             raise
         finally:
             step.duration_ms = int((perf_counter() - start) * 1000)
@@ -70,7 +74,7 @@ class Journal:
                 started_at=utc_now(),
             )
         ) as step:
-            raw, step.tokens_in, step.tokens_out = await self.llm.complete(
+            raw, step.tokens_in, step.tokens_out, step.cost_rub = await self.llm.complete(
                 task=self.task, system=system, user=user, schema=schema
             )
             result = schema.model_validate(raw)
@@ -94,7 +98,9 @@ class Journal:
                 started_at=utc_now(),
             )
         ) as step:
-            verdicts = await critic.review(card, house_view, news)
+            verdicts, step.tokens_in, step.tokens_out, step.cost_rub = await critic.review(
+                card, house_view, news
+            )
             step.output_summary = json.dumps(verdicts, ensure_ascii=False)
             self.trace.critic_verdicts.extend(
                 [f"{round_number}: {verdict}" for verdict in verdicts] or [f"{round_number}: ok"]
