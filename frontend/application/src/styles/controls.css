@@ -201,8 +201,17 @@
 
 .choice input {
   position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   opacity: 0;
-  pointer-events: none;
+  cursor: pointer;
+}
+
+.choice input:hover + .choice-body {
+  background: var(--bg-neutral-strong);
 }
 
 .choice-body {
@@ -217,10 +226,6 @@
   transition:
     background var(--t-fast),
     box-shadow var(--t-fast);
-}
-
-.choice-body:hover {
-  background: var(--bg-neutral-strong);
 }
 
 .choice-title {

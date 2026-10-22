@@ -1,0 +1,124 @@
+.login-screen {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--s-8) var(--s-4);
+}
+
+.auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
+  gap: var(--s-4);
+  width: 100%;
+  max-width: 1040px;
+}
+
+.auth-intro {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  gap: var(--s-12);
+  overflow: hidden;
+  padding: var(--s-8);
+  border-radius: var(--r-xl);
+  background: var(--bg-dark);
+  color: var(--text-on-dark);
+  isolation: isolate;
+  --text-primary: var(--text-on-dark);
+  --text-secondary: color-mix(in srgb, var(--text-on-dark) 72%, transparent);
+  --bg-neutral: color-mix(in srgb, var(--text-on-dark) 14%, transparent);
+}
+
+.auth-intro::after {
+  content: "";
+  position: absolute;
+  top: var(--s-8);
+  right: var(--s-8);
+  z-index: -1;
+  width: 72px;
+  height: 80px;
+  background:
+    linear-gradient(var(--accent), var(--accent)) right bottom / 16px 100% no-repeat,
+    linear-gradient(
+        color-mix(in srgb, var(--text-on-dark) 15%, transparent),
+        color-mix(in srgb, var(--text-on-dark) 15%, transparent)
+      )
+      right 28px bottom / 16px 68% no-repeat,
+    linear-gradient(
+        color-mix(in srgb, var(--text-on-dark) 8%, transparent),
+        color-mix(in srgb, var(--text-on-dark) 8%, transparent)
+      )
+      right 56px bottom / 16px 38% no-repeat;
+}
+
+.auth-intro .brand-light {
+  color: var(--text-secondary);
+}
+
+.auth-lead {
+  max-width: 420px;
+  margin: 0;
+  font-size: var(--fs-30);
+  line-height: var(--lh-36);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.45px;
+}
+
+.auth-legend {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
+}
+
+.auth-legend li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.login-brand {
+  display: none;
+}
+
+.login {
+  width: 100%;
+  padding: var(--s-8);
+  max-width: 480px;
+  border-radius: var(--r-xl);
+}
+
+.login-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.login h1 {
+  margin: var(--s-2) 0;
+}
+
+@media (max-width: 960px) {
+  .auth {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 480px;
+  }
+
+  .auth-intro {
+    display: none;
+  }
+
+  .login-brand {
+    display: inline;
+  }
+
+  .login {
+    padding: var(--s-6);
+  }
+}

@@ -6,9 +6,7 @@
 }
 
 .page-grid > .form,
-.deposit-result,
-.trace-card,
-.login {
+.deposit-result {
   padding: var(--s-8);
 }
 
@@ -239,204 +237,12 @@
   line-height: var(--lh-20);
 }
 
-.trace-layout {
-  display: grid;
-  gap: var(--s-4);
-}
-
-.trace-summary {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: var(--s-4);
-}
-
-.trace-facts {
-  display: grid;
-  align-content: start;
-  gap: var(--s-4);
-  margin: 0;
-  padding: var(--s-6);
-}
-
-.trace-facts dt {
-  color: var(--text-secondary);
-  font-size: var(--fs-14);
-  line-height: var(--lh-20);
-}
-
-.trace-facts dd {
-  margin: 0;
-  font-size: var(--fs-18);
-  line-height: var(--lh-26);
-  font-weight: var(--fw-medium);
-  font-variant-numeric: tabular-nums;
-}
-
-.verdicts {
-  display: grid;
-  gap: var(--s-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--fs-16);
-  line-height: var(--lh-24);
-}
-
-.verdicts li {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-3);
-}
-
-.verdict-mark {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: var(--s-6);
-  height: var(--s-6);
-  border-radius: var(--r-pill);
-  background: var(--bg-success);
-  color: var(--success-text);
-}
-
-.trace-steps {
-  display: grid;
-  gap: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.trace-step {
-  position: relative;
-  padding: 0 0 var(--s-5) var(--s-8);
-}
-
-.trace-step::before {
-  content: "";
-  position: absolute;
-  top: 20px;
-  left: 7px;
-  bottom: -2px;
-  width: 2px;
-  border-radius: var(--r-pill);
-  background: var(--border-soft);
-}
-
-.trace-step:last-child::before {
-  display: none;
-}
-
-.trace-step::after {
-  content: "";
-  position: absolute;
-  top: 6px;
-  left: 1px;
-  width: 14px;
-  height: 14px;
-  border-radius: var(--r-pill);
-  background: var(--bg-card);
-  box-shadow: inset 0 0 0 2px var(--text-secondary);
-}
-
-.trace-step:last-child::after {
-  background: var(--success);
-  box-shadow: none;
-}
-
-.trace-step summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s-1) var(--s-3);
-  border-radius: var(--r-sm);
-  list-style: none;
-  cursor: pointer;
-}
-
-.trace-step summary::-webkit-details-marker {
-  display: none;
-}
-
-.trace-step summary::after {
-  content: "";
-  align-self: center;
-  width: 8px;
-  height: 8px;
-  margin-left: var(--s-1);
-  border-right: 1.8px solid var(--text-secondary);
-  border-bottom: 1.8px solid var(--text-secondary);
-  transform: translateY(-2px) rotate(45deg);
-  transition: transform var(--t-fast);
-}
-
-.trace-step details[open] summary::after {
-  transform: translateY(2px) rotate(-135deg);
-}
-
-.trace-step-name {
-  font-weight: var(--fw-medium);
-}
-
-.trace-step-meta {
-  color: var(--text-secondary);
-  font-size: var(--fs-14);
-  line-height: var(--lh-20);
-  font-variant-numeric: tabular-nums;
-}
-
-.trace-step dl {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--s-1) var(--s-4);
-  margin: var(--s-3) 0 0;
-  padding: var(--s-3) var(--s-4);
-  border-radius: var(--r-md);
-  background: var(--bg-neutral);
-  font-size: var(--fs-16);
-  line-height: var(--lh-24);
-}
-
-.trace-step dt {
-  color: var(--text-secondary);
-}
-
-.trace-step dd {
-  margin: 0;
-}
-
-.login-screen {
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  padding: var(--s-8) var(--s-4);
-}
-
-.login {
-  width: 100%;
-  max-width: 480px;
-  border-radius: var(--r-xl);
-}
-
-.login-top {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-}
-
-.login h1 {
-  margin: var(--s-2) 0;
-}
-
 @media (max-width: 960px) {
   .page-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .loans-summary,
-  .trace-summary {
+  .loans-summary {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -461,21 +267,8 @@
   }
 
   .page-grid > .form,
-  .deposit-result,
-  .trace-card,
-  .login {
+  .deposit-result {
     padding: var(--s-6);
-  }
-
-  .trace-step summary {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .trace-step summary::after {
-    grid-column: 2;
-    grid-row: 1;
-    margin-left: var(--s-3);
   }
 }
 
@@ -489,106 +282,4 @@
   .loans-side {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-.event-groups {
-  display: grid;
-  gap: var(--s-4);
-}
-
-.event-group-head {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  margin-bottom: var(--s-4);
-}
-
-.card .event-group-head h2 {
-  margin: 0;
-}
-
-.event-group[data-level="3"] .event-group-head .badge {
-  background: var(--bg-danger);
-  color: var(--danger-text);
-}
-
-.empty-state {
-  display: grid;
-  justify-items: center;
-  gap: var(--s-2);
-  padding: var(--s-12) var(--s-6);
-  text-align: center;
-}
-
-.card.empty-state h2 {
-  margin: var(--s-2) 0 0;
-}
-
-.empty-state p {
-  max-width: 480px;
-  margin: 0;
-}
-
-.empty-state-mark {
-  display: grid;
-  place-items: center;
-  width: var(--control-h);
-  height: var(--control-h);
-  border-radius: var(--r-pill);
-  background: var(--bg-success);
-  color: var(--success-text);
-}
-
-.panel-placeholder {
-  display: grid;
-  gap: var(--s-3);
-  align-content: start;
-}
-
-.card.panel-placeholder h2 {
-  margin: 0;
-}
-
-.panel-placeholder .muted {
-  margin: 0;
-}
-
-.placeholder-steps {
-  display: grid;
-  gap: var(--s-2);
-  margin: var(--s-2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.placeholder-steps li {
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-  font-size: var(--fs-16);
-  line-height: var(--lh-24);
-  color: var(--text-secondary);
-}
-
-.placeholder-steps li[data-done="true"] {
-  color: var(--text-primary);
-}
-
-.placeholder-step-mark {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--r-pill);
-  background: var(--bg-neutral);
-  font-size: var(--fs-14);
-  line-height: var(--lh-20);
-  font-weight: var(--fw-medium);
-  font-variant-numeric: tabular-nums;
-}
-
-.placeholder-steps li[data-done="true"] .placeholder-step-mark {
-  background: var(--primary);
-  color: var(--on-primary);
 }
