@@ -282,7 +282,6 @@ async def test_followup_on_followup_answer_keeps_root_action(
             ),
         }
     )
-    harness.traces.find_by_card.return_value = None
     harness.traces.find_by_card.side_effect = [previous, root]
     response = await harness.agent.interpret(followup_request())
     assert response.cards[0].bank_view[0].source_ref.id == rate.id
