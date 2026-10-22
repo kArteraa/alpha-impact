@@ -109,6 +109,53 @@ describe("ProfilePage", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("Не удалось сохранить (404)");
   });
 
+  it("saves the option shown in the list when the industry is unknown", async () => {
+    const fetchMock = stubApi({
+      [`GET ${PROFILE_URL}`]: [200, profile(feature(null, "inferred"))],
+      [PATCH_URL]: [200, profile(feature("wholesale", "user"))],
+    });
+    renderProfile();
+    const industry = await card("Отрасль");
+
+    fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
+    const shown = within(industry).getByRole<HTMLSelectElement>("combobox", { name: "Отрасль" }).value;
+    fireEvent.click(within(industry).getByRole("button", { name: "Сохранить" }));
+
+    expect(await within(industry).findByText("изменено вами")).toBeTruthy();
+    const patch = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH");
+    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ value: shown });
+  });
+
+  it("sends one correction for a double click", async () => {
+    const fetchMock = stubApi({
+      [`GET ${PROFILE_URL}`]: [200, LOADED],
+      [PATCH_URL]: [200, profile(feature("logistics", "user"))],
+    });
+    renderProfile();
+    const industry = await card("Отрасль");
+
+    fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
+    const save = within(industry).getByRole("button", { name: "Сохранить" });
+    fireEvent.click(save);
+    fireEvent.click(save);
+    await within(industry).findByText("изменено вами");
+
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH").length).toBe(1);
+  });
+
+  it("drops the save error when the edit is cancelled", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED], [PATCH_URL]: [403, "read-only"] });
+    renderProfile();
+    const industry = await card("Отрасль");
+    fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
+    fireEvent.click(within(industry).getByRole("button", { name: "Сохранить" }));
+    await screen.findByRole("alert");
+
+    fireEvent.click(within(industry).getByRole("button", { name: "Отмена" }));
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("explains a company the bank has no card for", async () => {
     stubApi({ [`GET ${PROFILE_URL}`]: [200, { ...LOADED, features: {} }] });
     renderProfile();
