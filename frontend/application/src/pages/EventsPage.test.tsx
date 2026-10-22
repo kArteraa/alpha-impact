@@ -18,4 +18,10 @@ describe("EventsPage", () => {
     ]);
     expect(screen.getAllByLabelText(/^Значимость \d из 3$/).length).toBe(4);
   });
+
+  it("names the company under the heading", () => {
+    renderWithCompany(<EventsPage />, "/events");
+
+    expect(screen.getByText("ООО «Северный опт»")).toBeTruthy();
+  });
 });
