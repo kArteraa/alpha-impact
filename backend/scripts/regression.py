@@ -10,7 +10,7 @@ from main import build_container
 from scripts.regression_cases import CASES_DIR, Case, bank_claims, check, load_cases
 from shared.contracts.errors import DomainError, NotFound
 from shared.contracts.ports import HouseViewService, Interpreter, LLMGateway
-from shared.contracts.schemas import FollowupContext, HouseViewClaim, InterpretResponse
+from shared.contracts.schemas import HouseViewClaim, InterpretResponse
 
 REPORT_PATH = CASES_DIR.parent / "report.md"
 
@@ -46,7 +46,9 @@ async def cited_claims(
             chain = await house_view.chain(claim_id)
         except NotFound:
             continue
-        cited.update((view.id, view) for view in chain if view.id == claim_id)
+        match = next((view for view in chain if view.id == claim_id), None)
+        if match is not None:
+            cited[claim_id] = match
     return cited
 
 
@@ -63,19 +65,16 @@ async def run_case(
             return CaseResult(
                 case.id, case.title, (f"parent case {case.followup_of} gave no card",), None
             )
-        context = request.action_context
-        assert isinstance(context, FollowupContext)
-        followup = context.model_copy(update={"card_id": parent_card})
-        request = request.model_copy(update={"action_context": followup})
+        request = case.with_parent_card(parent_card)
     try:
         response = await interpreter.interpret(request)
     except DomainError as error:
         return CaseResult(case.id, case.title, (f"{type(error).__name__}: {error}",), None)
-    if response.cards:
-        cards[case.id] = response.cards[0].id
+    first = response.cards[0] if response.cards else None
+    if first is not None:
+        cards[case.id] = first.id
     failures = check(case, response, await cited_claims(response, house_view))
-    trace_id = response.cards[0].trace_id if response.cards else None
-    return CaseResult(case.id, case.title, tuple(failures), trace_id)
+    return CaseResult(case.id, case.title, tuple(failures), first.trace_id if first else None)
 
 
 async def run_cases(

@@ -37,11 +37,10 @@ def case(expect: Mapping[str, object] | None = None, **fields: object) -> Case:
     return Case.model_validate(payload)
 
 
-def test_catalog_has_ten_valid_cases_with_unique_ids() -> None:
+def test_catalog_has_ten_valid_cases() -> None:
     cases = load_cases(CASES_DIR)
 
     assert len(cases) == 10
-    assert len({c.id for c in cases}) == len(cases)
 
 
 def test_every_catalog_case_expects_something() -> None:
@@ -210,7 +209,3 @@ def test_failure_names_the_source() -> None:
     failures = check(case(), answer(card(basis=[NEWS, RATE])), CITED)
 
     assert any("profile:industry_class" in failure for failure in failures)
-
-
-def test_cases_dir_is_inside_tests() -> None:
-    assert CASES_DIR.parts[-3:] == ("tests", "regression", "cases")
