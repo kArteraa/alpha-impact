@@ -67,7 +67,7 @@ class Agent:
             result=None,
             created_at=utc_now(),
         )
-        journal = Journal(trace, self._llm, self._model)
+        journal = Journal(trace, self._llm, self._model, self._config.trace_summary_chars)
         try:
             response = await self._run(request, journal)
         except Exception as error:

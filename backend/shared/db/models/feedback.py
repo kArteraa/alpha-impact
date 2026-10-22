@@ -10,7 +10,7 @@ class FeedbackRow(Base):
     __tablename__ = "feedback"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    card_id: Mapped[str] = mapped_column(String(64), index=True)
+    card_id: Mapped[str] = mapped_column(String(64), index=True, unique=True)
     trace_id: Mapped[str | None] = mapped_column(ForeignKey("traces.id", ondelete="SET NULL"))
     useful: Mapped[bool] = mapped_column(Boolean)
     comment: Mapped[str | None] = mapped_column(Text)
