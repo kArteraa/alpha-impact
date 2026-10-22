@@ -178,15 +178,6 @@
   box-shadow: var(--focus-ring);
 }
 
-.segmented-stack {
-  display: grid;
-  justify-self: stretch;
-}
-
-.segmented-stack span {
-  justify-items: start;
-}
-
 .form-actions {
   display: flex;
   flex-wrap: wrap;

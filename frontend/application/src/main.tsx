@@ -9,6 +9,9 @@ import "./styles/forms.css";
 import "./styles/controls.css";
 import "./styles/charts.css";
 import "./styles/pages.css";
+import "./styles/trace.css";
+import "./styles/auth.css";
+import "./styles/states.css";
 import "./styles/dashboard.css";
 import { App } from "./App";
 
