@@ -15,10 +15,9 @@ def utc_now() -> datetime:
 
 
 def register(container: Container) -> None:
+    config = load_config()
     container.register(
         NewsService,
-        lambda c: NewsIndex(
-            c.resolve(async_sessionmaker), c.resolve(LLMGateway), load_config(), utc_now
-        ),
+        lambda c: NewsIndex(c.resolve(async_sessionmaker), c.resolve(LLMGateway), config, utc_now),
     )
-    container.register(PageContextService, lambda _: PageClassifier())
+    container.register(PageContextService, lambda c: PageClassifier(c.resolve(LLMGateway), config))
