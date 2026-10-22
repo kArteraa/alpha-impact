@@ -8,10 +8,10 @@ from pydantic import ValidationError
 from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
 from apps.services.interpreter.drafting import Draft, build_card
 from apps.services.interpreter.followup import (
+    checked_followup,
     cited_house_view,
     followup_evidence,
     followup_payload,
-    followup_question,
     original_card,
     trace_news,
 )
@@ -79,14 +79,8 @@ class Agent:
 
     async def interpret(self, request: InterpretRequest) -> InterpretResponse:
         if isinstance(request.action_context, FollowupContext):
-            question = followup_question(request.action_context, self._config.max_question_chars)
-            request = request.model_copy(
-                update={
-                    "action_context": request.action_context.model_copy(
-                        update={"question": question}
-                    )
-                }
-            )
+            checked = checked_followup(request.action_context, self._config.max_question_chars)
+            request = request.model_copy(update={"action_context": checked})
         trace = Trace(
             id=str(uuid4()),
             request=request,
