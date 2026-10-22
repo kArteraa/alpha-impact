@@ -2,6 +2,7 @@ from shared.contracts.schemas import Claim, InsightCard, Trace
 
 FIRST_ROUND = "1:"
 FIRST_ROUND_PASSED = "1: ok"
+STRUCTURED_RESULT = "{"
 
 
 def first_round(trace: Trace) -> str | None:
@@ -31,7 +32,12 @@ def trace_metrics(traces: list[Trace]) -> dict[str, float]:
     claims = [claim for card in cards for claim in card_claims(card)]
     carded = [trace for trace, result in completed if result.cards]
     reviewed = [verdict for trace in traces if (verdict := first_round(trace)) is not None]
-    llm_steps = [step for trace in traces for step in trace.steps if step.model is not None]
+    llm_steps = [
+        step
+        for trace in traces
+        for step in trace.steps
+        if step.model is not None and step.output_summary.startswith(STRUCTURED_RESULT)
+    ]
     shares = {
         "sourced_claims_share": ratio(
             sum(bool(claim.source_ref.id.strip()) for claim in claims), len(claims)

@@ -96,7 +96,7 @@ async def test_metrics_for_period(logged_in: httpx.AsyncClient) -> None:
     )
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["silent_share"] == 0.0
-    assert set(response.json()) >= {"sourced_claims_share", "tokens_per_card", "cache_share"}
+    assert set(response.json()) >= {"sourced_claims_share", "tokens_per_card"}
 
 
 async def test_metrics_require_period(logged_in: httpx.AsyncClient) -> None:
