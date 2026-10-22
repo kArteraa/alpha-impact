@@ -6,6 +6,7 @@ import { vi } from "vitest";
 import { App } from "./App";
 import { CompanyContext } from "./company/context";
 import { companyOf } from "./data/companies";
+import { SessionContext } from "./session/context";
 import { saveRole, saveUser } from "./session/storage";
 
 export const TEST_USER = "user_cfo_wholesale";
@@ -13,14 +14,15 @@ export const TEST_CLIENT = "U_1941";
 
 type Reply = readonly [status: number, body: unknown];
 
-export function stubApi(routes: Record<string, Reply>) {
+export function stubApi(routes: Record<string, Reply | ((init?: RequestInit) => Reply)>) {
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
     const key = `${init?.method ?? "GET"} ${url}`;
-    const reply = routes[key];
-    if (reply === undefined) {
+    const route = routes[key];
+    if (route === undefined) {
       return Promise.reject(new Error(`No stub for ${key}`));
     }
-    return Promise.resolve(new Response(JSON.stringify(reply[1]), { status: reply[0] }));
+    const [status, body] = typeof route === "function" ? route(init) : route;
+    return Promise.resolve(new Response(JSON.stringify(body), { status }));
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
@@ -31,17 +33,24 @@ export function signIn(userId = TEST_USER, role: Role = "cfo") {
   saveRole(userId, role);
 }
 
-export function renderWithCompany(node: ReactNode, path = "/", role: Role = "cfo") {
+interface PageOptions {
+  path?: string;
+  role?: Role;
+  routes?: ReactNode;
+}
+
+export function renderWithCompany(node: ReactNode, { path = "/", role = "cfo", routes }: PageOptions = {}) {
   const company = companyOf(TEST_CLIENT);
-  const value = { company, companies: [company], select: () => {}, userId: TEST_USER, role };
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <CompanyContext.Provider value={value}>
-        <Routes>
-          <Route path={path} element={node} />
-          <Route path="/" element={<h1>Главный экран</h1>} />
-        </Routes>
-      </CompanyContext.Provider>
+      <SessionContext.Provider value={{ userId: TEST_USER, role }}>
+        <CompanyContext.Provider value={{ company, companies: [company], select: () => {} }}>
+          <Routes>
+            <Route path={path} element={node} />
+            {routes}
+          </Routes>
+        </CompanyContext.Provider>
+      </SessionContext.Provider>
     </MemoryRouter>,
   );
 }

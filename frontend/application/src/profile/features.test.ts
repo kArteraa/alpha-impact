@@ -1,6 +1,6 @@
 import type { Feature } from "@alpha-impact/plugin";
 import { describe, expect, it } from "vitest";
-import { formatFeatureValue, isEditable } from "./editFeature";
+import { formatFeatureValue, isEditable } from "./features";
 
 const bankFact: Feature = { value: "Оптовая торговля", source: "bank", confidence: 1, updated_at: "2026-10-01T00:00:00Z" };
 const derived: Feature = { value: true, source: "inferred", confidence: 0.7, updated_at: "2026-10-01T00:00:00Z" };

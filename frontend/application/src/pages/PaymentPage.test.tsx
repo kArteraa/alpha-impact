@@ -8,15 +8,16 @@ import { PaymentPage } from "./PaymentPage";
 const [CARRIER, STATIONERY] = COUNTERPARTIES.map((counterparty) => counterparty.id);
 
 function stubInterpret() {
-  return vi.fn((_url: string, init?: RequestInit) => {
-    const body = JSON.parse(String(init?.body));
-    const reply = body.action_context.beneficiary_id === CARRIER ? mockResponses.cards : mockResponses.silent;
-    return Promise.resolve(new Response(JSON.stringify(reply)));
+  return stubApi({
+    "POST /api/interpret": (init) => {
+      const body = JSON.parse(String(init?.body));
+      return [200, body.action_context.beneficiary_id === CARRIER ? mockResponses.cards : mockResponses.silent];
+    },
   });
 }
 
 function render(node = <PaymentPage />) {
-  return renderWithCompany(node, "/payments/new");
+  return renderWithCompany(node, { path: "/payments/new" });
 }
 
 function amountField() {
@@ -52,7 +53,6 @@ describe("PaymentPage", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     fetchMock = stubInterpret();
-    vi.stubGlobal("fetch", fetchMock);
   });
 
   afterEach(() => {
@@ -94,7 +94,7 @@ describe("PaymentPage", () => {
   });
 
   it("shows the panel for the role of the user", async () => {
-    renderWithCompany(<PaymentPage />, "/payments/new", "treasurer");
+    renderWithCompany(<PaymentPage />, { path: "/payments/new", role: "treasurer" });
     fill(CARRIER, "1500000");
 
     expect(document.querySelector(".insight-panel")?.getAttribute("data-role")).toBe("treasurer");

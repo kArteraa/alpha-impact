@@ -4,12 +4,14 @@ import { api } from "../api/client";
 import { useCompany } from "../company/context";
 import { COUNTERPARTIES } from "../data/counterparties";
 import { formatRub, parseAmount } from "../money";
+import { useSession } from "../session/context";
 import { type PaymentForm, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
 
 const EMPTY_FORM: PaymentForm = { beneficiaryId: "", amount: "", purpose: "" };
 
 export function PaymentPage() {
-  const { company, userId, role } = useCompany();
+  const { company } = useCompany();
+  const { userId, role } = useSession();
   const recipientHintId = useId();
   const amountHintId = useId();
   const [form, setForm] = useState<PaymentForm>(EMPTY_FORM);

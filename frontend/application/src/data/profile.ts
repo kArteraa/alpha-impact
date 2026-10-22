@@ -1,22 +1,9 @@
-export const INDUSTRY_FEATURE = "industry_class";
+export interface FeatureSpec {
+  label: string;
+  options?: Record<string, string>;
+}
 
-export const FEATURE_LABELS: Record<string, string> = {
-  [INDUSTRY_FEATURE]: "Отрасль",
-  okved_name: "Основной вид деятельности",
-  okved_code: "Код ОКВЭД",
-  region: "Регион",
-  city: "Город",
-  revenue_rub: "Выручка, ₽",
-  workers: "Сотрудников",
-  company_age: "Возраст компании, лет",
-  eco_stage: "Стадия развития",
-  ownership: "Форма собственности",
-  cl_type: "Статус клиента",
-  products: "Продукты банка",
-  import_countries: "Страны импорта",
-};
-
-export const INDUSTRY_LABELS: Record<string, string> = {
+const INDUSTRIES: Record<string, string> = {
   wholesale: "Оптовая торговля",
   retail: "Розничная торговля",
   logistics: "Логистика",
@@ -34,4 +21,20 @@ export const INDUSTRY_LABELS: Record<string, string> = {
   finance: "Финансы",
   leasing: "Лизинг",
   other: "Другое",
+};
+
+export const FEATURES: Record<string, FeatureSpec> = {
+  industry_class: { label: "Отрасль", options: INDUSTRIES },
+  okved_name: { label: "Основной вид деятельности" },
+  okved_code: { label: "Код ОКВЭД" },
+  region: { label: "Регион" },
+  city: { label: "Город" },
+  revenue_rub: { label: "Выручка, ₽" },
+  workers: { label: "Сотрудников" },
+  company_age: { label: "Возраст компании, лет" },
+  eco_stage: { label: "Стадия развития" },
+  ownership: { label: "Форма собственности" },
+  cl_type: { label: "Статус клиента" },
+  products: { label: "Продукты банка" },
+  import_countries: { label: "Страны импорта" },
 };
