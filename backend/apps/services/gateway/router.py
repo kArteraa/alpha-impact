@@ -1,12 +1,20 @@
-from fastapi import APIRouter, HTTPException, Response, status
+from datetime import date
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from apps.services.gateway.auth import SESSION_COOKIE, ContainerDep, CurrentUser
+from apps.services.gateway.auth import SESSION_COOKIE, ContainerDep, CurrentUser, current_user
 from apps.services.gateway.errors import DomainErrorRoute
 from apps.services.gateway.service import InterpretGateway
-from shared.contracts.ports import ProfileService
-from shared.contracts.schemas import ClientProfile, InterpretRequest, InterpretResponse
+from shared.contracts.errors import AccessDenied, NotFound
+from shared.contracts.ports import ProfileService, TraceStore
+from shared.contracts.schemas import (
+    ClientProfile,
+    InterpretRequest,
+    InterpretResponse,
+    Trace,
+)
 from shared.db.models import UserRow
 
 router = APIRouter(route_class=DomainErrorRoute)
@@ -22,6 +30,12 @@ class MockSession(BaseModel):
 
 class FeatureCorrection(BaseModel):
     value: str | float | bool | list[str] | None
+
+
+class CardFeedback(BaseModel):
+    card_id: str
+    useful: bool
+    comment: str | None = None
 
 
 def not_implemented(task: str) -> HTTPException:
@@ -74,19 +88,24 @@ async def patch_feature(
     )
 
 
-@router.post("/feedback")
-async def feedback() -> None:
-    raise not_implemented("AH-23")
+@router.post("/feedback", status_code=status.HTTP_204_NO_CONTENT)
+async def feedback(body: CardFeedback, user_id: CurrentUser, container: ContainerDep) -> None:
+    await container.resolve(TraceStore).feedback(user_id, body.card_id, body.useful, body.comment)
 
 
 @router.get("/trace/{trace_id}")
-async def trace(trace_id: str) -> None:
-    raise not_implemented("AH-23")
+async def trace(trace_id: str, user_id: CurrentUser, container: ContainerDep) -> Trace:
+    found = await container.resolve(TraceStore).get(trace_id)
+    if found is None:
+        raise NotFound(f"Unknown trace {trace_id}")
+    if found.request.user_id != user_id:
+        raise AccessDenied(f"Trace {trace_id} belongs to another user")
+    return found
 
 
-@router.get("/metrics")
-async def metrics() -> None:
-    raise not_implemented("AH-23")
+@router.get("/metrics", dependencies=[Depends(current_user)])
+async def metrics(since: date, container: ContainerDep) -> dict[str, float]:
+    return await container.resolve(TraceStore).metrics(since)
 
 
 @router.post("/auth/extension-token")

@@ -67,7 +67,7 @@ class Agent:
             result=None,
             created_at=utc_now(),
         )
-        journal = Journal(trace, self._llm, self._model)
+        journal = Journal(trace, self._llm, self._model, self._config.trace_summary_chars)
         try:
             response = await self._run(request, journal)
         except Exception as error:
@@ -162,8 +162,8 @@ class Agent:
             ),
             Plan,
         )
-        journal.trace.steps[-1].output_summary = json.dumps(
-            {"template": template.model_dump(), **plan.model_dump()}, ensure_ascii=False
+        journal.trace.steps[-1].output_summary = journal.summary(
+            {"template": template.model_dump(), **plan.model_dump()}
         )
         plan.validate_tools(self._config, house_view)
         collected = {claim.id: claim for claim in house_view}
