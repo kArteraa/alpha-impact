@@ -254,7 +254,7 @@ async def test_validated_question_is_trimmed_in_trace_and_prompt(
 async def test_invalid_question_stops_before_store_and_model(
     harness: Harness, rate: HouseViewClaim, question: str
 ) -> None:
-    with pytest.raises(DomainError, match="Вопрос к карточке"):
+    with pytest.raises(DomainError, match="Followup question is empty or longer than"):
         await harness.agent.interpret(followup_request(question))
     harness.traces.find_by_card.assert_not_awaited()
     harness.traces.save.assert_not_awaited()

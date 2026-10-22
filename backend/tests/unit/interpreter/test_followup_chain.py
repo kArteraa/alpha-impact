@@ -101,7 +101,9 @@ async def test_followup_chain_longer_than_limit_is_rejected(
         }
     )
     limit = load_config(PLANS_PATH).max_followup_depth
-    with pytest.raises(DomainError, match=f"длиннее {limit} вопросов.*исходной карточке"):
+    with pytest.raises(
+        DomainError, match=f"longer than {limit} questions; ask about the original card"
+    ):
         await harness.agent.interpret(followup_request())
     assert harness.traces.find_by_card.await_count == limit + 1
     harness.profiles.get_profile.assert_not_awaited()

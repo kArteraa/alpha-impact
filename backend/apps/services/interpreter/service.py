@@ -289,8 +289,8 @@ class Agent:
             trace = await self._card_trace(journal, request, trace.request.action_context.card_id)
         if isinstance(trace.request.action_context, FollowupContext):
             raise DomainError(
-                f"Диалог по карточке длиннее {self._config.max_followup_depth} вопросов: "
-                "задайте вопрос к исходной карточке"
+                f"Followup chain is longer than {self._config.max_followup_depth} questions; "
+                "ask about the original card"
             )
         return trace.request
 
