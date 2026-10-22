@@ -1,3 +1,4 @@
+import csv
 import json
 import re
 from collections import defaultdict
@@ -8,7 +9,7 @@ from functools import cache, cached_property
 from pydantic import BaseModel
 
 from apps.services.counterparty.config import load_config
-from apps.services.counterparty.loader import load_cards, read_payments
+from apps.services.counterparty.loader import CSV_DELIMITER, load_cards, read_payments
 from apps.services.products.catalog import RULES_PATH, load_catalog
 from scripts.seed import RAW_DIR, SEED_DIR
 from shared.config.clients import SERVED_CLIENTS
@@ -41,6 +42,7 @@ Probe = tuple[str | None, str | None]
 class ForeignData:
     counterparties: frozenset[str] = frozenset()
     amounts: frozenset[float] = frozenset()
+    own: frozenset[str] = frozenset()
 
     @cached_property
     def amount_keys(self) -> frozenset[int]:
@@ -59,6 +61,25 @@ def amount_keys(values: Iterable[float]) -> frozenset[int]:
 def seed_clients() -> dict[str, str]:
     users = json.loads((SEED_DIR / "users.json").read_text(encoding="utf-8"))
     return {client: user["id"] for user in users for client in user["clients"]}
+
+
+def client_groups(clients: Iterable[str]) -> dict[str, frozenset[str]]:
+    path = RAW_DIR / SERVED_CLIENTS.companies_file
+    with path.open(encoding="utf-8", newline="") as file:
+        group_of = {
+            row["SYNTHETIC_U"]: row["GROUP_ID"]
+            for row in csv.DictReader(file, delimiter=CSV_DELIMITER)
+            if row["GROUP_ID"]
+        }
+    return {
+        client: frozenset(
+            {
+                client,
+                *(company for company, group in group_of.items() if group == group_of.get(client)),
+            }
+        )
+        for client in clients
+    }
 
 
 @cache
@@ -85,8 +106,11 @@ def seed_foreign_data() -> dict[str, ForeignData]:
         amounts[client] |= {amount, received[other], sent[other]}
         if other in cards:
             amounts[client].add(cards[other].revenue_rub)
+    groups = client_groups(clients)
     return {
-        client: ForeignData(frozenset(counterparties[client]), frozenset(amounts[client] - {0.0}))
+        client: ForeignData(
+            frozenset(counterparties[client]), frozenset(amounts[client] - {0.0}), groups[client]
+        )
         for client in clients
     }
 
@@ -121,9 +145,9 @@ def numbers(text: str) -> Iterator[float]:
             yield float(plain.replace(",", "."))
 
 
-def text_leaks(text: str, client_id: str) -> list[str]:
+def text_leaks(text: str, own: frozenset[str]) -> list[str]:
     return [
-        *(company for company in COMPANY_ID.findall(text) if company != client_id),
+        *(company for company in COMPANY_ID.findall(text) if company not in own),
         *PERSON_ID.findall(text),
         *(mark for mark in PRODUCT_MARKS if mark in text),
     ]
@@ -146,8 +170,9 @@ def assert_no_foreign_data(payload: object, client_id: str, foreign: ForeignData
         for leaf in leaves(dumped)
         if isinstance(leaf, int | float) and not isinstance(leaf, bool)
     }
+    own = foreign.own | {client_id}
     for text in {MACHINE_VALUE.sub(" ", text) for text in texts(dumped)}:
-        leaks += text_leaks(text, client_id)
+        leaks += text_leaks(text, own)
         values.update(numbers(text))
     leaks += [str(value) for value in values if foreign.has_amount(value)]
     assert not leaks, f"{client_id} sees foreign data {leaks} in {type(payload).__name__}"
