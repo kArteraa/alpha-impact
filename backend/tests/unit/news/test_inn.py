@@ -13,7 +13,17 @@ def test_valid_inn_passes_checksum(value: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "value", ["7707083894", "500100732258", "500100732249", "770708389", "77070838930", "ИНН"]
+    "value",
+    [
+        "7707083894",
+        "500100732258",
+        "500100732249",
+        "770708389",
+        "77070838930",
+        "ИНН",
+        "0000000000",
+        "000000000000",
+    ],
 )
 def test_invalid_inn_is_rejected(value: str) -> None:
     assert not valid_inn(value)
@@ -35,3 +45,12 @@ def test_inns_ignores_digits_inside_longer_numbers() -> None:
     text = f"Извещение № 0373100012324{LEGAL}12 от 01.10.2026"
 
     assert inns(text) == []
+
+
+@pytest.mark.parametrize("text", [f"id{LEGAL}", f"{LEGAL}abc", f"doc_{LEGAL}", f"/a{SOLE_TRADER}b"])
+def test_inns_ignores_digits_inside_latin_tokens(text: str) -> None:
+    assert inns(text) == []
+
+
+def test_inns_finds_inn_glued_to_cyrillic_label() -> None:
+    assert inns(f"ИНН{LEGAL}КПП773601001") == [LEGAL]
