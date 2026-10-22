@@ -89,7 +89,7 @@ uv run --env-file ../.env pytest tests/unit/interpreter tests/integration/test_i
 При смене промптов агента или критика (`backend/apps/services/interpreter/prompts.py`) запуск обязателен. Из `backend/`, БД засеяна (`scripts.seed`, `scripts.ingest_news`):
 
 ```bash
-uv run --env-file ../.env python -m scripts.regression
+LLM_TIMEOUT_SECONDS=30 uv run --env-file ../.env python -m scripts.regression
 ```
 
 Отчёт печатается и пишется в `backend/tests/regression/report.md`; если хоть один кейс красный, код выхода 1. Повтор без смены промптов отвечает из кэша LLM-шлюза.

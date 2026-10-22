@@ -6,7 +6,7 @@ request:
   role: cfo
   action_context:
     type: payment
-    beneficiary_id: U_PENDING
+    beneficiary_id: U_11496
     amount: 4500000
 when_card:
   basis_kinds: [news, graph]
