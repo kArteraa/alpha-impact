@@ -4,12 +4,22 @@ from datetime import UTC, date, datetime, time
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import defer
 
-from apps.services.news.annotation import annotation_schema, news_id
+from apps.services.news.annotation import (
+    PageAnnotation,
+    annotation_schema,
+    ask,
+    entities,
+    news_factors,
+    news_id,
+    page_prompt,
+    page_schema,
+)
 from apps.services.news.config import NewsConfig
 from apps.services.news.feed import FeedEntry
 from apps.services.news.ingest import body, index_entry
+from apps.services.news.inn import inns, valid_inn
 from apps.services.news.repository import MANUAL_SOURCE, find_news, matching
-from shared.config.news_entities import COUNTRY, INDUSTRY, REGION, entity
+from shared.config.news_entities import COUNTRY, INDUSTRY, INN, REGION, entity
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem, PageContext
 from shared.db.models import NewsRow
@@ -87,6 +97,29 @@ class NewsIndex:
             return await session.get_one(NewsRow, key, options=[defer(NewsRow.embedding)])
 
 
+def page_inns(page: PageContext) -> list[str]:
+    prefix = f"{INN}:"
+    given = [
+        value
+        for key in page.entities
+        if key.startswith(prefix) and valid_inn(value := key.removeprefix(prefix))
+    ]
+    return [*inns(page.text), *given]
+
+
 class PageClassifier:
+    def __init__(self, llm: LLMGateway, config: NewsConfig) -> None:
+        self._llm = llm
+        self._config = config
+        self._schema = page_schema(config)
+        self._system = config.page_system
+
     async def classify(self, page: PageContext) -> tuple[str, list[str], list[Factor]]:
-        raise NotImplementedError("AH-30")
+        prompt = page_prompt(page.url, page.text, self._config.max_text_chars)
+        answer, _, _ = await ask(
+            self._llm, self._config.llm_task, self._system, prompt, self._schema
+        )
+        if not isinstance(answer, PageAnnotation):
+            raise TypeError(f"LLM gateway returned {type(answer).__name__}, not PageAnnotation")
+        keys = [*entities(answer), *(f"{INN}:{value}" for value in page_inns(page))]
+        return answer.page_type, list(dict.fromkeys(keys)), news_factors(answer)
