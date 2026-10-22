@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Literal, Self
@@ -5,6 +6,8 @@ from typing import Literal, Self
 import yaml
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from apps.services.interpreter.context import source_key
+from apps.services.interpreter.drafting import card_claims
 from shared.contracts.schemas import (
     Claim,
     ClaimType,
@@ -13,7 +16,6 @@ from shared.contracts.schemas import (
     InsightCard,
     InterpretRequest,
     InterpretResponse,
-    SourceRef,
 )
 
 CASES_DIR = Path(__file__).resolve().parents[1] / "tests" / "regression" / "cases"
@@ -34,7 +36,7 @@ class Expectations(BaseModel):
         return bool(self.model_dump(exclude_defaults=True))
 
     def needs_card(self) -> bool:
-        return self.model_copy(update={"silent": None}).is_set()
+        return bool(self.model_dump(exclude_defaults=True, exclude={"silent"}))
 
 
 class Case(BaseModel):
@@ -54,49 +56,43 @@ class Case(BaseModel):
             raise ValueError("followup_of is set exactly for followup action contexts")
         return self
 
+    def with_parent_card(self, card_id: str) -> InterpretRequest:
+        context = self.request.action_context
+        assert isinstance(context, FollowupContext)
+        followup = context.model_copy(update={"card_id": card_id})
+        return self.request.model_copy(update={"action_context": followup})
+
 
 def load_cases(directory: Path) -> list[Case]:
     cases = [
         Case.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))
         for path in sorted(directory.glob("*.yaml"))
     ]
-    ids = [item.id for item in cases]
-    duplicates = sorted({case_id for case_id in ids if ids.count(case_id) > 1})
+    counts = Counter(item.id for item in cases)
+    duplicates = sorted(case_id for case_id, count in counts.items() if count > 1)
     if duplicates:
         raise ValueError(f"Duplicate regression case ids: {', '.join(duplicates)}")
     return cases
 
 
-def all_claims(card: InsightCard) -> list[Claim]:
-    return [
-        *card.what_happened,
-        *card.why_for_you,
-        *card.consequences,
-        *card.actions,
-        *card.bank_view,
-    ]
-
-
 def bank_claims(card: InsightCard) -> list[Claim]:
-    return [item for item in all_claims(card) if item.type is ClaimType.BANK]
-
-
-def ref(source: SourceRef) -> str:
-    return f"{source.kind}:{source.id}"
+    return [item for item in card_claims(card) if item.type is ClaimType.BANK]
 
 
 def invariant_failures(card: InsightCard, cited: dict[str, HouseViewClaim]) -> list[str]:
-    basis = {ref(source) for source in card.basis}
+    basis = {source_key(source) for source in card.basis}
     failures = [
-        f"card {card.id}: claim source {ref(item.source_ref)} is not in basis"
-        for item in all_claims(card)
-        if ref(item.source_ref) not in basis
+        f"card {card.id}: claim source {source_key(item.source_ref)} is not in basis"
+        for item in card_claims(card)
+        if source_key(item.source_ref) not in basis
     ]
     for item in bank_claims(card):
         source = item.source_ref
         view = cited.get(source.id)
         if source.kind != "house_view":
-            failures.append(f"card {card.id}: bank claim cites {ref(source)}, not house view")
+            failures.append(
+                f"card {card.id}: bank claim cites {source_key(source)}, not house view"
+            )
         elif view is None:
             failures.append(f"card {card.id}: bank claim cites unknown house view {source.id}")
         elif view.status != "approved" or view.superseded_by is not None:

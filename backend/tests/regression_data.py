@@ -13,10 +13,15 @@ NEWS = SourceRef(kind="news", id="n1", title="Новость", url="https://n.ex
 PROFILE = SourceRef(kind="profile", id="industry_class")
 RATE = SourceRef(kind="house_view", id="hv-rate")
 OLD_RATE = SourceRef(kind="house_view", id="hv-old")
-RATE_DAY = date(2026, 9, 11)
 
 
-def house_view(claim_id: str, *, subject: str = "key_rate", day: date = RATE_DAY) -> HouseViewClaim:
+def house_view(
+    claim_id: str,
+    *,
+    subject: str = "key_rate",
+    day: date = date(2026, 9, 11),
+    superseded_by: str | None = None,
+) -> HouseViewClaim:
     return HouseViewClaim(
         id=claim_id,
         claim="Банк ждёт ставку 14% до конца года",
@@ -27,16 +32,14 @@ def house_view(claim_id: str, *, subject: str = "key_rate", day: date = RATE_DAY
         valid_until=None,
         source_doc="key_rate.pdf",
         page=1,
-        superseded_by=None,
-        status="approved",
+        superseded_by=superseded_by,
+        status="approved" if superseded_by is None else "superseded",
     )
 
 
 CITED = {
     "hv-rate": house_view("hv-rate"),
-    "hv-old": house_view("hv-old", day=date(2026, 7, 22)).model_copy(
-        update={"status": "superseded", "superseded_by": "hv-rate"}
-    ),
+    "hv-old": house_view("hv-old", day=date(2026, 7, 22), superseded_by="hv-rate"),
 }
 
 
