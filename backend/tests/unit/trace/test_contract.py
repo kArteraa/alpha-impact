@@ -18,3 +18,12 @@ def test_implements_port() -> None:
 async def test_methods_point_to_implementing_task() -> None:
     with pytest.raises(NotImplementedError, match="AH-23"):
         await resolve().get("trace")
+
+
+async def test_feedback_points_to_implementing_task() -> None:
+    with pytest.raises(NotImplementedError, match="AH-23"):
+        await resolve().feedback("u1", "card-1", useful=True, comment=None)
+
+
+def test_port_declares_feedback() -> None:
+    assert callable(getattr(TraceStore, "feedback", None))

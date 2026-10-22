@@ -284,6 +284,7 @@ class TraceStore(Protocol):
     async def save(self, trace: Trace) -> None: ...
     async def get(self, trace_id: str) -> Trace | None: ...
     async def metrics(self, since: date) -> dict[str, float]: ...
+    async def feedback(self, user_id: str, card_id: str, useful: bool, comment: str | None) -> None: ...
 
 
 class Critic(Protocol):
@@ -293,6 +294,8 @@ class Critic(Protocol):
 class Interpreter(Protocol):
     async def interpret(self, request: InterpretRequest) -> InterpretResponse: ...
 ```
+
+`TraceStore.feedback` — отзыв пользователя о карточке для `POST /feedback`: сервис `trace` находит трассу, в `result.cards` которой есть `card_id`, и записывает отзыв в свою таблицу `feedback` со ссылкой на эту трассу. Нет такой карточки — `NotFound`; трасса принадлежит другому пользователю (`request.user_id` ≠ `user_id`) — `AccessDenied` (ошибки из `shared/contracts/errors.py`).
 
 `HouseViewService.version()` — версия подтверждённого house view: первые 16 символов sha256 от всех утверждений со статусом `approved` (все поля, по порядку `id`). Меняется при любой правке подтверждённого набора, не меняется при повторном `seed` и от черновиков; статусы `superseded`/`expired`, вычисляемые на дату, в неё не входят. Gateway кладёт её в ключ кэша карточки.
 
