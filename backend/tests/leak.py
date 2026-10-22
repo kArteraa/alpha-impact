@@ -21,7 +21,7 @@ COMPANY_ID = re.compile(r"U_\d+")
 PERSON_ID = re.compile(r"F_\d+")
 SEPARATOR = r"[ \N{NO-BREAK SPACE}\N{NARROW NO-BREAK SPACE}]"
 NUMBER = re.compile(
-    rf"(?<![0-9A-Za-z_.,])(?:\d{{1,3}}(?:{SEPARATOR}\d{{3}})+|\d+)(?:[.,]\d+)?(?![0-9A-Za-z_])"
+    rf"(?<![0-9A-Za-z_.,-])(?:\d{{1,3}}(?:{SEPARATOR}\d{{3}})+|\d+)(?:[.,]\d+)?(?![0-9A-Za-z_-])"
 )
 PRODUCT_MARKS = ("CL_PRODUCT_", "FACTORING_MARK")
 PRODUCT_LABELS = frozenset(rule.product.casefold() for rule in load_catalog(RULES_PATH).rules)
@@ -71,9 +71,9 @@ def seed_foreign_data() -> dict[str, ForeignData]:
     }
 
 
-def probes(foreign: ForeignData) -> list[Probe]:
+def probes(foreign: ForeignData, limit: int | None = None) -> list[Probe]:
     return [
-        *((company, None) for company in sorted(foreign.counterparties)),
+        *((company, None) for company in sorted(foreign.counterparties)[:limit]),
         (UNKNOWN_COMPANY, None),
         (None, UNKNOWN_INN),
     ]
@@ -115,8 +115,10 @@ def product_labels(dumped: object) -> list[str]:
     ]
 
 
-def assert_no_foreign_data(payload: BaseModel, client_id: str, foreign: ForeignData) -> None:
-    dumped = payload.model_dump(mode="json")
+def assert_no_foreign_data(
+    payload: BaseModel, client_id: str, foreign: ForeignData, exclude: frozenset[str] = frozenset()
+) -> None:
+    dumped = payload.model_dump(mode="json", exclude=set(exclude))
     leaks = product_labels(dumped)
     for leaf in leaves(dumped):
         values: Iterable[float] = ()
