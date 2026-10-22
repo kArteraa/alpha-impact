@@ -303,7 +303,7 @@ class Interpreter(Protocol):
 
 `HouseViewService.version()` — версия подтверждённого house view: первые 16 символов sha256 от всех утверждений со статусом `approved` (все поля, по порядку `id`). Меняется при любой правке подтверждённого набора, не меняется при повторном `seed` и от черновиков; статусы `superseded`/`expired`, вычисляемые на дату, в неё не входят. Gateway кладёт её в ключ кэша карточки.
 
-`LLMGateway.complete` возвращает `(ответ, tokens_in, tokens_out, cost_rub)`: стоимость вызова в рублях берётся из `usage.cost` ответа прокси кейса и совпадает со списанием в `llm_usage`; ответ из кэша — `0, 0, 0.0`. `Critic.review` возвращает `(вердикты, tokens_in, tokens_out, cost_rub)` своего вызова модели, без вызова — нули. Interpreter пишет токены и стоимость в шаги `plan`, `draft`, `redraft` и `critic` трассы (`TraceStep.cost_rub`, у старых трасс — 0); из них AH-29 считает рубли на карточку.
+`LLMGateway.complete` возвращает `(ответ, tokens_in, tokens_out, cost_rub)`: стоимость вызова в рублях берётся из `usage.cost` ответа прокси кейса и совпадает со списанием в `llm_usage`; ответ из кэша — `0, 0, 0.0`. `Critic.review` возвращает `(вердикты, tokens_in, tokens_out, cost_rub)` своего вызова модели, без вызова — нули. Interpreter пишет токены и стоимость в шаги `plan`, `draft`, `redraft` и `critic` трассы (`TraceStep.cost_rub`, у старых трасс — 0). Если прокси уже списал вызов, а ответ невалиден, шлюз бросает `ChargedModelError` (`shared/contracts/errors.py`; в `llm` это `ModelOutputInvalid`) с токенами и стоимостью этого вызова, и interpreter записывает их в шаг, хотя шаг упал; из шагов AH-29 считает рубли на карточку.
 
 ## HTTP (gateway)
 

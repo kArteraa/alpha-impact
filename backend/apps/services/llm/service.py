@@ -99,7 +99,8 @@ class ModelGateway:
         try:
             content = answer_text(completion.content, model)
             result = parse(content, output_schema)
-        except ModelOutputInvalid:
+        except ModelOutputInvalid as error:
+            error.tokens_in, error.tokens_out, error.cost_rub = spent(completion)
             await self._record(reservation, *spent(completion))
             raise
         await self._remembered(reservation, key, content, completion)

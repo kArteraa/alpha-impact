@@ -3,7 +3,7 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from apps.services.llm.errors import ModelOutputInvalid, ModelUnavailable
-from shared.contracts.errors import DomainError
+from shared.contracts.errors import ChargedModelError, DomainError
 from tests.unit.llm.fakes import MemoryStore, ModelServer, make_gateway
 
 
@@ -191,3 +191,17 @@ async def test_malformed_token_counts_are_unavailable_but_the_cost_is_charged(
         await gateway.complete("interpret", "sys", "usr")
     assert [usage.cost_rub for usage in store.usages] == [0.4]
     assert store.cache == {}
+
+
+async def test_invalid_answer_carries_charged_usage() -> None:
+    store = MemoryStore()
+    server = ModelServer(content="not json", tokens_in=900, tokens_out=100, cost_rub=0.12)
+    gateway = make_gateway(server.http_client(), store)
+    with pytest.raises(ChargedModelError) as raised:
+        await gateway.complete("critic", "sys", "usr", Verdict)
+    usage = store.usages[0]
+    assert (raised.value.tokens_in, raised.value.tokens_out, raised.value.cost_rub) == (
+        usage.tokens_in,
+        usage.tokens_out,
+        usage.cost_rub,
+    )
