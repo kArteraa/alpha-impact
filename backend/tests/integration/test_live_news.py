@@ -31,16 +31,16 @@ class LiveNewsModel:
 
     async def complete(
         self, task: str, system: str, user: str, schema: type | None = None
-    ) -> tuple[object, int, int]:
+    ) -> tuple[object, int, int, float]:
         assert schema is not None and issubclass(schema, BaseModel)
         self.tasks.append(task)
         if task == news_config().llm_task:
-            return schema.model_validate(RATE_ANSWER), 0, 0
+            return schema.model_validate(RATE_ANSWER), 0, 0, 0.0
         if task == "critic":
-            return schema.model_validate({"items": []}), 0, 0
+            return schema.model_validate({"items": []}), 0, 0, 0.0
         if "tools" in schema.model_fields:
-            return schema.model_validate({"focus": "Ставка и кредит", "tools": []}), 0, 0
-        return schema.model_validate(draft(json.loads(user)["context"]["sources"])), 0, 0
+            return schema.model_validate({"focus": "Ставка и кредит", "tools": []}), 0, 0, 0.0
+        return schema.model_validate(draft(json.loads(user)["context"]["sources"])), 0, 0, 0.0
 
     async def embed(self, text: str) -> list[float]:
         return unit(0)

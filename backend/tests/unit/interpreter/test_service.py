@@ -235,7 +235,7 @@ async def test_templates_cover_business_actions(harness: Harness, action: object
 
 async def test_malformed_gateway_result_is_a_domain_error(harness: Harness) -> None:
     harness.llm.complete.side_effect = None
-    harness.llm.complete.return_value = ({"focus": "missing tools"}, 1, 1)
+    harness.llm.complete.return_value = ({"focus": "missing tools"}, 1, 1, 0.0)
     with pytest.raises(DomainError):
         await harness.agent.interpret(harness.request())
 
@@ -363,7 +363,7 @@ async def test_redraft_model_error_returns_first_card_for_review(harness: Harnes
 
 async def test_second_round_critic_error_returns_redraft_for_review(harness: Harness) -> None:
     critic = harness.use_critic()
-    critic.review.side_effect = [["source: a"], BudgetExceeded("spent")]
+    critic.review.side_effect = [(["source: a"], 0, 0, 0.0), BudgetExceeded("spent")]
     harness.answers.append(draft_answer() | {"headline": "Исправленный заголовок"})
     response = await harness.agent.interpret(harness.request())
     assert response.cards[0].needs_review

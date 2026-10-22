@@ -151,7 +151,7 @@ def entry_prompt(title: str, text: str, max_chars: int) -> str:
 async def ask(
     llm: LLMGateway, task: str, system: str, prompt: str, schema: type[Annotation]
 ) -> tuple[Annotation, int, int]:
-    answer, tokens_in, tokens_out = await llm.complete(task, system, prompt, schema)
+    answer, tokens_in, tokens_out, _ = await llm.complete(task, system, prompt, schema)
     if not isinstance(answer, Annotation):
         raise TypeError(f"LLM gateway returned {type(answer).__name__}, not {schema.__name__}")
     return answer, tokens_in, tokens_out

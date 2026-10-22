@@ -2,12 +2,14 @@ import asyncio
 import json
 from unittest.mock import AsyncMock
 
+import pytest
+
 from apps.services.interpreter.journal import Journal
 from apps.services.interpreter.planning import PLANS_PATH, load_config
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import CounterpartyContext, Trace
 from tests.integration.contracts.examples import EXAMPLES, TRACE
-from tests.unit.interpreter.support import Harness, draft_answer
+from tests.unit.interpreter.support import CALL_COST, Harness, draft_answer
 
 
 def empty_trace() -> Trace:
@@ -94,3 +96,14 @@ async def test_steps_keep_start_order_when_calls_overlap() -> None:
         journal.tool("house_view.chain", "second", fast()),
     )
     assert [step.input_summary for step in journal.trace.steps] == ["first", "second"]
+
+
+async def test_model_steps_record_cost_and_critic_usage(harness: Harness) -> None:
+    harness.use_critic(([], 30, 5, 0.02))
+    await harness.agent.interpret(harness.request())
+    trace: Trace = harness.traces.save.call_args.args[0]
+    by_kind = {step.step: step for step in trace.steps}
+    assert by_kind["plan"].cost_rub == by_kind["draft"].cost_rub == CALL_COST
+    critic = by_kind["critic"]
+    assert (critic.tokens_in, critic.tokens_out, critic.cost_rub) == (30, 5, 0.02)
+    assert sum(step.cost_rub for step in trace.steps) == pytest.approx(2 * CALL_COST + 0.02)

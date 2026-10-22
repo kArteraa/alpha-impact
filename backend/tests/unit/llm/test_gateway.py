@@ -27,7 +27,7 @@ async def test_structured_output_is_parsed_into_schema() -> None:
     result = await make_gateway(server.http_client(), MemoryStore()).complete(
         "critic", "sys", "usr", Verdict
     )
-    assert result == (Verdict(ok=True, reason="sourced"), 12, 7)
+    assert result == (Verdict(ok=True, reason="sourced"), 12, 7, 0.25)
 
 
 async def test_schema_is_sent_as_json_schema_response_format() -> None:
@@ -60,7 +60,7 @@ async def test_without_schema_returns_text() -> None:
     result = await make_gateway(server.http_client(), MemoryStore()).complete(
         "followup", "sys", "usr"
     )
-    assert result == ("plain text", 3, 2)
+    assert result == ("plain text", 3, 2, 0.25)
 
 
 async def test_non_pydantic_schema_is_rejected() -> None:
@@ -78,7 +78,7 @@ async def test_repeated_prompt_is_served_from_cache() -> None:
     gateway = make_gateway(server.http_client(), store)
     await gateway.complete("critic", "sys", "usr", Verdict)
     result = await gateway.complete("critic", "sys", "usr", Verdict)
-    assert result == (Verdict(ok=False, reason="r"), 0, 0)
+    assert result == (Verdict(ok=False, reason="r"), 0, 0, 0.0)
     assert len(server.requests) == 1
     assert len(store.usages) == 1
 
@@ -148,7 +148,7 @@ async def test_task_without_reasoning_asks_model_not_to_reason(task: str) -> Non
     result = await gateway.complete(task, "sys", "usr", Verdict)
     await gateway.complete("critic", "sys", "usr", Verdict)
 
-    assert result == (Verdict(ok=True, reason="r"), 1000, 500)
+    assert result == (Verdict(ok=True, reason="r"), 1000, 500, 0.25)
     assert server.body(0)["model"] == ROUTES[task]
     assert server.body(0)["reasoning"] == {"enabled": False}
     assert "reasoning" not in server.body(1)
@@ -167,12 +167,13 @@ async def test_reasoning_switch_is_part_of_cache_key(task: str) -> None:
     )
     result = await switched.complete(task, "sys", "usr", Verdict)
 
-    assert result == (Verdict(ok=True, reason="r"), 1000, 500)
+    assert result == (Verdict(ok=True, reason="r"), 1000, 500, 0.25)
     assert len(server.requests) == 2
     assert await switched.complete(task, "sys", "usr", Verdict) == (
         Verdict(ok=True, reason="r"),
         0,
         0,
+        0.0,
     )
     assert len(server.requests) == 2
 
@@ -186,5 +187,17 @@ async def test_cache_key_of_task_with_reasoning_is_unchanged() -> None:
 
     result = await gateway.complete("critic", "sys", "usr", Verdict)
 
-    assert result == (Verdict(ok=False, reason="cached"), 0, 0)
+    assert result == (Verdict(ok=False, reason="cached"), 0, 0, 0.0)
     assert server.requests == []
+
+
+async def test_complete_returns_call_cost_and_cache_hit_costs_nothing() -> None:
+    server = ModelServer(content='{"ok": true, "reason": "r"}', cost_rub=0.37)
+    store = MemoryStore()
+    gateway = make_gateway(server.http_client(), store)
+
+    first = await gateway.complete("critic", "sys", "usr", Verdict)
+    second = await gateway.complete("critic", "sys", "usr", Verdict)
+
+    assert (first[3], second[3]) == (0.37, 0.0)
+    assert first[3] + second[3] == sum(usage.cost_rub for usage in store.usages)
