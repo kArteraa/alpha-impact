@@ -5,12 +5,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from apps.services.counterparty.batch import rebuild_graph
-from apps.services.counterparty.config import load_config
 from apps.services.counterparty.service import CounterpartyAggregates
 from scripts.seed import RAW_DIR, seed_users
 from shared.contracts.schemas import CounterpartyContext
 from shared.db.models import ClientGraphRow, CounterpartyCardRow
 from tests.leak import (
+    CONFIG,
     PAYMENTS_FILE,
     UNKNOWN_INN,
     ForeignData,
@@ -20,7 +20,6 @@ from tests.leak import (
 )
 from tests.unit.counterparty.fixtures import AMOUNTS, CLIENT, FIXTURES_DIR
 
-CONFIG = load_config()
 LOW = CONFIG.confidence.low
 FIXTURE_FOREIGN = ForeignData(amounts=frozenset(AMOUNTS))
 AGGREGATE_FIELDS = {

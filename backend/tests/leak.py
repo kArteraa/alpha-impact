@@ -1,7 +1,7 @@
 import json
 import re
 from collections import defaultdict
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
 from functools import cache
 
@@ -19,9 +19,11 @@ UNKNOWN_COMPANY = "U_999999999"
 UNKNOWN_INN = "7707083893"
 COMPANY_ID = re.compile(r"U_\d+")
 PERSON_ID = re.compile(r"F_\d+")
-SEPARATOR = r"[ \N{NO-BREAK SPACE}\N{NARROW NO-BREAK SPACE}]"
+UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+SEPARATORS = " \N{NO-BREAK SPACE}\N{NARROW NO-BREAK SPACE}"
+WITHOUT_SEPARATORS = str.maketrans("", "", SEPARATORS)
 NUMBER = re.compile(
-    rf"(?<![0-9A-Za-z_.,-])(?:\d{{1,3}}(?:{SEPARATOR}\d{{3}})+|\d+)(?:[.,]\d+)?(?![0-9A-Za-z_-])"
+    rf"(?<![0-9A-Za-z_.,])(?:\d{{1,3}}(?:[{SEPARATORS}]\d{{3}})+|\d+)(?:[.,]\d+)?(?![0-9A-Za-z_])"
 )
 PRODUCT_MARKS = ("CL_PRODUCT_", "FACTORING_MARK")
 PRODUCT_LABELS = frozenset(rule.product.casefold() for rule in load_catalog(RULES_PATH).rules)
@@ -94,7 +96,7 @@ def leaves(value: object, skipped: frozenset[str] = frozenset()) -> Iterator[obj
 
 def numbers(text: str) -> Iterator[float]:
     for match in NUMBER.findall(text):
-        yield float(re.sub(SEPARATOR, "", match).replace(",", "."))
+        yield float(match.translate(WITHOUT_SEPARATORS).replace(",", "."))
 
 
 def text_leaks(text: str, client_id: str) -> list[str]:
@@ -105,27 +107,21 @@ def text_leaks(text: str, client_id: str) -> list[str]:
     ]
 
 
-def product_labels(dumped: object) -> list[str]:
-    return [
+def texts(dumped: object, skipped: frozenset[str] = frozenset()) -> set[str]:
+    return {leaf for leaf in leaves(dumped, skipped) if isinstance(leaf, str)}
+
+
+def assert_no_foreign_data(payload: object, client_id: str, foreign: ForeignData) -> None:
+    dumped = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else payload
+    leaks = [
         label
-        for leaf in leaves(dumped, OWN_OFFER)
-        if isinstance(leaf, str)
+        for text in {text.casefold() for text in texts(dumped, OWN_OFFER)}
         for label in PRODUCT_LABELS
-        if label in leaf.casefold()
+        if label in text
     ]
-
-
-def assert_no_foreign_data(
-    payload: BaseModel, client_id: str, foreign: ForeignData, exclude: frozenset[str] = frozenset()
-) -> None:
-    dumped = payload.model_dump(mode="json", exclude=set(exclude))
-    leaks = product_labels(dumped)
-    for leaf in leaves(dumped):
-        values: Iterable[float] = ()
-        if isinstance(leaf, str):
-            leaks += text_leaks(leaf, client_id)
-            values = numbers(leaf)
-        elif isinstance(leaf, int | float):
-            values = (float(leaf),)
-        leaks += [str(value) for value in values if value in foreign.amounts]
-    assert not leaks, f"{client_id} sees foreign data {leaks} in {payload!r}"
+    values = {float(leaf) for leaf in leaves(dumped) if isinstance(leaf, int | float)}
+    for text in {UUID.sub(" ", text) for text in texts(dumped)}:
+        leaks += text_leaks(text, client_id)
+        values.update(numbers(text))
+    leaks += [str(value) for value in values if value in foreign.amounts]
+    assert not leaks, f"{client_id} sees foreign data {leaks}"
