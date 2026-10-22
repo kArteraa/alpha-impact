@@ -16,9 +16,12 @@ def utc_now() -> datetime:
 
 
 class Journal:
-    def __init__(self, trace: Trace, llm: LLMGateway, model: str, summary_chars: int) -> None:
+    def __init__(
+        self, trace: Trace, llm: LLMGateway, task: str, model: str, summary_chars: int
+    ) -> None:
         self.trace = trace
         self.llm = llm
+        self.task = task
         self.model = model
         self.summary_chars = summary_chars
 
@@ -63,7 +66,7 @@ class Journal:
             )
         ) as step:
             raw, step.tokens_in, step.tokens_out = await self.llm.complete(
-                task="interpret", system=system, user=user, schema=schema
+                task=self.task, system=system, user=user, schema=schema
             )
             result = schema.model_validate(raw)
             step.output_summary = self.summary(result)

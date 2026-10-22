@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import date, timedelta
 from time import perf_counter
 from uuid import uuid4
 
@@ -7,10 +7,22 @@ from pydantic import ValidationError
 
 from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
 from apps.services.interpreter.drafting import Draft, build_card
+from apps.services.interpreter.followup import (
+    cited_house_view,
+    followup_evidence,
+    followup_payload,
+    original_card,
+    trace_news,
+)
 from apps.services.interpreter.journal import Journal, utc_now
 from apps.services.interpreter.planning import Plan, PlanConfig
 from apps.services.interpreter.prefilter import Prefilter
-from apps.services.interpreter.prompts import DRAFT_SYSTEM, PLAN_SYSTEM
+from apps.services.interpreter.prompts import (
+    DRAFT_SYSTEM,
+    FOLLOWUP_DRAFT_SYSTEM,
+    FOLLOWUP_PLAN_SYSTEM,
+    PLAN_SYSTEM,
+)
 from shared.config.factors import FACTORS
 from shared.contracts.errors import DomainError
 from shared.contracts.ports import (
@@ -23,6 +35,7 @@ from shared.contracts.ports import (
     TraceStore,
 )
 from shared.contracts.schemas import (
+    FollowupContext,
     HouseViewClaim,
     InsightCard,
     InterpretRequest,
@@ -47,6 +60,7 @@ class Agent:
         config: PlanConfig,
         threshold: float,
         model: str,
+        followup_model: str,
     ) -> None:
         self._profiles = profiles
         self._counterparties = counterparties
@@ -56,6 +70,7 @@ class Agent:
         self._critic = critic
         self._config = config
         self._model = model
+        self._followup_model = followup_model
         self._prefilter = Prefilter(news, house_view, threshold=threshold)
 
     async def interpret(self, request: InterpretRequest) -> InterpretResponse:
@@ -67,7 +82,14 @@ class Agent:
             result=None,
             created_at=utc_now(),
         )
-        journal = Journal(trace, self._llm, self._model, self._config.trace_summary_chars)
+        followup = isinstance(request.action_context, FollowupContext)
+        journal = Journal(
+            trace,
+            self._llm,
+            "followup" if followup else "interpret",
+            self._followup_model if followup else self._model,
+            self._config.trace_summary_chars,
+        )
         try:
             response = await self._run(request, journal)
         except Exception as error:
@@ -98,6 +120,8 @@ class Agent:
         return response
 
     async def _run(self, request: InterpretRequest, journal: Journal) -> InterpretResponse:
+        if isinstance(request.action_context, FollowupContext):
+            return await self._followup(request, request.action_context, journal)
         template = self._config.templates.get(request.action_context.type)
         if template is None:
             raise DomainError(f"Unsupported interpreter workflow: {request.action_context.type}")
@@ -165,6 +189,83 @@ class Agent:
         journal.trace.steps[-1].output_summary = journal.summary(
             {"template": template.model_dump(), **plan.model_dump()}
         )
+        current = await self._collect(journal, plan, house_view, as_of)
+        evidence = sources(profile, counterparty, news, current)
+        payload: dict[str, object] = {
+            "plan": plan.model_dump(),
+            "context": prompt_context(request, profile, counterparty, evidence),
+        }
+        draft = await journal.generate(
+            "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+        )
+        card = await self._reviewed(journal, DRAFT_SYSTEM, payload, draft, evidence, current, news)
+        return InterpretResponse(silent=False, cards=[card])
+
+    async def _followup(
+        self, request: InterpretRequest, action: FollowupContext, journal: Journal
+    ) -> InterpretResponse:
+        original = await journal.tool(
+            "trace.find_by_card",
+            "trace of the questioned card",
+            self._traces.find_by_card(
+                user_id=request.user_id, client_id=request.client_id, card_id=action.card_id
+            ),
+        )
+        journal.trace.steps[-1].output_summary = original.id
+        card = original_card(original, action.card_id)
+        profile = await journal.tool(
+            "profile.get_profile",
+            "authorized client features",
+            self._profiles.get_profile(request.user_id, request.client_id),
+        )
+        as_of = journal.trace.created_at.date()
+        cited: dict[str, HouseViewClaim] = {}
+        for claim_id in cited_house_view(card):
+            batch = await journal.tool(
+                "house_view.chain", claim_id, self._house_view.chain(claim_id=claim_id)
+            )
+            cited.update({claim.id: claim for claim in current_claims(batch, as_of)})
+        house_view = [cited[key] for key in sorted(cited)]
+        template = {"focus": self._config.followup_focus}
+        plan = await journal.generate(
+            "plan",
+            FOLLOWUP_PLAN_SYSTEM,
+            json.dumps(
+                {
+                    "template": template,
+                    **followup_payload(request, original, action, card, profile, house_view),
+                    "allowed_subjects": sorted(FACTORS),
+                    "max_tool_calls": self._config.max_tool_calls,
+                },
+                ensure_ascii=False,
+            ),
+            Plan,
+        )
+        journal.trace.steps[-1].output_summary = journal.summary(
+            {"template": template, **plan.model_dump()}
+        )
+        current = await self._collect(journal, plan, house_view, as_of)
+        payload: dict[str, object] = {
+            "plan": plan.model_dump(),
+            **followup_payload(request, original, action, card, profile, current),
+        }
+        draft = await journal.generate(
+            "draft", FOLLOWUP_DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+        )
+        answer = await self._reviewed(
+            journal,
+            FOLLOWUP_DRAFT_SYSTEM,
+            payload,
+            draft,
+            followup_evidence(card, profile, current),
+            current,
+            trace_news(card),
+        )
+        return InterpretResponse(silent=False, cards=[answer])
+
+    async def _collect(
+        self, journal: Journal, plan: Plan, house_view: list[HouseViewClaim], as_of: date
+    ) -> list[HouseViewClaim]:
         plan.validate_tools(self._config, house_view)
         collected = {claim.id: claim for claim in house_view}
         for call in plan.tools:
@@ -181,21 +282,12 @@ class Agent:
                 )
             for claim in current_claims(batch, as_of):
                 collected[claim.id] = claim
-        current = [collected[key] for key in sorted(collected)]
-        evidence = sources(profile, counterparty, news, current)
-        payload: dict[str, object] = {
-            "plan": plan.model_dump(),
-            "context": prompt_context(request, profile, counterparty, evidence),
-        }
-        draft = await journal.generate(
-            "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
-        )
-        card = await self._reviewed(journal, payload, draft, evidence, current, news)
-        return InterpretResponse(silent=False, cards=[card])
+        return [collected[key] for key in sorted(collected)]
 
     async def _reviewed(
         self,
         journal: Journal,
+        system: str,
         payload: dict[str, object],
         draft: Draft,
         evidence: dict[str, Evidence],
@@ -211,7 +303,7 @@ class Agent:
             round_number = 2
             redraft = await journal.generate(
                 "redraft",
-                DRAFT_SYSTEM,
+                system,
                 json.dumps(
                     {**payload, "previous_draft": draft.model_dump(), "critic_verdicts": verdicts},
                     ensure_ascii=False,

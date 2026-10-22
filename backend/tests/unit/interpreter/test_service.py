@@ -9,7 +9,6 @@ from shared.contracts.errors import AccessDenied, BudgetExceeded, DomainError
 from shared.contracts.schemas import (
     DashboardContext,
     DepositContext,
-    FollowupContext,
     FxContext,
     LoanContext,
     PageContext,
@@ -237,10 +236,7 @@ async def test_templates_cover_business_actions(harness: Harness, action: object
 
 @pytest.mark.parametrize(
     "action",
-    [
-        PageContext(url="https://example.invalid", text="text"),
-        FollowupContext(card_id="card", question="Что дальше?"),
-    ],
+    [PageContext(url="https://example.invalid", text="text")],
 )
 async def test_future_action_workflows_are_explicit_errors(
     harness: Harness, action: object
