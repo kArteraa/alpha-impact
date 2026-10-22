@@ -1,6 +1,6 @@
 from datetime import UTC, date, datetime, time
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -8,6 +8,10 @@ from apps.services.trace.metrics import trace_metrics
 from shared.contracts.errors import AccessDenied, NotFound
 from shared.contracts.schemas import Trace
 from shared.db.models import FeedbackRow, TraceRow
+
+
+def card_filter(card_id: str) -> ColumnElement[bool]:
+    return TraceRow.payload.contains({"result": {"cards": [{"id": card_id}]}})
 
 
 class TraceRepository:
@@ -42,9 +46,7 @@ class TraceRepository:
         return trace_metrics(traces)
 
     async def feedback(self, user_id: str, card_id: str, useful: bool, comment: str | None) -> None:
-        card_trace = select(TraceRow.id, TraceRow.user_id).where(
-            TraceRow.payload.contains({"result": {"cards": [{"id": card_id}]}})
-        )
+        card_trace = select(TraceRow.id, TraceRow.user_id).where(card_filter(card_id))
         async with self._sessions() as session, session.begin():
             owner = (await session.execute(card_trace)).first()
             if owner is None:
@@ -62,4 +64,13 @@ class TraceRepository:
             )
 
     async def find_by_card(self, *, user_id: str, client_id: str, card_id: str) -> Trace:
-        raise NotImplementedError("AH-26")
+        card_trace = select(TraceRow.user_id, TraceRow.client_id, TraceRow.payload).where(
+            card_filter(card_id)
+        )
+        async with self._sessions() as session:
+            owner = (await session.execute(card_trace)).first()
+        if owner is None:
+            raise NotFound(f"Unknown card {card_id}")
+        if owner.user_id != user_id or owner.client_id != client_id:
+            raise AccessDenied(f"Card {card_id} belongs to another user or client")
+        return Trace.model_validate(owner.payload)

@@ -32,6 +32,7 @@ def register(container: Container) -> None:
             config=config,
             threshold=c.resolve(Settings).RELEVANCE_THRESHOLD,
             model=c.resolve(Settings).MODEL_INTERPRET,
+            followup_model=c.resolve(Settings).MODEL_FOLLOWUP,
         ),
     )
     container.register(Critic, lambda c: CriticAgent(c.resolve(LLMGateway)))

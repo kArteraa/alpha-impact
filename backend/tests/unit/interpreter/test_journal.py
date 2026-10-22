@@ -18,7 +18,9 @@ async def returns[T](value: T) -> T:
 
 
 async def test_tool_step_records_result_truncated_to_limit() -> None:
-    journal = Journal(empty_trace(), AsyncMock(spec=LLMGateway), "model", summary_chars=12)
+    journal = Journal(
+        empty_trace(), AsyncMock(spec=LLMGateway), "interpret", "model", summary_chars=12
+    )
     result = [{"id": "claim-1", "claim": "Ставка снижена"}]
     assert await journal.tool("house_view.chain", "claim-1", returns(result)) == result
     step = journal.trace.steps[0]
@@ -27,7 +29,9 @@ async def test_tool_step_records_result_truncated_to_limit() -> None:
 
 
 async def test_tool_step_records_model_result_as_json() -> None:
-    journal = Journal(empty_trace(), AsyncMock(spec=LLMGateway), "model", summary_chars=10_000)
+    journal = Journal(
+        empty_trace(), AsyncMock(spec=LLMGateway), "interpret", "model", summary_chars=10_000
+    )
     context = EXAMPLES[CounterpartyContext]
     await journal.tool("counterparty.context", "recipient aggregates", returns(context))
     assert json.loads(journal.trace.steps[0].output_summary) == context.model_dump(mode="json")

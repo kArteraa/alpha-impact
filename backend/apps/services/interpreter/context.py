@@ -87,7 +87,9 @@ def prompt_context(
 ) -> dict[str, object]:
     return {
         "role": request.role.value,
-        "action": request.action_context.model_dump(mode="json", exclude={"beneficiary_id", "inn"}),
+        "action": request.action_context.model_dump(
+            mode="json", exclude={"beneficiary_id", "inn", "card_id"}
+        ),
         "profile": {
             "features": {
                 name: feature.model_dump(mode="json") for name, feature in profile.features.items()

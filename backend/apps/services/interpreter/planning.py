@@ -24,6 +24,7 @@ class PlanConfig(BaseModel):
     search_limit: int = Field(gt=0)
     max_tool_calls: int = Field(gt=0)
     trace_summary_chars: int = Field(gt=0)
+    followup_focus: str = Field(min_length=1)
     templates: dict[str, Template]
 
     @model_validator(mode="after")

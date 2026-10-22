@@ -110,3 +110,29 @@ async def test_card_lookup_uses_payload_index(sessions: async_sessionmaker[Async
     assert definition is not None
     assert "gin" in definition.lower()
     assert "jsonb_path_ops" in definition
+
+
+async def test_find_by_card_returns_card_trace(store: TraceRepository) -> None:
+    await store.save(make_trace("t-1", TRACE.created_at, card_response("card-a")))
+    expected = make_trace("t-2", TRACE.created_at, card_response("card-b"))
+    await store.save(expected)
+    found = await store.find_by_card(user_id=OWNER, client_id=REQUEST.client_id, card_id="card-b")
+    assert found == expected
+
+
+async def test_find_by_card_unknown_card_is_not_found(store: TraceRepository) -> None:
+    await store.save(make_trace("t-1", TRACE.created_at, card_response("card-a")))
+    with pytest.raises(NotFound):
+        await store.find_by_card(user_id=OWNER, client_id=REQUEST.client_id, card_id="card-z")
+
+
+@pytest.mark.parametrize(
+    ("user_id", "client_id"),
+    [("someone-else", REQUEST.client_id), (OWNER, "another-client")],
+)
+async def test_find_by_card_of_foreign_trace_is_denied(
+    store: TraceRepository, user_id: str, client_id: str
+) -> None:
+    await store.save(make_trace("t-1", TRACE.created_at, card_response("card-a")))
+    with pytest.raises(AccessDenied):
+        await store.find_by_card(user_id=user_id, client_id=client_id, card_id="card-a")
