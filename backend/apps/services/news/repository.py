@@ -9,6 +9,8 @@ from sqlalchemy.orm import defer
 from shared.contracts.schemas import Factor, NewsItem
 from shared.db.models import NewsRow
 
+MANUAL_SOURCE = "manual"
+
 
 async def known(
     session: AsyncSession, ids: Sequence[str], urls: Sequence[str]
@@ -30,7 +32,13 @@ async def find_news(session: AsyncSession, news_id: str, url: str) -> NewsRow | 
 
 
 async def neighbours(
-    session: AsyncSession, vector: list[float], moment: datetime, window: timedelta, limit: int
+    session: AsyncSession,
+    vector: list[float],
+    moment: datetime,
+    window: timedelta,
+    limit: int,
+    *,
+    include_manual: bool,
 ) -> list[tuple[NewsRow, float]]:
     distance = NewsRow.embedding.cosine_distance(vector)
     query = (
@@ -40,6 +48,8 @@ async def neighbours(
         .order_by(distance)
         .limit(limit)
     )
+    if not include_manual:
+        query = query.where(NewsRow.source != MANUAL_SOURCE)
     rows = (await session.execute(query)).all()
     return [(row, 1 - float(value)) for row, value in rows]
 
@@ -57,7 +67,11 @@ async def add_news(session: AsyncSession, item: NewsItem, vector: list[float]) -
 async def matching(
     session: AsyncSession, factors: list[str], entities: list[str], since: datetime, limit: int
 ) -> Sequence[NewsRow]:
-    query = select(NewsRow).options(defer(NewsRow.embedding)).where(NewsRow.published_at >= since)
+    query = (
+        select(NewsRow)
+        .options(defer(NewsRow.embedding))
+        .where(NewsRow.published_at >= since, NewsRow.source != MANUAL_SOURCE)
+    )
     if factors or entities:
         overlaps = or_(NewsRow.factor_names.overlap(factors), NewsRow.entities.overlap(entities))
         query = query.where(overlaps)

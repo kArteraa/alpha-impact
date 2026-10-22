@@ -209,11 +209,14 @@ class Agent:
         text = request.action_context.text.strip()
         if not text:
             raise DomainError("Page text is empty")
-        title, _, body = text.partition("\n")
+        first, _, rest = text.partition("\n")
+        first = first.rstrip()
+        limit = self._config.max_title_chars
+        body = rest.strip() if len(first) <= limit else text
         return await journal.tool(
             "news.annotate",
             "pasted page text",
-            self._news.annotate(title.rstrip(), body.strip(), request.action_context.url),
+            self._news.annotate(first[:limit].rstrip(), body, request.action_context.url),
         )
 
     async def _reviewed(

@@ -1,6 +1,7 @@
 lookback_days: 14
 search_limit: 200
 max_tool_calls: 4
+max_title_chars: 200
 templates:
   payment:
     focus: Сроки поставки и тарифы получателя платежа; связь с отраслью и долей в оттоке клиента

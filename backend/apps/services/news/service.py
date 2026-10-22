@@ -6,13 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from apps.services.news.annotation import annotation_schema, news_id
 from apps.services.news.config import NewsConfig
 from apps.services.news.feed import FeedEntry
-from apps.services.news.ingest import index_entry
-from apps.services.news.repository import find_news, matching
+from apps.services.news.ingest import body, index_entry
+from apps.services.news.repository import MANUAL_SOURCE, find_news, matching
 from shared.config.news_entities import COUNTRY, INDUSTRY, REGION, entity
+from shared.contracts.errors import DomainError
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Factor, NewsItem, PageContext
+from shared.db.models import NewsRow
 
-MANUAL_SOURCE = "manual"
+
+def manual_id(title: str, text: str) -> str:
+    return news_id(body(title, text))
 
 
 def query_entities(industry: str | None, region: str | None, country: str | None) -> list[str]:
@@ -64,16 +68,24 @@ class NewsIndex:
         return ranked[:limit]
 
     async def annotate(self, title: str, text: str, url: str) -> NewsItem:
-        key = news_id(title)
-        address = url or f"{MANUAL_SOURCE}:{key}"
         text = text[: self._config.max_text_chars]
-        entry = FeedEntry(title, text, address, self._now(), MANUAL_SOURCE)
+        key = manual_id(title, text)
+        entry = FeedEntry(title, text, url or f"{MANUAL_SOURCE}:{key}", self._now(), MANUAL_SOURCE)
+        stored = await self._stored(key, entry.url)
+        if stored is None:
+            indexed = await index_entry(
+                self._sessions, self._llm, self._config, self._schema, entry, key
+            )
+            if indexed.added and indexed.item is not None:
+                return indexed.item
+            stored = indexed.repeat or await self._stored(key, entry.url)
+        if stored is None:
+            raise DomainError(f"Pasted news {key} was neither stored nor found")
+        return NewsItem.model_validate(stored, from_attributes=True)
+
+    async def _stored(self, key: str, url: str) -> NewsRow | None:
         async with self._sessions() as session:
-            known = await find_news(session, key, entry.url)
-        if known is not None:
-            return NewsItem.model_validate(known, from_attributes=True)
-        indexed = await index_entry(self._sessions, self._llm, self._config, self._schema, entry)
-        return indexed.item
+            return await find_news(session, key, url)
 
 
 class PageClassifier:

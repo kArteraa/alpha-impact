@@ -16,7 +16,13 @@ from apps.services.news.annotation import (
 from apps.services.news.config import NewsConfig
 from apps.services.news.dedup import is_duplicate, numbers
 from apps.services.news.feed import FeedEntry, FeedTooLarge, fetch_feed
-from apps.services.news.repository import add_news, known, neighbours, news_count
+from apps.services.news.repository import (
+    MANUAL_SOURCE,
+    add_news,
+    known,
+    neighbours,
+    news_count,
+)
 from shared.contracts.errors import BudgetExceeded, DomainError
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import NewsItem
@@ -36,8 +42,8 @@ class IngestResult:
 
 @dataclass(frozen=True)
 class Indexed:
-    item: NewsItem
-    duplicate: bool
+    repeat: NewsRow | None
+    item: NewsItem | None
     added: bool
     tokens_in: int
     tokens_out: int
@@ -90,7 +96,12 @@ async def repeat_of(
     window = timedelta(hours=config.dedup_window_hours)
     async with sessions() as session:
         nearby = await neighbours(
-            session, vector, entry.published_at, window, config.dedup_candidates
+            session,
+            vector,
+            entry.published_at,
+            window,
+            config.dedup_candidates,
+            include_manual=entry.source == MANUAL_SOURCE,
         )
     own = numbers(body(entry.title, entry.text))
     return next(
@@ -111,16 +122,17 @@ async def index_entry(
     config: NewsConfig,
     schema: type[Annotation],
     entry: FeedEntry,
+    key: str,
 ) -> Indexed:
     vector = await llm.embed(body(entry.title, entry.text))
     repeat = await repeat_of(sessions, entry, vector, config)
     if repeat is not None:
-        return Indexed(NewsItem.model_validate(repeat, from_attributes=True), True, False, 0, 0)
+        return Indexed(repeat, None, False, 0, 0)
     annotation, tokens_in, tokens_out = await annotate(llm, config, schema, entry.title, entry.text)
-    item = to_news_item(entry, annotation)
+    item = to_news_item(entry, annotation).model_copy(update={"id": key})
     async with sessions() as session, session.begin():
         added = await add_news(session, item, vector)
-    return Indexed(item, False, added, tokens_in, tokens_out)
+    return Indexed(None, item, added, tokens_in, tokens_out)
 
 
 async def ingest_news(
@@ -138,13 +150,13 @@ async def ingest_news(
     failed: list[str] = []
     for entry in candidates:
         try:
-            indexed = await index_entry(sessions, llm, config, schema, entry)
+            indexed = await index_entry(sessions, llm, config, schema, entry, news_id(entry.title))
         except BudgetExceeded:
             raise
         except DomainError:
             failed.append(entry.url)
             continue
-        duplicates += indexed.duplicate
+        duplicates += indexed.repeat is not None
         added += indexed.added
         tokens_in += indexed.tokens_in
         tokens_out += indexed.tokens_out
