@@ -36,7 +36,7 @@ async def test_draft_step_records_draft(harness: Harness) -> None:
     await harness.agent.interpret(harness.request())
     trace: Trace = harness.traces.save.call_args.args[0]
     draft = next(step for step in trace.steps if step.step == "draft")
-    assert draft_answer()["headline"] in draft.output_summary
+    assert str(draft_answer()["headline"]) in draft.output_summary
 
 
 async def test_trace_records_counterparty_aggregates(harness: Harness) -> None:
