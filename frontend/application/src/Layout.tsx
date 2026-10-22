@@ -5,7 +5,7 @@ import { useCompany } from "./company/context";
 import { EVENTS } from "./data/events";
 import { Icon, type IconName } from "./ui/Icon";
 import { stripLegalForm } from "./ui/listbox";
-import { Select } from "./ui/Select";
+import { Mark, Select } from "./ui/Select";
 
 const NAV: readonly (readonly [string, string, IconName])[] = [
   ["/", "Главная", "home"],
@@ -25,9 +25,7 @@ function CompanySwitcher() {
   if (companies.length === 1) {
     return (
       <span className="company">
-        <span className="company-mark" aria-hidden="true">
-          {monogram(company.name)}
-        </span>
+        <Mark text={monogram(company.name)} />
         <span className="company-name">{company.name}</span>
       </span>
     );

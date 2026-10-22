@@ -65,20 +65,7 @@
 }
 
 .auth-legend {
-  display: grid;
-  gap: var(--s-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
   color: var(--text-secondary);
-  font-size: var(--fs-16);
-  line-height: var(--lh-24);
-}
-
-.auth-legend li {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--s-3);
 }
 
 .login-brand {

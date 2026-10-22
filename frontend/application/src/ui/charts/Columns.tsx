@@ -6,10 +6,9 @@ export interface ColumnSeries {
   tone: Tone;
 }
 
-export interface ColumnGroup {
+interface ColumnGroup {
   label: string;
   values: readonly number[];
-  caption?: string;
   active?: boolean;
 }
 
@@ -18,9 +17,10 @@ interface ColumnsProps {
   series: readonly ColumnSeries[];
   groups: readonly ColumnGroup[];
   format: (value: number) => string;
+  showValues?: boolean;
 }
 
-export function Columns({ title, series, groups, format }: ColumnsProps) {
+export function Columns({ title, series, groups, format, showValues = false }: ColumnsProps) {
   const max = Math.max(...groups.flatMap((group) => group.values));
   return (
     <div className="columns">
@@ -52,7 +52,7 @@ export function Columns({ title, series, groups, format }: ColumnsProps) {
       <div className="columns-plot" aria-hidden="true">
         {groups.map((group) => (
           <div key={group.label} className="columns-group" data-active={group.active ?? false}>
-            {group.caption && <span className="columns-caption">{group.caption}</span>}
+            {showValues && <span className="columns-caption">{format(group.values[0])}</span>}
             <span className="columns-bars">
               {group.values.map((value, index) => (
                 <span

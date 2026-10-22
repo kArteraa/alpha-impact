@@ -19,19 +19,17 @@ const RUB_KOPECKS = new Intl.NumberFormat("ru-RU", {
 export const RUB = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" });
 export const NUMBER = new Intl.NumberFormat("ru-RU");
 export const RATE = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
-export const RUB_COMPACT = new Intl.NumberFormat("ru-RU", {
+const COMPACT_RUB: Intl.NumberFormatOptions = {
   style: "currency",
   currency: "RUB",
   notation: "compact",
   maximumFractionDigits: 1,
-});
-export const RUB_DELTA = new Intl.NumberFormat("ru-RU", {
-  style: "currency",
-  currency: "RUB",
-  notation: "compact",
-  maximumFractionDigits: 1,
-  signDisplay: "exceptZero",
-});
+};
+
+export const RUB_COMPACT = new Intl.NumberFormat("ru-RU", COMPACT_RUB);
+export const RUB_DELTA = new Intl.NumberFormat("ru-RU", { ...COMPACT_RUB, signDisplay: "exceptZero" });
+export const PERCENT = new Intl.NumberFormat("ru-RU", { style: "percent", maximumFractionDigits: 0 });
+export const SECONDS = new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 export const RUB_WHOLE = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 });
 
 export function formatRub(raw: string): string {

@@ -8,6 +8,8 @@ import { Amount } from "../ui/Amount";
 
 const DEFAULT_TERM: DepositTerm = 6;
 
+const formatRate = (value: number) => `${RATE.format(value)}%`;
+
 const TERM_SERIES: readonly ColumnSeries[] = [{ name: "Срок", tone: "primary" }];
 
 export function DepositPage() {
@@ -58,16 +60,13 @@ export function DepositPage() {
             <Columns
               title={amount === null ? "Ставка по сроку, % годовых" : "Доход по сроку"}
               series={TERM_SERIES}
-              groups={DEPOSIT_TERMS.map((option) => {
-                const value = amount === null ? DEPOSIT_RATES[option] : depositIncome(amount, option, DEPOSIT_RATES[option]);
-                return {
-                  label: `${option} мес.`,
-                  values: [value],
-                  caption: amount === null ? `${RATE.format(value)}%` : RUB_COMPACT.format(value),
-                  active: option === term,
-                };
-              })}
-              format={(value) => (amount === null ? `${RATE.format(value)}%` : RUB_COMPACT.format(value))}
+              groups={DEPOSIT_TERMS.map((option) => ({
+                label: `${option} мес.`,
+                values: [amount === null ? DEPOSIT_RATES[option] : depositIncome(amount, option, DEPOSIT_RATES[option])],
+                active: option === term,
+              }))}
+              format={amount === null ? formatRate : (value) => RUB_COMPACT.format(value)}
+              showValues
             />
           </div>
         </aside>

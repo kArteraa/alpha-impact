@@ -21,7 +21,7 @@ export function AuthScreen({ title, onSubmit, children }: AuthScreenProps) {
         <aside className="auth-intro">
           <Brand />
           <p className="auth-lead">События, которые важны вашему бизнесу, — с объяснением и источником</p>
-          <ul className="auth-legend">
+          <ul className="icon-list auth-legend">
             {LEGEND.map(([type, text]) => (
               <li key={type}>
                 <ClaimTypeBadge type={type} />

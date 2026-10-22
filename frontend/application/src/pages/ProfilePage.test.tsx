@@ -139,7 +139,7 @@ describe("ProfilePage", () => {
     expect(await within(industry).findByText("изменено вами")).toBeTruthy();
     const patch = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH");
     const { value } = JSON.parse(String(patch?.[1]?.body));
-    expect(shown).toBe(FEATURES.industry_class.options?.[value]);
+    expect(shown).toBe(FEATURES.industry_class.labels?.[value]);
   });
 
   it("sends one correction for a double click", async () => {

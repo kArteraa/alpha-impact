@@ -47,17 +47,6 @@
   gap: var(--s-4);
 }
 
-.stat-main {
-  padding: var(--s-6);
-}
-
-.stat.stat-main strong {
-  margin-bottom: var(--s-4);
-  font-size: var(--fs-40);
-  line-height: var(--lh-48);
-  letter-spacing: -0.8px;
-}
-
 .stat {
   display: grid;
   gap: var(--s-1);
@@ -71,6 +60,17 @@
   font-weight: var(--fw-bold);
   letter-spacing: -0.45px;
   font-variant-numeric: tabular-nums;
+}
+
+.stat-main {
+  padding: var(--s-6);
+}
+
+.stat-main strong {
+  margin-bottom: var(--s-4);
+  font-size: var(--fs-40);
+  line-height: var(--lh-48);
+  letter-spacing: -0.8px;
 }
 
 .table-head {
@@ -256,7 +256,7 @@
     letter-spacing: -0.2px;
   }
 
-  .stat.stat-main strong {
+  .stat-main strong {
     font-size: var(--fs-30);
     line-height: var(--lh-36);
     letter-spacing: -0.45px;

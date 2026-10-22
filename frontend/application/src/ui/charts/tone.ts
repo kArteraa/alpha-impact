@@ -1,1 +1,1 @@
-export type Tone = "primary" | "soft" | "muted" | "accent" | "bank" | "ai" | "success";
+export type Tone = "primary" | "soft" | "muted" | "bank" | "ai";

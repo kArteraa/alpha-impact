@@ -2,13 +2,12 @@ import type { Trace, TraceStep } from "@alpha-impact/plugin";
 import { useId } from "react";
 import { Link, useParams } from "react-router";
 import { TRACES } from "../data/trace";
-import { NUMBER } from "../money";
+import { NUMBER, SECONDS } from "../money";
 import { type StepKind, traceSummary } from "../trace/summary";
 import { ShareBar } from "../ui/charts/ShareBar";
 import type { Tone } from "../ui/charts/tone";
 import { Icon } from "../ui/Icon";
 
-const SECONDS = new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const WHEN = new Intl.DateTimeFormat("ru-RU", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Moscow" });
 const MS_IN_SECOND = 1000;
 
@@ -74,10 +73,10 @@ function Verdicts({ verdicts }: { verdicts: string[] }) {
   return (
     <section className="card trace-card" aria-labelledby={headingId}>
       <h2 id={headingId}>Проверка критика</h2>
-      <ul className="verdicts">
+      <ul className="icon-list">
         {verdicts.map((verdict) => (
           <li key={verdict}>
-            <span className="verdict-mark" aria-hidden="true">
+            <span className="check-mark" aria-hidden="true">
               <Icon name="check" size={16} />
             </span>
             {verdict}

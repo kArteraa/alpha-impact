@@ -1,4 +1,4 @@
-export interface PluralForms {
+interface PluralForms {
   one: string;
   few: string;
   many: string;

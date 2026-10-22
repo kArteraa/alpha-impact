@@ -357,28 +357,24 @@
 }
 
 @media (min-width: 1181px) {
-  .tile-deposit,
-  .tile-loans {
+  .tile-side {
     flex-wrap: wrap;
     align-content: center;
     padding-right: var(--s-5);
   }
 
-  .tile-deposit .quick-text,
-  .tile-loans .quick-text {
+  .tile-side .quick-text {
     flex: 1;
     padding-right: var(--s-6);
   }
 
-  .tile-deposit .quick-meta,
-  .tile-loans .quick-meta {
+  .tile-side .quick-meta {
     flex-basis: 100%;
     margin-left: 0;
     text-align: left;
   }
 
-  .tile-deposit .quick-arrow,
-  .tile-loans .quick-arrow {
+  .tile-side .quick-arrow {
     top: var(--s-5);
     margin-top: 0;
   }

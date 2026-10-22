@@ -39,7 +39,7 @@ function calm(text: string): string {
 
 export function featureText(name: string, value: Feature["value"]): string {
   const spec = FEATURES[name];
-  const labels = spec?.options ?? spec?.labels ?? {};
+  const labels = spec?.labels ?? {};
   const word = (item: string) => labels[item] ?? calm(item);
   if (typeof value === "string") {
     return word(value);

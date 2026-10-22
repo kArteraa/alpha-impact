@@ -14,11 +14,6 @@
   margin: 0;
 }
 
-.event-group[data-level="3"] .event-group-head .badge {
-  background: var(--bg-danger);
-  color: var(--danger-text);
-}
-
 .empty-state {
   display: grid;
   justify-items: center;
@@ -36,14 +31,9 @@
   margin: 0;
 }
 
-.empty-state-mark {
-  display: grid;
-  place-items: center;
+.empty-state .check-mark {
   width: var(--control-h);
   height: var(--control-h);
-  border-radius: var(--r-pill);
-  background: var(--bg-success);
-  color: var(--success-text);
 }
 
 .panel-placeholder {

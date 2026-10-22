@@ -32,7 +32,7 @@ function FeatureRow({ name, feature, onSave }: FeatureRowProps) {
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const options = isEditable(feature) ? spec.options : undefined;
+  const options = spec.editable && isEditable(feature) ? spec.labels : undefined;
 
   async function save(value: string) {
     setSaving(true);

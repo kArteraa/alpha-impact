@@ -20,9 +20,9 @@ interface SelectProps {
 }
 
 const TYPEAHEAD_RESET_MS = 600;
-const OPENING_KEYS = new Set(["ArrowDown", "ArrowUp", "Enter", " "]);
+const OPENING_KEYS = new Set(["ArrowDown", "ArrowUp", "Enter", " ", "Home", "End"]);
 
-function Mark({ text }: { text: string }) {
+export function Mark({ text }: { text: string }) {
   return (
     <span className="company-mark" aria-hidden="true">
       {text}
@@ -49,6 +49,7 @@ export function Select({
   const selectedIndex = options.findIndex((option) => option.value === value);
   const selected = options[selectedIndex];
   const optionId = (index: number) => `${id}-option-${index}`;
+  const activeId = open && active >= 0 ? optionId(active) : undefined;
 
   useEffect(() => {
     if (!open) {
@@ -64,10 +65,10 @@ export function Select({
   }, [open]);
 
   useEffect(() => {
-    if (open && active >= 0) {
-      document.getElementById(optionId(active))?.scrollIntoView?.({ block: "nearest" });
+    if (activeId) {
+      document.getElementById(activeId)?.scrollIntoView?.({ block: "nearest" });
     }
-  });
+  }, [activeId]);
 
   function show(index: number) {
     setActive(index);
@@ -103,7 +104,7 @@ export function Select({
       return;
     }
     if (!open) {
-      if (OPENING_KEYS.has(key) || key === "Home" || key === "End") {
+      if (OPENING_KEYS.has(key)) {
         event.preventDefault();
         const start = key === "End" ? options.length - 1 : key === "Home" ? 0 : Math.max(selectedIndex, 0);
         show(start);
@@ -128,19 +129,19 @@ export function Select({
   }
 
   return (
-    <div ref={root} className={`select select-${variant}`} data-open={open}>
-      <span id={labelId} className={variant === "field" ? "select-label" : "visually-hidden"}>
+    <div ref={root} className={variant === "field" ? "select field" : "select select-pill"} data-open={open}>
+      <span id={labelId} className={variant === "field" ? "muted" : "visually-hidden"}>
         {label}
       </span>
       <button
         type="button"
         role="combobox"
-        className="select-trigger"
+        className={variant === "field" ? "select-trigger" : "select-trigger company"}
         aria-labelledby={labelId}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
-        aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
+        aria-activedescendant={activeId}
         aria-describedby={describedBy}
         onClick={() => (open ? setOpen(false) : show(Math.max(selectedIndex, 0)))}
         onKeyDown={onKeyDown}
@@ -161,7 +162,7 @@ export function Select({
               aria-selected={option.value === value}
               className={index === active ? "select-option is-active" : "select-option"}
               onMouseDown={(event) => event.preventDefault()}
-              onMouseMove={() => setActive(index)}
+              onMouseEnter={() => setActive(index)}
               onClick={() => choose(index)}
             >
               {option.mark && <Mark text={option.mark} />}
