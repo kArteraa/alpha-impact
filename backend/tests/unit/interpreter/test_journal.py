@@ -2,6 +2,7 @@ import json
 from unittest.mock import AsyncMock
 
 from apps.services.interpreter.journal import Journal
+from apps.services.interpreter.planning import PLANS_PATH, load_config
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import CounterpartyContext, Trace
 from tests.integration.contracts.examples import EXAMPLES, TRACE
@@ -44,3 +45,13 @@ async def test_trace_records_counterparty_aggregates(harness: Harness) -> None:
     trace: Trace = harness.traces.save.call_args.args[0]
     step = next(step for step in trace.steps if step.name == "counterparty.context")
     assert "industry_class" in step.output_summary
+
+
+async def test_plan_step_records_template_and_plan_truncated_to_limit(harness: Harness) -> None:
+    limit = load_config(PLANS_PATH).trace_summary_chars
+    harness.answers[0] = {"focus": "Риск сроков доставки " * limit, "tools": []}
+    await harness.agent.interpret(harness.request())
+    trace: Trace = harness.traces.save.call_args.args[0]
+    plan = next(step for step in trace.steps if step.step == "plan")
+    assert len(plan.output_summary) == limit
+    assert plan.output_summary.startswith('{"template": {"focus": ')
