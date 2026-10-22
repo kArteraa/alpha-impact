@@ -199,7 +199,7 @@ class Agent:
     async def _followup(
         self, request: InterpretRequest, action: FollowupContext, journal: Journal
     ) -> InterpretResponse:
-        question = followup_question(action, self._config.max_question_chars)
+        question = action.question.strip()
         original = await self._card_trace(journal, request, action.card_id)
         card = original_card(original, action.card_id)
         root = await self._root_request(journal, request, original)
