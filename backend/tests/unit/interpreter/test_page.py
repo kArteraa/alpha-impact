@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from apps.services.interpreter.planning import PLANS_PATH, load_config
 from shared.contracts.errors import DomainError
 from shared.contracts.schemas import InterpretRequest, NewsItem, PageContext, Trace
 from tests.unit.interpreter.support import Harness, draft_answer
@@ -107,3 +108,10 @@ async def test_empty_page_is_a_domain_error_without_annotation(harness: Harness,
     with pytest.raises(DomainError):
         await harness.agent.interpret(page_request(harness, text))
     harness.news.annotate.assert_not_awaited()
+
+
+async def test_long_single_line_is_cut_to_title_and_kept_as_body(page: Harness) -> None:
+    limit = load_config(PLANS_PATH).max_title_chars
+    text = "Ставка снижена " * limit
+    await page.agent.interpret(page_request(page, text))
+    page.news.annotate.assert_awaited_once_with(text[:limit].rstrip(), text.strip(), URL)

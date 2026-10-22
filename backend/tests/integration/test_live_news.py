@@ -11,9 +11,8 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from apps.services.news.annotation import news_id
 from apps.services.news.config import load_config as news_config
-from apps.services.news.service import MANUAL_SOURCE
+from apps.services.news.service import MANUAL_SOURCE, manual_id
 from shared.contracts.ports import LLMGateway, TraceStore
 from shared.contracts.schemas import ClaimType, InterpretResponse
 from shared.db.models import NewsRow
@@ -21,7 +20,8 @@ from tests.integration.test_prefilter_services import CLIENT, USER, seed_client
 from tests.news_data import KEY_RATE_ANSWER, unit
 
 TITLE = "ЦБ снизил ключевую ставку до 16%"
-PAGE_TEXT = f"{TITLE}\nБанк России снизил ключевую ставку на 100 б.п., кредиты подешевеют."
+BODY = "Банк России снизил ключевую ставку на 100 б.п., кредиты подешевеют."
+PAGE_TEXT = f"{TITLE}\n{BODY}"
 RATE_ANSWER = {**KEY_RATE_ANSWER, "products": ["loan"]}
 
 
@@ -111,13 +111,17 @@ async def test_pasted_rate_news_gives_loan_client_card_with_bank_claim(
 
     assert not response.silent
     card = response.cards[0]
-    assert card.what_happened[0].source_ref.id == news_id(TITLE)
+    assert card.what_happened[0].source_ref.id == manual_id(TITLE, BODY)
     assert card.bank_view
     assert all(claim.type == ClaimType.BANK for claim in card.bank_view)
     assert card.bank_view[0].source_ref.kind == "house_view"
     async with sessions() as session:
         [row] = (await session.scalars(select(NewsRow))).all()
-    assert (row.id, row.source, row.factor_names) == (news_id(TITLE), MANUAL_SOURCE, ["key_rate"])
+    assert (row.id, row.source, row.factor_names) == (
+        manual_id(TITLE, BODY),
+        MANUAL_SOURCE,
+        ["key_rate"],
+    )
     assert model.tasks.count(news_config().llm_task) == 1
 
 

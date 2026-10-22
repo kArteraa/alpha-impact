@@ -1,13 +1,17 @@
+from datetime import timedelta
+
+import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.news.annotation import news_id
+from apps.services.news import service
 from apps.services.news.config import load_config
-from apps.services.news.service import MANUAL_SOURCE, NewsIndex
+from apps.services.news.service import MANUAL_SOURCE, NewsIndex, manual_id
 from shared.contracts.schemas import NewsItem
 from shared.db.models import NewsRow
+from tests.integration.test_news_index import ingest
 from tests.integration.test_prefilter_services import persist
-from tests.news_data import KEY_RATE_ANSWER, NOW, FakeNewsLlm, near, unit
+from tests.news_data import KEY_RATE_ANSWER, NOW, FakeNewsLlm, item, near, rss, unit
 
 CONFIG = load_config()
 TITLE = "Ставка снижена до 16%"
@@ -31,7 +35,7 @@ async def test_pasted_news_is_annotated_and_stored_as_manual(
 
     item = await index(sessions, llm).annotate(TITLE, TEXT, URL)
 
-    assert item.id == news_id(TITLE)
+    assert item.id == manual_id(TITLE, TEXT)
     assert (item.source, item.published_at, item.url) == (MANUAL_SOURCE, NOW, URL)
     assert [factor.name for factor in item.factors] == ["key_rate"]
     assert "industry:finance" in item.entities
@@ -101,7 +105,9 @@ async def test_close_text_with_other_numbers_is_new_news(
         "Ключевая ставка — 17%", "Банк России понизил ставку до 17% годовых", ""
     )
 
-    assert other.id == news_id("Ключевая ставка — 17%")
+    assert other.id == manual_id(
+        "Ключевая ставка — 17%", "Банк России понизил ставку до 17% годовых"
+    )
     assert len(llm.tasks) == 2
     assert len(await rows(sessions)) == 2
 
@@ -140,3 +146,69 @@ async def test_pastes_without_url_are_stored_under_manual_addresses(
     assert first.url == f"{MANUAL_SOURCE}:{first.id}"
     assert second.url == f"{MANUAL_SOURCE}:{second.id}"
     assert [row.url for row in await rows(sessions)] == [second.url, first.url]
+
+
+async def test_same_headline_with_other_text_is_new_news(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    llm = FakeNewsLlm()
+    first = await index(sessions, llm).annotate("Ключевая ставка", "ЦБ снизил ставку до 16%", "")
+
+    other = await index(sessions, llm).annotate("Ключевая ставка", "ЦБ повысил ставку до 18%", "")
+
+    assert other.id != first.id
+    assert other.text == "ЦБ повысил ставку до 18%"
+    assert len(await rows(sessions)) == 2
+
+
+async def test_pasted_news_is_not_served_by_search(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    llm = FakeNewsLlm(answers={"Ставка": KEY_RATE_ANSWER})
+    news = index(sessions, llm)
+    await news.annotate(TITLE, TEXT, URL)
+
+    since = (NOW - timedelta(days=1)).date()
+    assert await news.search([], None, None, None, since) == []
+    assert await news.search(["key_rate"], "finance", None, None, since) == []
+
+
+async def test_feed_copy_of_pasted_news_is_still_ingested(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    llm = FakeNewsLlm(vectors={"ЦБ снизил": unit(0)})
+    await index(sessions, llm).annotate(TITLE, TEXT, "")
+    feed = rss(item(TITLE, "https://www.kommersant.ru/doc/9", NOW, TEXT))
+
+    result = await ingest(sessions, llm, {"https://www.kommersant.ru/rss/x.xml": feed})
+
+    assert (result.added, result.duplicates) == (1, 0)
+
+
+async def test_lost_insert_returns_stored_news(
+    sessions: async_sessionmaker[AsyncSession], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stored = NewsItem(
+        id=manual_id(TITLE, TEXT),
+        title=TITLE,
+        text=TEXT,
+        url=URL,
+        published_at=NOW - timedelta(days=30),
+        source=MANUAL_SOURCE,
+        entities=[],
+        factors=[],
+    )
+    await persist(sessions, stored)
+    real = service.find_news
+    calls: list[str] = []
+
+    async def first_misses(session: AsyncSession, news_id: str, url: str) -> NewsRow | None:
+        calls.append(news_id)
+        return None if len(calls) == 1 else await real(session, news_id, url)
+
+    monkeypatch.setattr(service, "find_news", first_misses)
+
+    found = await index(sessions, FakeNewsLlm()).annotate(TITLE, TEXT, URL)
+
+    assert found == stored
+    assert len(await rows(sessions)) == 1
