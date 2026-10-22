@@ -24,7 +24,7 @@ from apps.services.interpreter.prompts import (
     PLAN_SYSTEM,
 )
 from shared.config.factors import FACTORS
-from shared.contracts.errors import DomainError
+from shared.contracts.errors import DomainError, NotFound
 from shared.contracts.ports import (
     CounterpartyService,
     Critic,
@@ -209,7 +209,11 @@ class Agent:
         as_of = journal.trace.created_at.date()
         cited: dict[str, HouseViewClaim] = {}
         for claim_id in cited_house_view(card):
-            cited.update({claim.id: claim for claim in await self._chain(journal, claim_id, as_of)})
+            try:
+                found = await self._chain(journal, claim_id, as_of)
+            except NotFound:
+                continue
+            cited.update({claim.id: claim for claim in found})
         house_view = [cited[key] for key in sorted(cited)]
         prompt_request = original.request.model_copy(update={"role": request.role})
         plan = await self._plan(
