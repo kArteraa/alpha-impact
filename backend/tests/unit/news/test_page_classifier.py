@@ -3,6 +3,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
+from apps.services.llm.errors import ModelOutputInvalid
 from apps.services.news.annotation import page_schema
 from apps.services.news.config import load_config
 from apps.services.news.service import PageClassifier
@@ -96,6 +97,13 @@ async def test_prompt_carries_url_and_text_cut_to_limit() -> None:
 def test_unknown_page_type_is_rejected_by_schema() -> None:
     with pytest.raises(ValidationError, match="page_type"):
         page_schema(CONFIG).model_validate(answer("blog"))
+
+
+async def test_rejected_model_answer_is_not_swallowed() -> None:
+    llm = FakeNewsLlm(errors={"Ставка снижена": ModelOutputInvalid("page_type")})
+
+    with pytest.raises(ModelOutputInvalid):
+        await PageClassifier(llm, CONFIG).classify(ARTICLE)
 
 
 async def test_extension_zero_inn_is_rejected() -> None:
