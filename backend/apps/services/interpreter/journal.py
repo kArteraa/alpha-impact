@@ -31,6 +31,7 @@ class Journal:
     @asynccontextmanager
     async def _step(self, step: TraceStep) -> AsyncIterator[TraceStep]:
         start = perf_counter()
+        self.trace.steps.append(step)
         try:
             yield step
         except Exception as error:
@@ -38,7 +39,6 @@ class Journal:
             raise
         finally:
             step.duration_ms = int((perf_counter() - start) * 1000)
-            self.trace.steps.append(step)
 
     async def tool[T](self, name: str, summary: str, operation: Awaitable[T]) -> T:
         return await self.lookup(name, summary, operation, self.summary)
