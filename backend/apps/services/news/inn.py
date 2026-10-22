@@ -1,6 +1,7 @@
 import re
 
-CANDIDATE = re.compile(r"(?<![0-9A-Za-z_])(?:[0-9]{12}|[0-9]{10})(?![0-9A-Za-z_])")
+TOKEN = "[0-9A-Za-z_]"
+CANDIDATE = re.compile(rf"(?<!{TOKEN})(?:[0-9]{{12}}|[0-9]{{10}})(?!{TOKEN})")
 WEIGHTS = (3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8)
 CHECK_POSITIONS = {10: (9,), 12: (10, 11)}
 NO_REGION = "00"
