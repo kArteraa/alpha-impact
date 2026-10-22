@@ -96,6 +96,7 @@ class TraceStore(Protocol):
     async def feedback(
         self, user_id: str, card_id: str, useful: bool, comment: str | None
     ) -> None: ...
+    async def find_by_card(self, *, user_id: str, client_id: str, card_id: str) -> Trace: ...
 
 
 @runtime_checkable
