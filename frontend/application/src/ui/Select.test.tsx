@@ -126,6 +126,36 @@ describe("Select", () => {
     expect(combobox.getAttribute("aria-activedescendant")).toBe(screen.getByRole("option", { name: /Канцмир/ }).id);
   });
 
+  it("closes when the focus leaves", () => {
+    const { combobox } = setup();
+    fireEvent.click(combobox);
+
+    fireEvent.blur(combobox);
+
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
+  it("keeps searching across a space typed right after letters", () => {
+    const { combobox, onChange } = setup();
+
+    for (const char of "ао «с") {
+      key(combobox, char);
+    }
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(combobox.getAttribute("aria-activedescendant")).toBe(screen.getByRole("option", { name: /СтройЛизинг/ }).id);
+  });
+
+  it("stays closed without options", () => {
+    render(<Select label="Пусто" value="" options={[]} onChange={() => {}} />);
+    const combobox = screen.getByRole("combobox", { name: "Пусто" });
+
+    key(combobox, "ArrowDown");
+    key(combobox, "Enter");
+
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
   it("closes on a click outside", () => {
     const { combobox, onChange } = setup();
     fireEvent.click(combobox);

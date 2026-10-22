@@ -85,6 +85,15 @@ describe("PaymentPage", () => {
     expect(STATIONERY).toMatch(/^U_\d+$/);
   });
 
+  it("does not mark an amount it cannot accept as done", () => {
+    render();
+    setAmount("1000");
+    setAmount("1000abc");
+
+    const steps = Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => step.getAttribute("data-done"));
+    expect(steps).toEqual(["false", "false"]);
+  });
+
   it("marks the steps of the form done in the placeholder", () => {
     render();
     setRecipient(CARRIER);

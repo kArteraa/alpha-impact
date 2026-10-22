@@ -7,8 +7,6 @@ export interface FeatureSection {
   names: string[];
 }
 
-const SHOUTING = /\p{Lu}/u;
-
 export function isEditable(feature: Feature): boolean {
   return feature.source !== "bank";
 }
@@ -29,18 +27,10 @@ export function formatFeatureValue(value: Feature["value"]): string {
   return value;
 }
 
-function calm(text: string): string {
-  if (!SHOUTING.test(text) || text !== text.toUpperCase()) {
-    return text;
-  }
-  const lower = text.toLowerCase();
-  return lower.charAt(0).toUpperCase() + lower.slice(1);
-}
-
 export function featureText(name: string, value: Feature["value"]): string {
   const spec = FEATURES[name];
   const labels = spec?.labels ?? {};
-  const word = (item: string) => labels[item] ?? calm(item);
+  const word = (item: string) => labels[item] ?? item;
   if (typeof value === "string") {
     return word(value);
   }

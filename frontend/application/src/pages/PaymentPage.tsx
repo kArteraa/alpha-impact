@@ -103,7 +103,7 @@ export function PaymentPage() {
               onRetry={insight.retry}
             />
           ) : (
-            <PanelPlaceholder recipient={recipient !== undefined} amount={heldAmount !== null} />
+            <PanelPlaceholder recipient={recipient !== undefined} amount={parseAmount(form.amount) !== null} />
           )}
         </aside>
       </div>

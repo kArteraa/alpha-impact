@@ -20,9 +20,9 @@ export function AccountTile() {
       </div>
       {history && (
         <div className="account-trend">
-          <Sparkline values={history} label="Остаток за 30 дней" className="account-spark" />
+          <Sparkline values={history} label="Остаток за месяц" className="account-spark" />
           <span className="account-change">
-            <strong>{RUB_DELTA.format(change)}</strong> за 30 дней
+            <strong>{RUB_DELTA.format(change)}</strong> за месяц
           </span>
         </div>
       )}

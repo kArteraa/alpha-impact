@@ -1,3 +1,4 @@
+import { SIGNIFICANCE_LEVELS } from "@alpha-impact/plugin";
 import { useId } from "react";
 import { Link } from "react-router";
 import { useCompany } from "../company/context";
@@ -13,8 +14,6 @@ const LEVEL_TITLES: Record<number, string> = {
   1: "Низкая значимость",
 };
 
-const HIGH_LEVEL = 3;
-
 const EVENT_FORMS = { one: "событие", few: "события", many: "событий" };
 
 function Group({ group }: { group: EventGroup }) {
@@ -23,7 +22,7 @@ function Group({ group }: { group: EventGroup }) {
     <section className="card event-group" data-level={group.level} aria-labelledby={headingId}>
       <div className="event-group-head">
         <h2 id={headingId}>{LEVEL_TITLES[group.level]}</h2>
-        <span className={group.level === HIGH_LEVEL ? "badge badge-danger" : "badge"}>{group.events.length}</span>
+        <span className={group.level === SIGNIFICANCE_LEVELS ? "badge badge-danger" : "badge"}>{group.events.length}</span>
       </div>
       <ul className="events">
         {group.events.map((event) => (

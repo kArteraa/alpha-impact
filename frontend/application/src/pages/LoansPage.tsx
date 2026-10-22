@@ -17,7 +17,17 @@ const NEAREST = BY_MATURITY[0];
 const BY_AMOUNT = [...LOANS].sort((left, right) => right.amount - left.amount);
 
 function untilText(days: number): string {
-  return days > 0 ? `через ${plural(days, DAYS)}` : "сегодня";
+  if (days < 0) {
+    return `просрочено на ${plural(-days, DAYS)}`;
+  }
+  return days === 0 ? "сегодня" : `через ${plural(days, DAYS)}`;
+}
+
+function daysBadge(days: number): string {
+  if (days < 0) {
+    return "badge badge-danger";
+  }
+  return days <= SOON_DAYS ? "badge badge-warning" : "badge";
 }
 
 export function LoansPage() {
@@ -90,7 +100,7 @@ export function LoansPage() {
                     <td>{loan.rate}</td>
                     <td className="number">{DATE.format(new Date(loan.maturity))}</td>
                     <td className="number">
-                      <span className={days <= SOON_DAYS ? "badge badge-warning" : "badge"}>{plural(days, DAYS)}</span>
+                      <span className={daysBadge(days)}>{days < 0 ? untilText(days) : plural(days, DAYS)}</span>
                     </td>
                   </tr>
                 );
