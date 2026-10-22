@@ -39,7 +39,8 @@ class InterpretGateway:
             except Exception as error:
                 await self._record(self._call(request, start, type(error).__name__))
                 raise
-            await self._remember(key, response)
+            if not _needs_review(response):
+                await self._remember(key, response)
         trace_id = response.cards[0].trace_id if response.cards else None
         await self._record(self._call(request, start, "ok", cached, trace_id))
         return response.model_copy(update={"cached": cached})
@@ -74,3 +75,7 @@ class InterpretGateway:
             outcome=outcome,
             duration_ms=int((perf_counter() - start) * 1000),
         )
+
+
+def _needs_review(response: InterpretResponse) -> bool:
+    return any(card.needs_review for card in response.cards)
