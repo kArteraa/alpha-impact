@@ -1,20 +1,26 @@
-import { InsightPanel, useInterpret } from "@alpha-impact/plugin";
-import { type FormEvent, useId, useState } from "react";
+import { InsightPanel, type InterpretFetcher, useInterpret } from "@alpha-impact/plugin";
+import { type FormEvent, useCallback, useId, useState } from "react";
+import { api } from "../api/client";
+import { useCompany } from "../company/context";
 import { COUNTERPARTIES } from "../data/counterparties";
 import { formatRub, parseAmount } from "../money";
-import { mockInterpret } from "../payment/mockInterpret";
 import { type PaymentForm, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
 
 const EMPTY_FORM: PaymentForm = { beneficiaryId: "", amount: "", purpose: "" };
 
 export function PaymentPage() {
+  const { company, userId, role } = useCompany();
   const recipientHintId = useId();
   const amountHintId = useId();
   const [form, setForm] = useState<PaymentForm>(EMPTY_FORM);
   const [heldAmount, setHeldAmount] = useState<number | null>(null);
   const paymentContext = toPaymentContext(form);
   const panelContext = paymentContextOf(form.beneficiaryId, heldAmount);
-  const insight = useInterpret(panelContext, mockInterpret);
+  const interpret = useCallback<InterpretFetcher>(
+    (context, signal) => api.interpret({ user_id: userId, client_id: company.id, role, action_context: context }, signal),
+    [userId, company.id, role],
+  );
+  const insight = useInterpret(panelContext, interpret);
   const recipient = COUNTERPARTIES.find((counterparty) => counterparty.id === form.beneficiaryId);
   const amountInvalid = form.amount.trim() !== "" && parseAmount(form.amount) === null;
 
@@ -100,7 +106,7 @@ export function PaymentPage() {
           {panelContext ? (
             <InsightPanel
               actionContext={panelContext}
-              role="cfo"
+              role={role}
               response={insight.response}
               pending={insight.pending}
               failed={insight.failed}

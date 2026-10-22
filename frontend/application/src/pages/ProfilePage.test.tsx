@@ -1,46 +1,130 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import type { ClientProfile, Feature } from "@alpha-impact/plugin";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { TEST_CLIENT, renderWithCompany, stubApi } from "../testing";
 import { ProfilePage } from "./ProfilePage";
 
-function feature(label: string) {
-  return screen.getByRole("listitem", { name: label });
+const UPDATED = "2026-10-01T00:00:00Z";
+const PROFILE_URL = `/api/profile/${TEST_CLIENT}`;
+const PATCH_URL = `PATCH ${PROFILE_URL}/features/industry_class`;
+
+function feature(value: Feature["value"], source: Feature["source"]): Feature {
+  return { value, source, confidence: source === "bank" ? 1 : 0.7, updated_at: UPDATED };
+}
+
+function profile(industry: Feature): ClientProfile {
+  return {
+    client_id: TEST_CLIENT,
+    group_id: "group_1_sb",
+    group_members: [],
+    exposures: {},
+    flags: {},
+    version: 1,
+    features: {
+      okved_name: feature("Торговля оптовая неспециализированная", "bank"),
+      region: feature("Самарская область", "bank"),
+      revenue_rub: feature(18_500_000_000, "bank"),
+      import_countries: feature(["КИТАЙ", "ТУРЦИЯ"], "bank"),
+      industry_class: industry,
+    },
+  };
+}
+
+const LOADED = profile(feature("wholesale", "inferred"));
+
+async function card(label: string) {
+  return screen.findByRole("listitem", { name: label });
 }
 
 describe("ProfilePage", () => {
-  afterEach(cleanup);
-
-  it("keeps bank facts read-only", () => {
-    render(<ProfilePage />);
-
-    const industry = feature("Отрасль");
-    expect(within(industry).getByText("по данным банка")).toBeTruthy();
-    expect(within(industry).queryByRole("button", { name: "Изменить" })).toBeNull();
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
   });
 
-  it("edits a derived trait inline", () => {
-    render(<ProfilePage />);
-    const leasing = feature("Лизинг");
-    expect(within(leasing).getByText("определено по данным")).toBeTruthy();
+  it("shows what the bank knows about the company", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
+    renderWithCompany(<ProfilePage />, "/profile");
 
-    fireEvent.click(within(leasing).getByRole("button", { name: "Изменить" }));
-    fireEvent.change(within(leasing).getByRole("textbox", { name: "Лизинг" }), {
-      target: { value: "нет, парк собственный" },
+    expect(within(await card("Отрасль")).getByText("Оптовая торговля")).toBeTruthy();
+    expect(within(await card("Регион")).getByText("Самарская область")).toBeTruthy();
+    expect(within(await card("Страны импорта")).getByText("КИТАЙ, ТУРЦИЯ")).toBeTruthy();
+    expect(within(await card("Выручка, ₽")).getByText(/18\s500\s000\s000/)).toBeTruthy();
+  });
+
+  it("keeps bank facts read-only", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
+    renderWithCompany(<ProfilePage />, "/profile");
+
+    const region = await card("Регион");
+    expect(within(region).getByText("по данным банка")).toBeTruthy();
+    expect(within(region).queryByRole("button", { name: "Изменить" })).toBeNull();
+  });
+
+  it("corrects the derived industry through the API", async () => {
+    const fetchMock = stubApi({
+      [`GET ${PROFILE_URL}`]: [200, LOADED],
+      [PATCH_URL]: [200, profile(feature("logistics", "user"))],
     });
-    fireEvent.click(within(leasing).getByRole("button", { name: "Сохранить" }));
+    renderWithCompany(<ProfilePage />, "/profile");
+    const industry = await card("Отрасль");
+    expect(within(industry).getByText("определено по данным")).toBeTruthy();
 
-    expect(within(leasing).getByText("нет, парк собственный")).toBeTruthy();
-    expect(within(leasing).getByText("изменено вами")).toBeTruthy();
-    expect(document.querySelector("[role=dialog]")).toBeNull();
+    fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
+    fireEvent.change(within(industry).getByRole("combobox", { name: "Отрасль" }), { target: { value: "logistics" } });
+    fireEvent.click(within(industry).getByRole("button", { name: "Сохранить" }));
+
+    expect(await within(industry).findByText("Логистика")).toBeTruthy();
+    expect(within(industry).getByText("изменено вами")).toBeTruthy();
+    const patch = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH");
+    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ value: "logistics" });
   });
 
-  it("drops an edit on cancel", () => {
-    render(<ProfilePage />);
-    const leasing = feature("Лизинг");
+  it("drops an edit on cancel", async () => {
+    const fetchMock = stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
+    renderWithCompany(<ProfilePage />, "/profile");
+    const industry = await card("Отрасль");
 
-    fireEvent.click(within(leasing).getByRole("button", { name: "Изменить" }));
-    fireEvent.change(within(leasing).getByRole("textbox", { name: "Лизинг" }), { target: { value: "нет" } });
-    fireEvent.click(within(leasing).getByRole("button", { name: "Отмена" }));
+    fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
+    fireEvent.change(within(industry).getByRole("combobox", { name: "Отрасль" }), { target: { value: "retail" } });
+    fireEvent.click(within(industry).getByRole("button", { name: "Отмена" }));
 
-    expect(within(leasing).getByText("да")).toBeTruthy();
+    expect(within(industry).getByText("Оптовая торговля")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("says why a correction was not saved", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED], [PATCH_URL]: [404, "unknown industry"] });
+    renderWithCompany(<ProfilePage />, "/profile");
+    const industry = await card("Отрасль");
+
+    fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
+    fireEvent.click(within(industry).getByRole("button", { name: "Сохранить" }));
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Не удалось сохранить (404)");
+  });
+
+  it("explains a company the bank has no card for", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [200, { ...LOADED, features: {} }] });
+    renderWithCompany(<ProfilePage />, "/profile");
+
+    expect(await screen.findByText("Данных о компании у банка нет")).toBeTruthy();
+  });
+
+  it("says so when the profile cannot be loaded", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [500, "boom"] });
+    renderWithCompany(<ProfilePage />, "/profile");
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Не удалось загрузить профиль");
+  });
+
+  it("confirms the profile and opens the main screen", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
+    renderWithCompany(<ProfilePage />, "/profile");
+    await card("Отрасль");
+
+    fireEvent.click(screen.getByRole("button", { name: "Всё верно" }));
+
+    expect(await screen.findByRole("heading", { name: "Главный экран" })).toBeTruthy();
   });
 });

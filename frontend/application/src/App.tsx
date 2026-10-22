@@ -8,12 +8,14 @@ import { LoansPage } from "./pages/LoansPage";
 import { LoginPage } from "./pages/LoginPage";
 import { PaymentPage } from "./pages/PaymentPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { RolePage } from "./pages/RolePage";
 import { TracePage } from "./pages/TracePage";
 
 export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/role" element={<RolePage />} />
       <Route path="/showcase" element={<Showcase />} />
       <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />

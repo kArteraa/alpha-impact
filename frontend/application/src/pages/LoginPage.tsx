@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import { ApiError, api } from "../api/client";
 import { Brand } from "../Brand";
+import { loadRole, saveUser } from "../session/storage";
 import { Icon } from "../ui/Icon";
 
 export function LoginPage() {
@@ -13,8 +14,9 @@ export function LoginPage() {
     event.preventDefault();
     setError(null);
     try {
-      await api.authMock(userId.trim());
-      navigate("/");
+      const session = await api.authMock(userId.trim());
+      saveUser(session.user_id);
+      navigate(loadRole(session.user_id) === null ? "/role" : "/profile");
     } catch (failure) {
       setError(failure instanceof ApiError ? `Вход не удался (${failure.status})` : "Сервер недоступен");
     }

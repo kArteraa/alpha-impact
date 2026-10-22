@@ -170,7 +170,8 @@
   margin-left: var(--s-3);
 }
 
-.feature input {
+.feature input,
+.feature select {
   width: 100%;
   min-height: var(--control-h-sm);
   padding: var(--s-2) var(--s-3);
@@ -182,7 +183,8 @@
   font: inherit;
 }
 
-.feature input:focus-visible {
+.feature input:focus-visible,
+.feature select:focus-visible {
   box-shadow:
     inset 0 0 0 1px var(--border),
     var(--focus-ring);
@@ -317,6 +319,50 @@
 
 .login h1 {
   margin: var(--s-2) 0;
+}
+
+.role-options {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.role-options legend {
+  margin-bottom: var(--s-3);
+  padding: 0;
+}
+
+.role-option {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-height: var(--control-h-sm);
+  padding: 0 var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--bg-neutral);
+  cursor: pointer;
+}
+
+.role-option:hover {
+  background: var(--bg-neutral-strong);
+}
+
+.role-option:has(:focus-visible) {
+  box-shadow: var(--focus-ring);
+}
+
+.role-option input {
+  accent-color: var(--primary);
+}
+
+.profile-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-4);
+  margin-top: var(--s-6);
 }
 
 @media (max-width: 960px) {

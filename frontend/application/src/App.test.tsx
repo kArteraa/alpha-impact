@@ -1,9 +1,10 @@
 import { cleanup, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
-import { renderApp } from "./testing";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { TEST_CLIENT, renderApp, signIn, stubApi } from "./testing";
 
 const ROUTES: Array<[string, string]> = [
   ["/login", "Вход"],
+  ["/role", "Ваша роль"],
   ["/", "Главный экран"],
   ["/payments/new", "Новый платёж"],
   ["/deposits/new", "Новый депозит"],
@@ -15,11 +16,23 @@ const ROUTES: Array<[string, string]> = [
 ];
 
 describe("routing", () => {
-  afterEach(cleanup);
+  beforeEach(() => {
+    signIn();
+    stubApi({
+      "GET /api/clients": [200, [TEST_CLIENT]],
+      [`GET /api/profile/${TEST_CLIENT}`]: [200, { client_id: TEST_CLIENT, features: {} }],
+    });
+  });
 
-  it.each(ROUTES)("renders %s with heading %s", (path, heading) => {
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it.each(ROUTES)("renders %s with heading %s", async (path, heading) => {
     renderApp(path);
-    expect(screen.getByRole("heading", { level: 1, name: heading })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeTruthy();
   });
 
   it("login screen has the user field and submit button", () => {
