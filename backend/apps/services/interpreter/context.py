@@ -102,7 +102,7 @@ def prompt_context(
     return {
         "role": request.role.value,
         "action": request.action_context.model_dump(
-            mode="json", exclude={"beneficiary_id", "inn", "card_id"}
+            mode="json", exclude={"beneficiary_id", "inn", "text", "card_id"}
         ),
         "profile": {
             "features": {
