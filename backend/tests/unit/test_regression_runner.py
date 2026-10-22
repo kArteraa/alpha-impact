@@ -138,7 +138,8 @@ def test_report_has_total_and_every_case() -> None:
     assert "1/2" in report
     assert "abc1234" in report
     assert "2026-10-23" in report
-    assert "0.0122 ₽" in report
+    assert "0.0122 руб." in report
+    assert "₽" not in report
     assert "| a |" in report and "| b |" in report
     assert "expected \\| silent" in report
 
@@ -149,3 +150,13 @@ def test_exit_code_is_nonzero_when_a_case_fails() -> None:
 
     assert exit_code([green]) == 0
     assert exit_code([green, red]) == 1
+
+
+async def test_unexpected_error_fails_case_and_run_continues() -> None:
+    cases = [dashboard_case("broken", {"silent": False}), dashboard_case("quiet", {"silent": True})]
+    interpreter = ScriptedInterpreter(RuntimeError("connection lost"), SILENT)
+
+    results = await run_cases(cases, interpreter, StoredHouseView(CITED))
+
+    assert [r.passed for r in results] == [False, True]
+    assert "RuntimeError" in results[0].failures[0]

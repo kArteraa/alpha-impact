@@ -209,3 +209,8 @@ def test_failure_names_the_source() -> None:
     failures = check(case(), answer(card(basis=[NEWS, RATE])), CITED)
 
     assert any("profile:industry_class" in failure for failure in failures)
+
+
+def test_when_card_rejects_silent() -> None:
+    with pytest.raises(ValidationError):
+        case(when_card={"silent": False})
