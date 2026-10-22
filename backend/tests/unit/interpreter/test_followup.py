@@ -239,12 +239,7 @@ async def test_news_cited_only_by_ai_claims_cannot_return_as_fact(
 async def test_validated_question_is_trimmed_in_trace_and_prompt(
     harness: Harness, rate: HouseViewClaim
 ) -> None:
-    request = followup_request().model_copy(
-        update={
-            "action_context": FollowupContext(card_id="deposit-card", question=f"  {QUESTION}\n")
-        }
-    )
-    await harness.agent.interpret(request)
+    await harness.agent.interpret(followup_request(f"  {QUESTION}\n"))
     trace: Trace = harness.traces.save.call_args.args[0]
     assert isinstance(trace.request.action_context, FollowupContext)
     assert trace.request.action_context.question == QUESTION
@@ -259,11 +254,8 @@ async def test_validated_question_is_trimmed_in_trace_and_prompt(
 async def test_invalid_question_stops_before_store_and_model(
     harness: Harness, rate: HouseViewClaim, question: str
 ) -> None:
-    request = followup_request().model_copy(
-        update={"action_context": FollowupContext(card_id="deposit-card", question=question)}
-    )
-    with pytest.raises(DomainError):
-        await harness.agent.interpret(request)
+    with pytest.raises(DomainError, match="Вопрос к карточке"):
+        await harness.agent.interpret(followup_request(question))
     harness.traces.find_by_card.assert_not_awaited()
     harness.traces.save.assert_not_awaited()
     harness.llm.complete.assert_not_awaited()

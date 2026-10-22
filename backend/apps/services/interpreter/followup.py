@@ -1,5 +1,3 @@
-from dataclasses import replace
-
 from apps.services.interpreter.context import Evidence, prompt_context, source_key, sources
 from apps.services.interpreter.drafting import CLAIM_BLOCKS, card_claims
 from shared.contracts.errors import DomainError, NotFound
@@ -75,11 +73,11 @@ def cited_house_view(card: InsightCard) -> list[str]:
     return sorted({ref.id for ref in card.basis if ref.kind == "house_view"})
 
 
-def followup_question(action: FollowupContext, limit: int) -> str:
+def checked_followup(action: FollowupContext, limit: int) -> FollowupContext:
     question = action.question.strip()
     if not question or len(question) > limit:
-        raise DomainError("Followup question is empty or exceeds the configured limit")
-    return question
+        raise DomainError(f"Вопрос к карточке пустой или длиннее {limit} символов")
+    return action.model_copy(update={"question": question})
 
 
 def followup_evidence(
@@ -88,15 +86,7 @@ def followup_evidence(
     counterparty: CounterpartyContext | None,
     house_view: list[HouseViewClaim],
 ) -> dict[str, Evidence]:
-    news = trace_news(card)
-    evidence = sources(profile, counterparty, news, house_view)
-    unfactual = {item.id for item in news if not item.text}
-    return {
-        key: replace(item, factual=False)
-        if item.ref.kind == "news" and item.ref.id in unfactual
-        else item
-        for key, item in evidence.items()
-    }
+    return sources(profile, counterparty, trace_news(card), house_view)
 
 
 def followup_payload(

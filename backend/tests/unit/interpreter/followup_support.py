@@ -97,12 +97,12 @@ def answer_draft(claim: HouseViewClaim) -> dict[str, object]:
     }
 
 
-def followup_request() -> InterpretRequest:
+def followup_request(question: str = QUESTION) -> InterpretRequest:
     return InterpretRequest(
         user_id="private-user",
         client_id="private-client",
         role=Role.CFO,
-        action_context=FollowupContext(card_id="deposit-card", question=QUESTION),
+        action_context=FollowupContext(card_id="deposit-card", question=question),
     )
 
 
