@@ -36,7 +36,8 @@ describe("featureText", () => {
     ["import_countries", ["КИТАЙ", "ТУРЦИЯ"], "Китай, Турция"],
     ["okved_code", "46.49", "46.49"],
     ["region", "Москва", "Москва"],
-    ["revenue_rub", 24_107_304_489, "24 107 304 489"],
+    ["revenue_rub", 24_107_304_489, "24 107 304 489 ₽"],
+    ["workers", "Более 251", "Более 251"],
   ] as const)("shows %s %j as %s", (name, value, text) => {
     expect(featureText(name, value as Feature["value"]).replace(/\s/g, " ")).toBe(text);
   });

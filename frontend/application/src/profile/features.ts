@@ -1,6 +1,6 @@
 import type { Feature } from "@alpha-impact/plugin";
 import { FEATURE_GROUPS, FEATURES } from "../data/profile";
-import { NUMBER } from "../money";
+import { NUMBER, RUB_WHOLE } from "../money";
 
 export interface FeatureSection {
   title: string;
@@ -46,6 +46,9 @@ export function featureText(name: string, value: Feature["value"]): string {
   }
   if (Array.isArray(value)) {
     return value.map(word).join(", ");
+  }
+  if (typeof value === "number" && spec?.money) {
+    return RUB_WHOLE.format(value);
   }
   return formatFeatureValue(value);
 }
