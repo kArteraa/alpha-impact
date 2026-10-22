@@ -41,6 +41,7 @@ from shared.contracts.schemas import (
     InterpretRequest,
     InterpretResponse,
     NewsItem,
+    PageContext,
     PaymentContext,
     Trace,
     TraceStep,
@@ -64,6 +65,7 @@ class Agent:
     ) -> None:
         self._profiles = profiles
         self._counterparties = counterparties
+        self._news = news
         self._house_view = house_view
         self._llm = llm
         self._traces = traces
@@ -139,21 +141,29 @@ class Agent:
                 self._counterparties.context(request.client_id, action.beneficiary_id, action.inn),
             )
         as_of = journal.trace.created_at.date()
+        pasted = await self._pasted_news(request, journal)
         prefilter_started_at = utc_now()
         start = perf_counter()
-        selection = await self._prefilter.select(
-            profile,
-            request.action_context,
-            counterparty,
-            since=as_of - timedelta(days=self._config.lookback_days),
-            as_of=as_of,
-            limit=self._config.search_limit,
-        )
+        if pasted is None:
+            scope = f"limit={self._config.search_limit}"
+            selection = await self._prefilter.select(
+                profile,
+                request.action_context,
+                counterparty,
+                since=as_of - timedelta(days=self._config.lookback_days),
+                as_of=as_of,
+                limit=self._config.search_limit,
+            )
+        else:
+            scope = f"pasted={pasted.id}"
+            selection = await self._prefilter.rank(
+                [pasted], profile, request.action_context, counterparty, as_of=as_of
+            )
         journal.trace.steps.append(
             TraceStep(
                 step="prefilter",
                 name="relevance",
-                input_summary=f"limit={self._config.search_limit}",
+                input_summary=scope,
                 output_summary=json.dumps(
                     {
                         "candidates": [c.news.id for c in selection.candidates],
@@ -293,6 +303,22 @@ class Agent:
                 found = await self._chain(journal, call.argument, as_of)
             collected.update({claim.id: claim for claim in found})
         return [collected[key] for key in sorted(collected)]
+
+    async def _pasted_news(self, request: InterpretRequest, journal: Journal) -> NewsItem | None:
+        if not isinstance(request.action_context, PageContext):
+            return None
+        text = request.action_context.text.strip()
+        if not text:
+            raise DomainError("Page text is empty")
+        first, _, rest = text.partition("\n")
+        first = first.rstrip()
+        limit = self._config.max_title_chars
+        body = rest.strip() if len(first) <= limit else text
+        return await journal.tool(
+            "news.annotate",
+            "pasted page text",
+            self._news.annotate(first[:limit].rstrip(), body, request.action_context.url),
+        )
 
     async def _reviewed(
         self,

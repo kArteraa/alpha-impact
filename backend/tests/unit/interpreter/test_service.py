@@ -11,7 +11,6 @@ from shared.contracts.schemas import (
     DepositContext,
     FxContext,
     LoanContext,
-    PageContext,
     PayrollContext,
     Trace,
 )
@@ -232,20 +231,6 @@ async def test_templates_cover_business_actions(harness: Harness, action: object
     request = harness.request().model_copy(update={"action_context": action})
     assert (await harness.agent.interpret(request)).silent
     harness.counterparties.context.assert_not_awaited()
-
-
-@pytest.mark.parametrize(
-    "action",
-    [PageContext(url="https://example.invalid", text="text")],
-)
-async def test_future_action_workflows_are_explicit_errors(
-    harness: Harness, action: object
-) -> None:
-    with pytest.raises(DomainError):
-        await harness.agent.interpret(
-            harness.request().model_copy(update={"action_context": action})
-        )
-    harness.llm.complete.assert_not_awaited()
 
 
 async def test_malformed_gateway_result_is_a_domain_error(harness: Harness) -> None:

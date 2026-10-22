@@ -1,6 +1,7 @@
 lookback_days: 14
 search_limit: 200
 max_tool_calls: 4
+max_title_chars: 200
 trace_summary_chars: 1000
 followup_focus: Ответ на вопрос пользователя к карточке с опорой на её источники и актуальную позицию банка
 templates:
@@ -21,4 +22,7 @@ templates:
     context: [profile, news, house_view]
   dashboard:
     focus: Значимость событий для компании и её текущих экспозиций
+    context: [profile, news, house_view]
+  page:
+    focus: Значимость вставленной новости для компании и её текущих экспозиций
     context: [profile, news, house_view]
