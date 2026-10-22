@@ -12,7 +12,6 @@ from shared.contracts.schemas import (
     FollowupContext,
     FxContext,
     LoanContext,
-    PageContext,
     PayrollContext,
     Trace,
 )
@@ -235,16 +234,8 @@ async def test_templates_cover_business_actions(harness: Harness, action: object
     harness.counterparties.context.assert_not_awaited()
 
 
-@pytest.mark.parametrize(
-    "action",
-    [
-        PageContext(url="https://example.invalid", text="text"),
-        FollowupContext(card_id="card", question="Что дальше?"),
-    ],
-)
-async def test_future_action_workflows_are_explicit_errors(
-    harness: Harness, action: object
-) -> None:
+async def test_followup_workflow_is_an_explicit_error(harness: Harness) -> None:
+    action = FollowupContext(card_id="card", question="Что дальше?")
     with pytest.raises(DomainError):
         await harness.agent.interpret(
             harness.request().model_copy(update={"action_context": action})

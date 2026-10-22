@@ -28,6 +28,7 @@ from shared.contracts.schemas import (
     InterpretRequest,
     InterpretResponse,
     NewsItem,
+    PageContext,
     PaymentContext,
     Trace,
     TraceStep,
@@ -50,6 +51,7 @@ class Agent:
     ) -> None:
         self._profiles = profiles
         self._counterparties = counterparties
+        self._news = news
         self._house_view = house_view
         self._llm = llm
         self._traces = traces
@@ -115,16 +117,22 @@ class Agent:
                 self._counterparties.context(request.client_id, action.beneficiary_id, action.inn),
             )
         as_of = journal.trace.created_at.date()
+        page = await self._pasted_news(request, journal)
         prefilter_started_at = utc_now()
         start = perf_counter()
-        selection = await self._prefilter.select(
-            profile,
-            request.action_context,
-            counterparty,
-            since=as_of - timedelta(days=self._config.lookback_days),
-            as_of=as_of,
-            limit=self._config.search_limit,
-        )
+        if page is None:
+            selection = await self._prefilter.select(
+                profile,
+                request.action_context,
+                counterparty,
+                since=as_of - timedelta(days=self._config.lookback_days),
+                as_of=as_of,
+                limit=self._config.search_limit,
+            )
+        else:
+            selection = await self._prefilter.assess(
+                page, profile, request.action_context, as_of=as_of
+            )
         journal.trace.steps.append(
             TraceStep(
                 step="prefilter",
@@ -192,6 +200,19 @@ class Agent:
         )
         card = await self._reviewed(journal, payload, draft, evidence, current, news)
         return InterpretResponse(silent=False, cards=[card])
+
+    async def _pasted_news(self, request: InterpretRequest, journal: Journal) -> NewsItem | None:
+        if not isinstance(request.action_context, PageContext):
+            return None
+        page = request.action_context
+        title, _, body = page.text.strip().partition("\n")
+        if not title.strip():
+            raise DomainError("Page text is empty")
+        return await journal.tool(
+            "news.annotate",
+            "pasted page text",
+            self._news.annotate(title.strip(), body.strip(), page.url),
+        )
 
     async def _reviewed(
         self,

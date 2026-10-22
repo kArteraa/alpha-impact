@@ -107,9 +107,10 @@ def test_invalid_plan_limits_fail_at_startup(tmp_path: Path, field: str) -> None
         load_config(path)
 
 
-def test_missing_template_is_a_configuration_error(tmp_path: Path) -> None:
+@pytest.mark.parametrize("action", ["payment", "page"])
+def test_missing_template_is_a_configuration_error(tmp_path: Path, action: str) -> None:
     data = yaml.safe_load(PLANS_PATH.read_text(encoding="utf-8"))
-    del data["templates"]["payment"]
+    del data["templates"][action]
     path = tmp_path / "plans.yaml"
     path.write_text(yaml.safe_dump(data), encoding="utf-8")
     with pytest.raises(ValidationError, match="all business actions"):

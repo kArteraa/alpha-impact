@@ -9,7 +9,7 @@ from shared.contracts.errors import DomainError
 from shared.contracts.schemas import HouseViewClaim
 
 PLANS_PATH = Path(__file__).with_name("plans.yaml")
-BUSINESS_ACTIONS = {"payment", "deposit", "fx", "loan", "payroll", "dashboard"}
+BUSINESS_ACTIONS = {"payment", "deposit", "fx", "loan", "payroll", "dashboard", "page"}
 
 
 class Template(BaseModel):
