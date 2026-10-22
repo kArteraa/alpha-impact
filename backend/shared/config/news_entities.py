@@ -7,6 +7,7 @@ REGION = "region"
 COUNTRY = "country"
 COMPANY = "company"
 PRODUCT = "product"
+INN = "inn"
 
 PRODUCTS = ("settlement", "guarantee", "loan", "leasing", "deposit", "payroll", "factoring")
 

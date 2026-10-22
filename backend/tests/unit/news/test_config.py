@@ -30,3 +30,12 @@ def test_config_rejects_missing_product_hint() -> None:
     hints = {"loan": "кредит"}
     with pytest.raises(ValidationError, match="product_hints"):
         type(CONFIG).model_validate({**CONFIG.model_dump(), "product_hints": hints})
+
+
+def test_config_rejects_empty_page_types() -> None:
+    with pytest.raises(ValidationError, match="page_types"):
+        type(CONFIG).model_validate({**CONFIG.model_dump(), "page_types": {}})
+
+
+def test_page_prompt_lists_page_types() -> None:
+    assert all(f"- {name}:" in CONFIG.page_system for name in CONFIG.page_types)
