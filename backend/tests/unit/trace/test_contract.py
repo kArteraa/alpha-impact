@@ -1,6 +1,9 @@
+import inspect
+
 import pytest
 
 from apps.services import trace
+from apps.services.trace.service import TraceRepository
 from shared.contracts.ports import TraceStore
 from shared.di.container import Container
 
@@ -25,5 +28,19 @@ async def test_feedback_points_to_implementing_task() -> None:
         await resolve().feedback("u1", "card-1", useful=True, comment=None)
 
 
-def test_port_declares_feedback() -> None:
-    assert callable(getattr(TraceStore, "feedback", None))
+def test_port_declares_feedback_signature() -> None:
+    signature = inspect.signature(TraceStore.feedback, eval_str=True)
+    assert [(p.name, p.annotation) for p in signature.parameters.values()] == [
+        ("self", inspect.Parameter.empty),
+        ("user_id", str),
+        ("card_id", str),
+        ("useful", bool),
+        ("comment", str | None),
+    ]
+    assert signature.return_annotation is None
+
+
+def test_feedback_stub_matches_port_signature() -> None:
+    assert inspect.signature(TraceRepository.feedback, eval_str=True) == inspect.signature(
+        TraceStore.feedback, eval_str=True
+    )
