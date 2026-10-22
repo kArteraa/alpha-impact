@@ -5,6 +5,7 @@ export interface FeatureSpec {
   group: FeatureGroup;
   options?: Record<string, string>;
   labels?: Record<string, string>;
+  money?: boolean;
 }
 
 export const FEATURE_GROUPS: readonly (readonly [FeatureGroup, string])[] = [
@@ -59,7 +60,7 @@ export const FEATURES: Record<string, FeatureSpec> = {
   region: { label: "Регион", group: "geography" },
   city: { label: "Город", group: "geography" },
   import_countries: { label: "Страны импорта", group: "geography" },
-  revenue_rub: { label: "Выручка, ₽", group: "scale" },
+  revenue_rub: { label: "Выручка", group: "scale", money: true },
   workers: { label: "Сотрудников", group: "scale" },
   cl_type: { label: "Статус клиента", group: "bank", labels: CLIENT_TYPES },
   products: { label: "Продукты банка", group: "bank", labels: PRODUCTS },
