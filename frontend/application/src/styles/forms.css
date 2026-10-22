@@ -85,8 +85,10 @@
 
 .field textarea {
   min-height: 104px;
+  max-height: 200px;
   padding-top: 27px;
-  resize: vertical;
+  resize: none;
+  field-sizing: content;
 }
 
 .field [aria-invalid="true"],

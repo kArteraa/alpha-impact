@@ -2,7 +2,7 @@ import { INTERPRET_DELAY_MS, mockResponses } from "@alpha-impact/plugin";
 import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { COUNTERPARTIES } from "../data/counterparties";
-import { TEST_CLIENT, TEST_USER, renderWithCompany, stubApi } from "../testing";
+import { TEST_CLIENT, TEST_USER, chooseOption, renderWithCompany, stubApi } from "../testing";
 import { PaymentPage } from "./PaymentPage";
 
 const [CARRIER, STATIONERY] = COUNTERPARTIES.map((counterparty) => counterparty.id);
@@ -29,7 +29,8 @@ function setAmount(amount: string) {
 }
 
 function setRecipient(beneficiaryId: string) {
-  fireEvent.change(screen.getByLabelText("Получатель"), { target: { value: beneficiaryId } });
+  const name = COUNTERPARTIES.find((counterparty) => counterparty.id === beneficiaryId)?.name ?? "";
+  chooseOption("Получатель", new RegExp(name));
 }
 
 function fill(beneficiaryId: string, amount: string) {
@@ -71,10 +72,25 @@ describe("PaymentPage", () => {
 
   it("lists real counterparties of the wholesaler as recipients", () => {
     render();
+    expect(screen.getByRole("combobox", { name: "Получатель" }).textContent).toContain("Выберите контрагента");
 
-    const values = Array.from(screen.getByLabelText<HTMLSelectElement>("Получатель").options, (o) => o.value);
-    expect(values).toEqual(["", "U_96105", STATIONERY]);
+    fireEvent.click(screen.getByRole("combobox", { name: "Получатель" }));
+
+    const options = screen.getAllByRole("option").map((option) => option.textContent);
+    expect(options).toEqual([
+      "ООО «Северо-Западная логистика»Грузоперевозки, Санкт-Петербург",
+      "ООО «Канцмир»Канцелярские товары, Москва",
+    ]);
+    expect(COUNTERPARTIES.map((counterparty) => counterparty.id)).toEqual(["U_96105", STATIONERY]);
     expect(STATIONERY).toMatch(/^U_\d+$/);
+  });
+
+  it("marks the steps of the form done in the placeholder", () => {
+    render();
+    setRecipient(CARRIER);
+
+    const steps = Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => step.getAttribute("data-done"));
+    expect(steps).toEqual(["true", "false"]);
   });
 
   it("asks /interpret for the signed-in user, company and role", async () => {
@@ -113,7 +129,7 @@ describe("PaymentPage", () => {
     render();
     fill(CARRIER, "1500000");
 
-    const describedBy = screen.getByLabelText("Получатель").getAttribute("aria-describedby");
+    const describedBy = screen.getByRole("combobox", { name: "Получатель" }).getAttribute("aria-describedby");
     expect(describedBy).toBe(screen.getByText("Грузоперевозки, Санкт-Петербург").id);
   });
 
@@ -157,9 +173,6 @@ describe("PaymentPage", () => {
     setRecipient(STATIONERY);
     await answer();
     expect(panelState()).toBe("silent");
-
-    setRecipient("");
-    expect(panelState()).toBeUndefined();
   });
 
   it("hides the panel when the amount is cleared", async () => {
