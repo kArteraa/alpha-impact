@@ -1,3 +1,4 @@
+import asyncio
 import json
 from unittest.mock import AsyncMock
 
@@ -18,7 +19,9 @@ async def returns[T](value: T) -> T:
 
 
 async def test_tool_step_records_result_truncated_to_limit() -> None:
-    journal = Journal(empty_trace(), AsyncMock(spec=LLMGateway), "model", summary_chars=12)
+    journal = Journal(
+        empty_trace(), AsyncMock(spec=LLMGateway), "interpret", "model", summary_chars=12
+    )
     result = [{"id": "claim-1", "claim": "Ставка снижена"}]
     assert await journal.tool("house_view.chain", "claim-1", returns(result)) == result
     step = journal.trace.steps[0]
@@ -27,7 +30,9 @@ async def test_tool_step_records_result_truncated_to_limit() -> None:
 
 
 async def test_tool_step_records_model_result_as_json() -> None:
-    journal = Journal(empty_trace(), AsyncMock(spec=LLMGateway), "model", summary_chars=10_000)
+    journal = Journal(
+        empty_trace(), AsyncMock(spec=LLMGateway), "interpret", "model", summary_chars=10_000
+    )
     context = EXAMPLES[CounterpartyContext]
     await journal.tool("counterparty.context", "recipient aggregates", returns(context))
     assert json.loads(journal.trace.steps[0].output_summary) == context.model_dump(mode="json")
@@ -55,3 +60,37 @@ async def test_plan_step_records_template_and_plan_truncated_to_limit(harness: H
     plan = next(step for step in trace.steps if step.step == "plan")
     assert len(plan.output_summary) == limit
     assert plan.output_summary.startswith('{"template": {"focus": ')
+
+
+async def test_lookup_step_records_described_result() -> None:
+    journal = Journal(
+        empty_trace(), AsyncMock(spec=LLMGateway), "followup", "model", summary_chars=10_000
+    )
+    trace = empty_trace()
+    assert (
+        await journal.lookup("trace.find_by_card", "card", returns(trace), lambda t: t.id) == trace
+    )
+    step = journal.trace.steps[0]
+    assert step.input_summary == "card"
+    assert step.output_summary == trace.id
+
+
+async def test_steps_keep_start_order_when_calls_overlap() -> None:
+    journal = Journal(
+        empty_trace(), AsyncMock(spec=LLMGateway), "followup", "model", summary_chars=100
+    )
+    first = asyncio.Event()
+
+    async def slow() -> str:
+        await first.wait()
+        return "slow"
+
+    async def fast() -> str:
+        first.set()
+        return "fast"
+
+    await asyncio.gather(
+        journal.tool("house_view.chain", "first", slow()),
+        journal.tool("house_view.chain", "second", fast()),
+    )
+    assert [step.input_summary for step in journal.trace.steps] == ["first", "second"]

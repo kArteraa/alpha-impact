@@ -1,5 +1,5 @@
 import json
-from collections.abc import AsyncIterator, Awaitable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from time import perf_counter
@@ -16,9 +16,12 @@ def utc_now() -> datetime:
 
 
 class Journal:
-    def __init__(self, trace: Trace, llm: LLMGateway, model: str, summary_chars: int) -> None:
+    def __init__(
+        self, trace: Trace, llm: LLMGateway, task: str, model: str, summary_chars: int
+    ) -> None:
         self.trace = trace
         self.llm = llm
+        self.task = task
         self.model = model
         self.summary_chars = summary_chars
 
@@ -28,6 +31,7 @@ class Journal:
     @asynccontextmanager
     async def _step(self, step: TraceStep) -> AsyncIterator[TraceStep]:
         start = perf_counter()
+        self.trace.steps.append(step)
         try:
             yield step
         except Exception as error:
@@ -35,9 +39,13 @@ class Journal:
             raise
         finally:
             step.duration_ms = int((perf_counter() - start) * 1000)
-            self.trace.steps.append(step)
 
     async def tool[T](self, name: str, summary: str, operation: Awaitable[T]) -> T:
+        return await self.lookup(name, summary, operation, self.summary)
+
+    async def lookup[T](
+        self, name: str, summary: str, operation: Awaitable[T], describe: Callable[[T], str]
+    ) -> T:
         async with self._step(
             TraceStep(
                 step="tool",
@@ -48,7 +56,7 @@ class Journal:
             )
         ) as step:
             result = await operation
-            step.output_summary = self.summary(result)
+            step.output_summary = describe(result)
             return result
 
     async def generate[T: BaseModel](self, name: str, system: str, user: str, schema: type[T]) -> T:
@@ -63,7 +71,7 @@ class Journal:
             )
         ) as step:
             raw, step.tokens_in, step.tokens_out = await self.llm.complete(
-                task="interpret", system=system, user=user, schema=schema
+                task=self.task, system=system, user=user, schema=schema
             )
             result = schema.model_validate(raw)
             step.output_summary = self.summary(result)

@@ -3,6 +3,9 @@ search_limit: 200
 max_tool_calls: 4
 max_title_chars: 200
 trace_summary_chars: 1000
+followup_focus: Ответ на вопрос пользователя к карточке с опорой на её источники и актуальную позицию банка
+max_question_chars: 1000
+max_followup_depth: 5
 templates:
   payment:
     focus: Сроки поставки и тарифы получателя платежа; связь с отраслью и долей в оттоке клиента

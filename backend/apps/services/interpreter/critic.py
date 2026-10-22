@@ -3,7 +3,7 @@ import re
 
 from pydantic import BaseModel, ConfigDict
 
-from apps.services.interpreter.drafting import CLAIM_BLOCKS
+from apps.services.interpreter.drafting import card_claims
 from apps.services.interpreter.prompts import CRITIC_SYSTEM
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Claim, ClaimType, HouseViewClaim, InsightCard, NewsItem
@@ -22,10 +22,6 @@ class Contradiction(BaseModel):
 class Contradictions(BaseModel):
     model_config = ConfigDict(extra="forbid")
     items: list[Contradiction]
-
-
-def claims(card: InsightCard) -> list[Claim]:
-    return [claim for name in CLAIM_BLOCKS for claim in getattr(card, name)]
 
 
 def source_verdicts(
@@ -83,7 +79,7 @@ class CriticAgent:
     async def review(
         self, card: InsightCard, house_view: list[HouseViewClaim], news: list[NewsItem]
     ) -> list[str]:
-        checked = claims(card)
+        checked = card_claims(card)
         return [
             *source_verdicts(card, checked, house_view, news),
             *bank_verdicts(card, checked, house_view),

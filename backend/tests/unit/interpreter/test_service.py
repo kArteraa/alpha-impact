@@ -9,7 +9,6 @@ from shared.contracts.errors import AccessDenied, BudgetExceeded, DomainError
 from shared.contracts.schemas import (
     DashboardContext,
     DepositContext,
-    FollowupContext,
     FxContext,
     LoanContext,
     PayrollContext,
@@ -232,15 +231,6 @@ async def test_templates_cover_business_actions(harness: Harness, action: object
     request = harness.request().model_copy(update={"action_context": action})
     assert (await harness.agent.interpret(request)).silent
     harness.counterparties.context.assert_not_awaited()
-
-
-async def test_followup_workflow_is_an_explicit_error(harness: Harness) -> None:
-    action = FollowupContext(card_id="card", question="Что дальше?")
-    with pytest.raises(DomainError):
-        await harness.agent.interpret(
-            harness.request().model_copy(update={"action_context": action})
-        )
-    harness.llm.complete.assert_not_awaited()
 
 
 async def test_malformed_gateway_result_is_a_domain_error(harness: Harness) -> None:
