@@ -21,6 +21,10 @@ def current_claims(claims: list[HouseViewClaim], as_of: date) -> list[HouseViewC
     ]
 
 
+def source_key(ref: SourceRef) -> str:
+    return f"{ref.kind}:{ref.id}"
+
+
 @dataclass
 class Evidence:
     ref: SourceRef
@@ -35,48 +39,58 @@ def sources(
     news: list[NewsItem],
     house_view: list[HouseViewClaim],
 ) -> dict[str, Evidence]:
-    result: dict[str, Evidence] = {}
+    items: list[Evidence] = []
     for name, feature in profile.features.items():
-        result[f"profile:{name}"] = Evidence(
-            SourceRef(kind="profile", id=name, title=f"Признак компании: {name}"),
-            feature.model_dump(mode="json"),
-            None,
-            feature.source in {"bank", "graph", "user"},
+        items.append(
+            Evidence(
+                SourceRef(kind="profile", id=name, title=f"Признак компании: {name}"),
+                feature.model_dump(mode="json"),
+                None,
+                feature.source in {"bank", "graph", "user"},
+            )
         )
     if counterparty is not None:
         for name, value in counterparty.model_dump().items():
             if value is not None:
-                result[f"graph:{name}"] = Evidence(
-                    SourceRef(kind="graph", id=name, title=f"Контекст контрагента: {name}"),
-                    value,
-                    None,
-                    True,
+                items.append(
+                    Evidence(
+                        SourceRef(kind="graph", id=name, title=f"Контекст контрагента: {name}"),
+                        value,
+                        None,
+                        True,
+                    )
                 )
     for item in news:
-        result[f"news:{item.id}"] = Evidence(
-            SourceRef(
-                kind="news",
-                id=item.id,
-                title=item.title,
-                url=item.url,
-                published_at=item.published_at,
-            ),
-            item.model_dump(mode="json"),
-            None,
-            True,
+        items.append(
+            Evidence(
+                SourceRef(
+                    kind="news",
+                    id=item.id,
+                    title=item.title,
+                    url=item.url,
+                    published_at=item.published_at,
+                ),
+                item.model_dump(mode="json"),
+                None,
+                True,
+            )
         )
     for claim in house_view:
-        result[f"house_view:{claim.id}"] = Evidence(
-            SourceRef(
-                kind="house_view",
-                id=claim.id,
-                title=f"{claim.source_doc}, стр. {claim.page}" if claim.page else claim.source_doc,
-            ),
-            claim.model_dump(mode="json"),
-            claim.claim,
-            claim.type == "fact",
+        items.append(
+            Evidence(
+                SourceRef(
+                    kind="house_view",
+                    id=claim.id,
+                    title=f"{claim.source_doc}, стр. {claim.page}"
+                    if claim.page
+                    else claim.source_doc,
+                ),
+                claim.model_dump(mode="json"),
+                claim.claim,
+                claim.type == "fact",
+            )
         )
-    return result
+    return {source_key(item.ref): item for item in items}
 
 
 def prompt_context(

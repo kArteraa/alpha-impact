@@ -1,23 +1,17 @@
-from apps.services.interpreter.context import Evidence, prompt_context, sources
-from apps.services.interpreter.drafting import CLAIM_BLOCKS
+from apps.services.interpreter.context import Evidence, prompt_context, source_key, sources
+from apps.services.interpreter.drafting import CLAIM_BLOCKS, card_claims
 from shared.contracts.errors import NotFound
 from shared.contracts.schemas import (
     ClientProfile,
-    FollowupContext,
     HouseViewClaim,
     InsightCard,
     InterpretRequest,
     NewsItem,
-    SourceRef,
     Trace,
 )
 
 TRACE_SOURCES = {"news", "graph"}
 TRACE_NEWS_SOURCE = "trace"
-
-
-def source_key(ref: SourceRef) -> str:
-    return f"{ref.kind}:{ref.id}"
 
 
 def original_card(trace: Trace, card_id: str) -> InsightCard:
@@ -46,7 +40,7 @@ def card_view(card: InsightCard) -> dict[str, object]:
 
 
 def trace_evidence(card: InsightCard) -> dict[str, Evidence]:
-    claims = [claim for name in CLAIM_BLOCKS for claim in getattr(card, name)]
+    claims = card_claims(card)
     return {
         source_key(ref): Evidence(
             ref,
@@ -87,20 +81,14 @@ def followup_evidence(
 
 
 def followup_payload(
+    question: str,
     request: InterpretRequest,
-    original: Trace,
-    action: FollowupContext,
     card: InsightCard,
     profile: ClientProfile,
-    house_view: list[HouseViewClaim],
+    evidence: dict[str, Evidence],
 ) -> dict[str, object]:
     return {
-        "question": action.question,
+        "question": question,
         "card": card_view(card),
-        "context": prompt_context(
-            original.request.model_copy(update={"role": request.role}),
-            profile,
-            None,
-            followup_evidence(card, profile, house_view),
-        ),
+        "context": prompt_context(request, profile, None, evidence),
     }
