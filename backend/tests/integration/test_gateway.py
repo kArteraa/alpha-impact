@@ -364,9 +364,6 @@ def test_openapi_matches_contracts(app: FastAPI) -> None:
 @pytest.mark.parametrize(
     ("method", "path", "task"),
     [
-        ("POST", "/feedback", "AH-23"),
-        ("GET", "/trace/t1", "AH-23"),
-        ("GET", "/metrics", "AH-23"),
         ("POST", "/auth/extension-token", "AH-37"),
     ],
 )
