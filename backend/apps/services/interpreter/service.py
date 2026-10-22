@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import date, timedelta
 from time import perf_counter
@@ -202,36 +203,30 @@ class Agent:
     async def _followup(
         self, request: InterpretRequest, action: FollowupContext, journal: Journal
     ) -> InterpretResponse:
-        original = await journal.tool(
-            "trace.find_by_card",
-            "trace of the questioned card",
-            self._traces.find_by_card(
-                user_id=request.user_id, client_id=request.client_id, card_id=action.card_id
-            ),
-        )
-        journal.trace.steps[-1].output_summary = original.id
+        question = action.question.strip()
+        if not question or len(question) > self._config.max_question_chars:
+            raise DomainError("Followup question is empty or exceeds the configured limit")
+        original = await self._card_trace(journal, request, action.card_id)
         card = original_card(original, action.card_id)
+        root = await self._root_request(journal, request, original)
         profile = await journal.tool(
             "profile.get_profile",
             "authorized client features",
             self._profiles.get_profile(request.user_id, request.client_id),
         )
         as_of = journal.trace.created_at.date()
-        cited: dict[str, HouseViewClaim] = {}
-        for claim_id in cited_house_view(card):
-            try:
-                found = await self._chain(journal, claim_id, as_of)
-            except NotFound:
-                continue
-            cited.update({claim.id: claim for claim in found})
+        found = await asyncio.gather(
+            *(self._cited(journal, claim_id, as_of) for claim_id in cited_house_view(card))
+        )
+        cited = {claim.id: claim for batch in found for claim in batch}
         house_view = [cited[key] for key in sorted(cited)]
-        prompt_request = original.request.model_copy(update={"role": request.role})
+        prompt_request = root.model_copy(update={"role": request.role})
         plan = await self._plan(
             journal,
             FOLLOWUP_PLAN_SYSTEM,
             {"focus": self._config.followup_focus},
             followup_payload(
-                action.question,
+                question,
                 prompt_request,
                 card,
                 profile,
@@ -242,7 +237,7 @@ class Agent:
         evidence = followup_evidence(card, profile, current)
         payload: dict[str, object] = {
             "plan": plan.model_dump(),
-            **followup_payload(action.question, prompt_request, card, profile, evidence),
+            **followup_payload(question, prompt_request, card, profile, evidence),
         }
         draft = await journal.generate(
             "draft", FOLLOWUP_DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
@@ -277,6 +272,29 @@ class Agent:
             {"template": template, **plan.model_dump()}
         )
         return plan
+
+    async def _card_trace(self, journal: Journal, request: InterpretRequest, card_id: str) -> Trace:
+        return await journal.lookup(
+            "trace.find_by_card",
+            "trace of the questioned card",
+            self._traces.find_by_card(
+                user_id=request.user_id, client_id=request.client_id, card_id=card_id
+            ),
+            lambda trace: trace.id,
+        )
+
+    async def _root_request(
+        self, journal: Journal, request: InterpretRequest, trace: Trace
+    ) -> InterpretRequest:
+        while isinstance(trace.request.action_context, FollowupContext):
+            trace = await self._card_trace(journal, request, trace.request.action_context.card_id)
+        return trace.request
+
+    async def _cited(self, journal: Journal, claim_id: str, as_of: date) -> list[HouseViewClaim]:
+        try:
+            return await self._chain(journal, claim_id, as_of)
+        except NotFound:
+            return []
 
     async def _chain(self, journal: Journal, claim_id: str, as_of: date) -> list[HouseViewClaim]:
         batch = await journal.tool(
