@@ -7,7 +7,6 @@ import httpx
 import pytest
 from fastapi import FastAPI
 from pydantic import BaseModel
-from pydantic.main import IncEx
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from apps.services.counterparty.batch import rebuild_graph
@@ -36,10 +35,13 @@ from tests.leak import (
 PAYMENT_AMOUNT = 1_234_567.89
 NEWS_ID = "leak-probe-news"
 CARD_PROBES = 25
-OWN_INPUT: dict[str, IncEx | bool] = {
-    "result": True,
-    "request": {"action_context": {"beneficiary_id", "inn"}},
-}
+OTHER_ACTIONS: list[dict[str, object]] = [
+    {"type": "dashboard"},
+    {"type": "deposit", "amount": PAYMENT_AMOUNT, "term_days": 90},
+    {"type": "fx", "currency": "CNY", "amount": PAYMENT_AMOUNT},
+    {"type": "loan", "product": "loan", "amount": PAYMENT_AMOUNT},
+    {"type": "payroll", "amount": PAYMENT_AMOUNT},
+]
 
 
 class EchoModel:
@@ -50,7 +52,7 @@ class EchoModel:
         self, task: str, system: str, user: str, schema: type | None = None
     ) -> tuple[object, int, int]:
         assert schema is not None and issubclass(schema, BaseModel)
-        self.prompts.append(user)
+        self.prompts += [system, user]
         if task == "critic":
             return schema.model_validate({"items": []}), 0, 0
         if "tools" in schema.model_fields:
@@ -127,7 +129,7 @@ async def test_seed_cards_contain_no_foreign_data(
 ) -> None:
     users = seed_clients()
     foreign_data = seed_foreign_data()
-    assert all(PAYMENT_AMOUNT not in foreign.amounts for foreign in foreign_data.values())
+    assert not any(foreign.has_amount(PAYMENT_AMOUNT) for foreign in foreign_data.values())
     cards = 0
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -135,15 +137,23 @@ async def test_seed_cards_contain_no_foreign_data(
             user_id = users[client_id]
             assert (await client.post("/auth/mock", json={"user_id": user_id})).status_code == 200
             model.prompts.clear()
-            for beneficiary_id, inn in probes(foreign, CARD_PROBES):
-                action = {"type": "payment", "beneficiary_id": beneficiary_id, "inn": inn}
+            payments: list[dict[str, object]] = [
+                {
+                    "type": "payment",
+                    "beneficiary_id": beneficiary_id,
+                    "inn": inn,
+                    "amount": PAYMENT_AMOUNT,
+                }
+                for beneficiary_id, inn in probes(foreign, CARD_PROBES)
+            ]
+            for action in [*payments, *OTHER_ACTIONS]:
                 reply = await client.post(
                     "/interpret",
                     json={
                         "user_id": user_id,
                         "client_id": client_id,
                         "role": "cfo",
-                        "action_context": {**action, "amount": PAYMENT_AMOUNT},
+                        "action_context": action,
                     },
                 )
                 assert reply.status_code == 200, reply.text
@@ -156,7 +166,10 @@ async def test_seed_cards_contain_no_foreign_data(
     saved: list[Trace] = [call.args[0] for call in traces.save.call_args_list]
     for trace in saved:
         owner = trace.request.client_id
-        dumped = trace.model_dump(mode="json", exclude=OWN_INPUT)
+        dumped = trace.model_dump(
+            mode="json",
+            exclude={"result": True, "request": {"action_context": {"beneficiary_id", "inn"}}},
+        )
         assert_no_foreign_data(dumped, owner, foreign_data[owner])
     assert cards
     assert saved

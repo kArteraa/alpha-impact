@@ -1,9 +1,9 @@
 import json
 import re
 from collections import defaultdict
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from functools import cache
+from functools import cache, cached_property
 
 from pydantic import BaseModel
 
@@ -26,8 +26,10 @@ MACHINE_VALUE = re.compile(
 SEPARATORS = " \N{NO-BREAK SPACE}\N{NARROW NO-BREAK SPACE}"
 WITHOUT_SEPARATORS = str.maketrans("", "", SEPARATORS)
 NUMBER = re.compile(
-    rf"(?<![0-9A-Za-z_.,])(?:\d{{1,3}}(?:[{SEPARATORS}]\d{{3}})+|\d+)(?:[.,]\d+)?(?![0-9A-Za-z_])"
+    rf"(?<![0-9A-Za-z_.,])(?:\d{{1,3}}(?:[{SEPARATORS},]\d{{3}})+|\d+)(?:[.,]\d+)?(?![0-9A-Za-z_])"
 )
+COMMA_GROUPS = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?")
+MIN_AMOUNT = 10_000
 PRODUCT_MARKS = ("CL_PRODUCT_", "FACTORING_MARK")
 PRODUCT_LABELS = frozenset(rule.product.casefold() for rule in load_catalog(RULES_PATH).rules)
 OWN_OFFER = frozenset({"product_offer"})
@@ -39,6 +41,19 @@ Probe = tuple[str | None, str | None]
 class ForeignData:
     counterparties: frozenset[str] = frozenset()
     amounts: frozenset[float] = frozenset()
+
+    @cached_property
+    def amount_keys(self) -> frozenset[int]:
+        return amount_keys(self.amounts)
+
+    def has_amount(self, value: float) -> bool:
+        return not amount_keys([value]).isdisjoint(self.amount_keys)
+
+
+def amount_keys(values: Iterable[float]) -> frozenset[int]:
+    return frozenset(
+        key for value in values if value >= MIN_AMOUNT for key in (int(value), round(value))
+    )
 
 
 def seed_clients() -> dict[str, str]:
@@ -99,7 +114,11 @@ def leaves(value: object, skipped: frozenset[str] = frozenset()) -> Iterator[obj
 
 def numbers(text: str) -> Iterator[float]:
     for match in NUMBER.findall(text):
-        yield float(match.translate(WITHOUT_SEPARATORS).replace(",", "."))
+        plain = match.translate(WITHOUT_SEPARATORS)
+        if COMMA_GROUPS.fullmatch(plain):
+            yield float(plain.replace(",", ""))
+        if plain.count(",") + plain.count(".") <= 1:
+            yield float(plain.replace(",", "."))
 
 
 def text_leaks(text: str, client_id: str) -> list[str]:
@@ -130,5 +149,5 @@ def assert_no_foreign_data(payload: object, client_id: str, foreign: ForeignData
     for text in {MACHINE_VALUE.sub(" ", text) for text in texts(dumped)}:
         leaks += text_leaks(text, client_id)
         values.update(numbers(text))
-    leaks += [str(value) for value in values if value in foreign.amounts]
+    leaks += [str(value) for value in values if foreign.has_amount(value)]
     assert not leaks, f"{client_id} sees foreign data {leaks} in {type(payload).__name__}"
