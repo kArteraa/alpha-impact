@@ -2,6 +2,10 @@
   background: var(--primary);
 }
 
+[data-tone="soft"] {
+  background: var(--text-tertiary);
+}
+
 [data-tone="muted"] {
   background: var(--bg-neutral-strong);
 }
