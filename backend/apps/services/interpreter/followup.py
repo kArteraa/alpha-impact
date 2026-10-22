@@ -54,17 +54,14 @@ def trace_refs(card: InsightCard) -> list[SourceRef]:
     return [ref for ref in card.basis if ref.kind == "graph" or traceable_news(ref)]
 
 
-def fact_texts(ref: SourceRef, facts: list[Claim]) -> list[str]:
-    return [claim.text for claim in facts if claim.source_ref == ref]
+def fact_evidence(ref: SourceRef, facts: list[Claim]) -> Evidence:
+    texts = [claim.text for claim in facts if claim.source_ref == ref]
+    return Evidence(ref, texts, None, bool(texts))
 
 
 def trace_evidence(card: InsightCard) -> dict[str, Evidence]:
     facts = [claim for claim in card_claims(card) if claim.type == ClaimType.FACT]
-    return {
-        source_key(ref): Evidence(ref, texts, None, bool(texts))
-        for ref in trace_refs(card)
-        for texts in [fact_texts(ref, facts)]
-    }
+    return {source_key(ref): fact_evidence(ref, facts) for ref in trace_refs(card)}
 
 
 def trace_news(card: InsightCard) -> list[NewsItem]:

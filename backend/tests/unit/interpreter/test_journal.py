@@ -1,3 +1,4 @@
+import asyncio
 import json
 from unittest.mock import AsyncMock
 
@@ -72,3 +73,24 @@ async def test_lookup_step_records_described_result() -> None:
     step = journal.trace.steps[0]
     assert step.input_summary == "card"
     assert step.output_summary == trace.id
+
+
+async def test_steps_keep_start_order_when_calls_overlap() -> None:
+    journal = Journal(
+        empty_trace(), AsyncMock(spec=LLMGateway), "followup", "model", summary_chars=100
+    )
+    first = asyncio.Event()
+
+    async def slow() -> str:
+        await first.wait()
+        return "slow"
+
+    async def fast() -> str:
+        first.set()
+        return "fast"
+
+    await asyncio.gather(
+        journal.tool("house_view.chain", "first", slow()),
+        journal.tool("house_view.chain", "second", fast()),
+    )
+    assert [step.input_summary for step in journal.trace.steps] == ["first", "second"]
