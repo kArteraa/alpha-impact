@@ -1,5 +1,5 @@
 import json
-from collections.abc import AsyncIterator, Awaitable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from time import perf_counter
@@ -41,6 +41,11 @@ class Journal:
             self.trace.steps.append(step)
 
     async def tool[T](self, name: str, summary: str, operation: Awaitable[T]) -> T:
+        return await self.lookup(name, summary, operation, self.summary)
+
+    async def lookup[T](
+        self, name: str, summary: str, operation: Awaitable[T], describe: Callable[[T], str]
+    ) -> T:
         async with self._step(
             TraceStep(
                 step="tool",
@@ -51,7 +56,7 @@ class Journal:
             )
         ) as step:
             result = await operation
-            step.output_summary = self.summary(result)
+            step.output_summary = describe(result)
             return result
 
     async def generate[T: BaseModel](self, name: str, system: str, user: str, schema: type[T]) -> T:

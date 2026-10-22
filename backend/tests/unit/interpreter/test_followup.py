@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from apps.services.interpreter.planning import PLANS_PATH, load_config
 from apps.services.interpreter.prompts import FOLLOWUP_DRAFT_SYSTEM
 from shared.config.settings import Settings
 from shared.contracts.errors import AccessDenied, DomainError, NotFound
@@ -251,10 +252,11 @@ async def test_withdrawn_cited_claim_leaves_answer_without_bank_view(harness: Ha
     assert chain.output_summary == "NotFound"
 
 
-async def test_undated_news_is_not_offered_as_source(harness: Harness) -> None:
+@pytest.mark.parametrize("missing", ["published_at", "title", "url"])
+async def test_incomplete_news_ref_is_not_offered_as_source(harness: Harness, missing: str) -> None:
     claim = rate_claim(harness, "rate-approved")
-    undated = NEWS_REF.model_copy(update={"published_at": None})
-    harness.traces.find_by_card.return_value = deposit_trace(claim, undated)
+    incomplete = NEWS_REF.model_copy(update={missing: None})
+    harness.traces.find_by_card.return_value = deposit_trace(claim, incomplete)
     harness.house_view.chain.return_value = [claim]
     harness.answers[:] = [{"focus": "Ответ про ставку", "tools": []}, answer_draft(claim)]
     with pytest.raises(DomainError):
@@ -264,26 +266,115 @@ async def test_undated_news_is_not_offered_as_source(harness: Harness) -> None:
     assert "news:rate-news" not in context["sources"]
 
 
-async def test_followup_on_followup_answer_hides_previous_card(
+async def test_followup_on_followup_answer_keeps_root_action(
     harness: Harness, rate: HouseViewClaim
 ) -> None:
-    previous = deposit_trace(rate)
-    harness.traces.find_by_card.return_value = previous.model_copy(
+    root = deposit_trace(rate)
+    previous = root.model_copy(
         update={
-            "request": previous.request.model_copy(
+            "id": "previous-trace",
+            "request": root.request.model_copy(
                 update={
                     "action_context": FollowupContext(
                         card_id="older-card", question="Что будет с доходом?"
                     )
                 }
-            )
+            ),
         }
     )
+    harness.traces.find_by_card.return_value = None
+    harness.traces.find_by_card.side_effect = [previous, root]
     response = await harness.agent.interpret(followup_request())
     assert response.cards[0].bank_view[0].source_ref.id == rate.id
+    assert harness.traces.find_by_card.await_args_list[1].kwargs == {
+        "user_id": "private-user",
+        "client_id": "private-client",
+        "card_id": "older-card",
+    }
+    for index in (0, 1):
+        context = prompt(harness, index)["context"]
+        assert isinstance(context, dict)
+        assert context["action"] == {"type": "deposit", "amount": 5_000_000, "term_days": 90}
     for call in harness.llm.complete.await_args_list:
         assert "older-card" not in call.kwargs["user"]
-    assert "Что будет с доходом?" in harness.llm.complete.await_args_list[1].kwargs["user"]
+        assert "Что будет с доходом?" not in call.kwargs["user"]
+
+
+def without_fact_on_news(trace: Trace) -> Trace:
+    assert trace.result is not None
+    card = trace.result.cards[0]
+    fact = Claim(text="Компания держит депозиты", type=ClaimType.FACT, source_ref=PROFILE_REF)
+    answer = card.model_copy(update={"what_happened": [fact]})
+    return trace.model_copy(update={"result": trace.result.model_copy(update={"cards": [answer]})})
+
+
+async def test_trace_source_offers_only_fact_claims(harness: Harness, rate: HouseViewClaim) -> None:
+    await harness.agent.interpret(followup_request())
+    context = prompt(harness, 1)["context"]
+    assert isinstance(context, dict)
+    news = context["sources"]["news:rate-news"]
+    assert news["value"] == ["ЦБ сохранил ставку"]
+    assert news["factual"] is True
+
+
+async def test_ai_claim_of_original_card_cannot_return_as_fact(
+    harness: Harness, rate: HouseViewClaim
+) -> None:
+    harness.traces.find_by_card.return_value = without_fact_on_news(deposit_trace(rate))
+    with pytest.raises(DomainError):
+        await harness.agent.interpret(followup_request())
+    context = prompt(harness, 1)["context"]
+    assert isinstance(context, dict)
+    news = context["sources"]["news:rate-news"]
+    assert news["value"] == []
+    assert news["factual"] is False
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["", "   ", "?" * (load_config(PLANS_PATH).max_question_chars + 1)],
+    ids=["empty", "blank", "too-long"],
+)
+async def test_invalid_question_stops_before_store_and_model(
+    harness: Harness, rate: HouseViewClaim, question: str
+) -> None:
+    request = followup_request().model_copy(
+        update={"action_context": FollowupContext(card_id="deposit-card", question=question)}
+    )
+    with pytest.raises(DomainError):
+        await harness.agent.interpret(request)
+    harness.traces.find_by_card.assert_not_awaited()
+    harness.llm.complete.assert_not_awaited()
+
+
+async def test_every_cited_claim_is_refreshed_and_withdrawn_is_skipped(
+    harness: Harness, rate: HouseViewClaim
+) -> None:
+    withdrawn = rate_claim(harness, "rate-withdrawn")
+    trace = deposit_trace(rate)
+    assert trace.result is not None
+    card = trace.result.cards[0]
+    extra = SourceRef(kind="house_view", id=withdrawn.id, title="synthetic-report, стр. 2")
+    two_claims = card.model_copy(update={"basis": [*card.basis, extra]})
+    harness.traces.find_by_card.return_value = trace.model_copy(
+        update={"result": trace.result.model_copy(update={"cards": [two_claims]})}
+    )
+
+    async def chain(*, claim_id: str) -> list[HouseViewClaim]:
+        if claim_id == withdrawn.id:
+            raise NotFound("not approved")
+        return [rate]
+
+    harness.house_view.chain.side_effect = chain
+    response = await harness.agent.interpret(followup_request())
+    assert response.cards[0].bank_view[0].source_ref.id == rate.id
+    assert sorted(call.kwargs["claim_id"] for call in harness.house_view.chain.await_args_list) == [
+        rate.id,
+        withdrawn.id,
+    ]
+    context = prompt(harness, 1)["context"]
+    assert isinstance(context, dict)
+    assert f"house_view:{withdrawn.id}" not in context["sources"]
 
 
 async def test_followup_redraft_keeps_followup_prompt(

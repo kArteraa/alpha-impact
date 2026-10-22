@@ -59,3 +59,16 @@ async def test_plan_step_records_template_and_plan_truncated_to_limit(harness: H
     plan = next(step for step in trace.steps if step.step == "plan")
     assert len(plan.output_summary) == limit
     assert plan.output_summary.startswith('{"template": {"focus": ')
+
+
+async def test_lookup_step_records_described_result() -> None:
+    journal = Journal(
+        empty_trace(), AsyncMock(spec=LLMGateway), "followup", "model", summary_chars=10_000
+    )
+    trace = empty_trace()
+    assert (
+        await journal.lookup("trace.find_by_card", "card", returns(trace), lambda t: t.id) == trace
+    )
+    step = journal.trace.steps[0]
+    assert step.input_summary == "card"
+    assert step.output_summary == trace.id

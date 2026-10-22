@@ -2,6 +2,7 @@ from apps.services.interpreter.context import Evidence, prompt_context, source_k
 from apps.services.interpreter.drafting import CLAIM_BLOCKS, card_claims
 from shared.contracts.errors import NotFound
 from shared.contracts.schemas import (
+    ClaimType,
     ClientProfile,
     HouseViewClaim,
     InsightCard,
@@ -11,7 +12,6 @@ from shared.contracts.schemas import (
     Trace,
 )
 
-TRACE_SOURCES = {"news", "graph"}
 TRACE_NEWS_SOURCE = "trace"
 
 
@@ -40,42 +40,36 @@ def card_view(card: InsightCard) -> dict[str, object]:
     }
 
 
+def trace_news_item(ref: SourceRef) -> NewsItem | None:
+    if ref.kind != "news" or ref.title is None or ref.url is None or ref.published_at is None:
+        return None
+    return NewsItem(
+        id=ref.id,
+        title=ref.title,
+        text="",
+        url=ref.url,
+        published_at=ref.published_at,
+        source=TRACE_NEWS_SOURCE,
+        entities=[],
+        factors=[],
+    )
+
+
 def trace_refs(card: InsightCard) -> list[SourceRef]:
-    return [
-        ref
-        for ref in card.basis
-        if ref.kind in TRACE_SOURCES and (ref.kind != "news" or ref.published_at is not None)
-    ]
+    return [ref for ref in card.basis if ref.kind == "graph" or trace_news_item(ref) is not None]
 
 
 def trace_evidence(card: InsightCard) -> dict[str, Evidence]:
-    claims = card_claims(card)
-    return {
-        source_key(ref): Evidence(
-            ref,
-            [claim.text for claim in claims if claim.source_ref == ref],
-            None,
-            True,
-        )
-        for ref in trace_refs(card)
-    }
+    facts = [claim for claim in card_claims(card) if claim.type == ClaimType.FACT]
+    result = {}
+    for ref in trace_refs(card):
+        texts = [claim.text for claim in facts if claim.source_ref == ref]
+        result[source_key(ref)] = Evidence(ref, texts, None, bool(texts))
+    return result
 
 
 def trace_news(card: InsightCard) -> list[NewsItem]:
-    return [
-        NewsItem(
-            id=ref.id,
-            title=ref.title or ref.id,
-            text="",
-            url=ref.url or "",
-            published_at=ref.published_at,
-            source=TRACE_NEWS_SOURCE,
-            entities=[],
-            factors=[],
-        )
-        for ref in trace_refs(card)
-        if ref.kind == "news" and ref.published_at is not None
-    ]
+    return [item for ref in card.basis if (item := trace_news_item(ref)) is not None]
 
 
 def cited_house_view(card: InsightCard) -> list[str]:
