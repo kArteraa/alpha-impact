@@ -107,3 +107,23 @@ async def test_real_profile_authorization_blocks_interpreter(
         await services.resolve(Interpreter).interpret(request(LOGISTICS, "another-user"))
     model.complete.assert_not_awaited()
     assert traces.save.call_args.args[0].result is None
+
+
+async def test_interpreter_trace_is_stored_and_read_back(
+    services: Container, sessions: async_sessionmaker[AsyncSession], model: AsyncMock
+) -> None:
+    news = make_seed().news[0].model_copy(update={"published_at": datetime.now(UTC)})
+    await persist(sessions, news)
+    services.register(LLMGateway, lambda _: model)
+    card = (await services.resolve(Interpreter).interpret(request(LOGISTICS, USER))).cards[0]
+    stored = await services.resolve(TraceStore).get(card.trace_id)
+    assert stored is not None
+    steps = {step.name: step for step in stored.steps}
+    assert [step.step for step in stored.steps][-1] == "final"
+    assert "Уточнить сроки и тариф перевозчика" in steps["plan"].output_summary
+    assert steps["house_view.claims"].input_summary == "trade_logistics"
+    assert "trade_logistics" in steps["house_view.claims"].output_summary
+    assert "industry_class" in steps["counterparty.context"].output_summary
+    assert str(draft_answer()["headline"]) in steps["draft"].output_summary
+    assert stored.critic_verdicts == ["1: ok"]
+    assert stored.result is not None and stored.result.cards == [card]
