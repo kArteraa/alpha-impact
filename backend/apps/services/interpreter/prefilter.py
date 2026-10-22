@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import date
 from math import fsum, isfinite
 
+from apps.services.interpreter.context import current_claims
 from shared.config.factors import FACTORS
 from shared.config.news_entities import COUNTRY, INDUSTRY, PRODUCT, REGION, entity
 from shared.contracts.ports import HouseViewService, NewsService
@@ -123,23 +124,24 @@ class Prefilter:
         items = await self._news.search(
             factors=[], industry=None, region=None, country=None, since=since, limit=limit
         )
+        recent = [item for item in items if since <= item.published_at.date() <= as_of]
+        return await self.rank(recent, profile, action, counterparty, as_of=as_of)
+
+    async def rank(
+        self,
+        items: list[NewsItem],
+        profile: ClientProfile,
+        action: ActionContext,
+        counterparty: CounterpartyContext | None,
+        *,
+        as_of: date,
+    ) -> PrefilterResult:
         candidates = []
         for item in items:
-            if since <= item.published_at.date() <= as_of:
-                score = score_news(item, profile, counterparty, action)
-                if score >= self._threshold:
-                    candidates.append(Candidate(news=item, score=score))
+            score = score_news(item, profile, counterparty, action)
+            if score >= self._threshold:
+                candidates.append(Candidate(news=item, score=score))
         candidates.sort(key=lambda candidate: (-candidate.score, candidate.news.id))
-        return await self._with_house_view(candidates, as_of)
-
-    async def assess(
-        self, item: NewsItem, profile: ClientProfile, action: ActionContext, *, as_of: date
-    ) -> PrefilterResult:
-        score = score_news(item, profile, None, action)
-        candidates = [Candidate(news=item, score=score)] if score >= self._threshold else []
-        return await self._with_house_view(candidates, as_of)
-
-    async def _with_house_view(self, candidates: list[Candidate], as_of: date) -> PrefilterResult:
         subjects = sorted(
             {
                 factor.name
@@ -154,11 +156,8 @@ class Prefilter:
         claims = {
             claim.id: claim
             for subject, batch in zip(subjects, batches, strict=True)
-            for claim in batch
+            for claim in current_claims(batch, as_of)
             if claim.subject == subject
-            and claim.status == "approved"
-            and claim.date <= as_of
-            and (claim.valid_until is None or claim.valid_until >= as_of)
         }
         return PrefilterResult(
             candidates=candidates, house_view=[claims[key] for key in sorted(claims)]

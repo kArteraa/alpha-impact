@@ -4,25 +4,23 @@ from datetime import UTC, datetime
 import pytest
 
 from shared.contracts.errors import DomainError
-from shared.contracts.schemas import Factor, InterpretRequest, NewsItem, PageContext, Trace
+from shared.contracts.schemas import InterpretRequest, NewsItem, PageContext, Trace
 from tests.unit.interpreter.support import Harness, draft_answer
 
 URL = "https://news.example/rate"
 PAGE_TEXT = "\n  Ставка снижена до 16% \nЦБ снизил ключевую ставку.\nКредиты подешевеют.\n"
 
 
-def pasted_news(**update: object) -> NewsItem:
-    item = NewsItem(
-        id="pasted-news",
-        title="Ставка снижена до 16%",
-        text="ЦБ снизил ключевую ставку.\nКредиты подешевеют.",
-        url=URL,
-        published_at=datetime.now(UTC),
-        source="manual",
-        entities=["product:settlement"],
-        factors=[Factor(name="trade_logistics", direction="up", strength=1.0, horizon="month")],
+def pasted_news(harness: Harness, **update: object) -> NewsItem:
+    return harness.seed.news[0].model_copy(
+        update={
+            "id": "pasted-news",
+            "url": URL,
+            "source": "manual",
+            "entities": ["product:settlement"],
+            **update,
+        }
     )
-    return item.model_copy(update=update)
 
 
 def page_request(harness: Harness, text: str = PAGE_TEXT) -> InterpretRequest:
@@ -44,7 +42,7 @@ def page_draft() -> dict[str, object]:
 
 @pytest.fixture
 def page(harness: Harness) -> Harness:
-    harness.news.annotate.return_value = pasted_news()
+    harness.news.annotate.return_value = pasted_news(harness)
     harness.answers[1] = page_draft()
     return harness
 
@@ -61,8 +59,10 @@ async def test_pasted_page_is_annotated_and_gets_card(page: Harness) -> None:
     )
     page.news.search.assert_not_awaited()
     page.counterparties.context.assert_not_awaited()
-    page.house_view.claims.assert_any_await(subject="trade_logistics", as_of=card_date(page))
     trace: Trace = page.traces.save.call_args.args[0]
+    page.house_view.claims.assert_any_await(
+        subject="trade_logistics", as_of=trace.created_at.date()
+    )
     assert any(step.name == "news.annotate" for step in trace.steps if step.step == "tool")
     plan = next(step for step in trace.steps if step.step == "plan")
     assert json.loads(plan.output_summary)["template"]["context"] == [
@@ -72,17 +72,13 @@ async def test_pasted_page_is_annotated_and_gets_card(page: Harness) -> None:
     ]
 
 
-def card_date(harness: Harness) -> object:
-    return harness.traces.save.call_args.args[0].created_at.date()
-
-
 async def test_single_line_page_is_title_without_body(page: Harness) -> None:
     await page.agent.interpret(page_request(page, "  Ставка снижена до 16%  "))
     page.news.annotate.assert_awaited_once_with("Ставка снижена до 16%", "", URL)
 
 
 async def test_irrelevant_page_is_silent_without_llm(harness: Harness) -> None:
-    harness.news.annotate.return_value = pasted_news(entities=[], factors=[])
+    harness.news.annotate.return_value = pasted_news(harness, entities=[], factors=[])
     response = await harness.agent.interpret(page_request(harness))
     assert response.silent
     assert response.silent_reason
@@ -91,7 +87,9 @@ async def test_irrelevant_page_is_silent_without_llm(harness: Harness) -> None:
 
 
 async def test_old_pasted_news_is_still_assessed(page: Harness) -> None:
-    page.news.annotate.return_value = pasted_news(published_at=datetime(2020, 1, 1, tzinfo=UTC))
+    page.news.annotate.return_value = pasted_news(
+        page, published_at=datetime(2020, 1, 1, tzinfo=UTC)
+    )
     response = await page.agent.interpret(page_request(page))
     assert not response.silent
 

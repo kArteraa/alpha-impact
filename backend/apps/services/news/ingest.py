@@ -6,13 +6,20 @@ from datetime import datetime, timedelta
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from apps.services.news.annotation import annotate, annotation_schema, news_id, to_news_item
+from apps.services.news.annotation import (
+    Annotation,
+    annotate,
+    annotation_schema,
+    news_id,
+    to_news_item,
+)
 from apps.services.news.config import NewsConfig
 from apps.services.news.dedup import is_duplicate, numbers
 from apps.services.news.feed import FeedEntry, FeedTooLarge, fetch_feed
 from apps.services.news.repository import add_news, known, neighbours, news_count
 from shared.contracts.errors import BudgetExceeded, DomainError
 from shared.contracts.ports import LLMGateway
+from shared.contracts.schemas import NewsItem
 from shared.db.models import NewsRow
 
 
@@ -25,6 +32,15 @@ class IngestResult:
     tokens_in: int
     tokens_out: int
     total: int
+
+
+@dataclass(frozen=True)
+class Indexed:
+    item: NewsItem
+    duplicate: bool
+    added: bool
+    tokens_in: int
+    tokens_out: int
 
 
 def body(title: str, text: str) -> str:
@@ -89,6 +105,24 @@ async def repeat_of(
     )
 
 
+async def index_entry(
+    sessions: async_sessionmaker[AsyncSession],
+    llm: LLMGateway,
+    config: NewsConfig,
+    schema: type[Annotation],
+    entry: FeedEntry,
+) -> Indexed:
+    vector = await llm.embed(body(entry.title, entry.text))
+    repeat = await repeat_of(sessions, entry, vector, config)
+    if repeat is not None:
+        return Indexed(NewsItem.model_validate(repeat, from_attributes=True), True, False, 0, 0)
+    annotation, tokens_in, tokens_out = await annotate(llm, config, schema, entry.title, entry.text)
+    item = to_news_item(entry, annotation)
+    async with sessions() as session, session.begin():
+        added = await add_news(session, item, vector)
+    return Indexed(item, False, added, tokens_in, tokens_out)
+
+
 async def ingest_news(
     sessions: async_sessionmaker[AsyncSession],
     llm: LLMGateway,
@@ -104,22 +138,16 @@ async def ingest_news(
     failed: list[str] = []
     for entry in candidates:
         try:
-            vector = await llm.embed(body(entry.title, entry.text))
-            if await repeat_of(sessions, entry, vector, config) is not None:
-                duplicates += 1
-                continue
-            annotation, used_in, used_out = await annotate(
-                llm, config, schema, entry.title, entry.text
-            )
+            indexed = await index_entry(sessions, llm, config, schema, entry)
         except BudgetExceeded:
             raise
         except DomainError:
             failed.append(entry.url)
             continue
-        async with sessions() as session, session.begin():
-            added += await add_news(session, to_news_item(entry, annotation), vector)
-        tokens_in += used_in
-        tokens_out += used_out
+        duplicates += indexed.duplicate
+        added += indexed.added
+        tokens_in += indexed.tokens_in
+        tokens_out += indexed.tokens_out
     async with sessions() as session:
         total = await news_count(session)
     return IngestResult(
