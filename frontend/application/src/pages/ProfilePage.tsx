@@ -22,18 +22,34 @@ function displayValue(spec: FeatureSpec, value: Feature["value"]): string {
 interface FeatureCardProps {
   spec: FeatureSpec;
   feature: Feature;
-  onSave: (value: string) => Promise<boolean>;
+  onSave: (value: string) => Promise<string | null>;
+}
+
+function draftOf(options: Record<string, string>, value: Feature["value"]): string {
+  return typeof value === "string" && value in options ? value : Object.keys(options)[0];
 }
 
 function FeatureCard({ spec, feature, onSave }: FeatureCardProps) {
   const labelId = useId();
   const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const options = isEditable(feature) ? spec.options : undefined;
 
   async function save(value: string) {
-    if (await onSave(value)) {
+    setSaving(true);
+    setError(null);
+    const failure = await onSave(value);
+    setSaving(false);
+    setError(failure);
+    if (failure === null) {
       setDraft(null);
     }
+  }
+
+  function cancel() {
+    setDraft(null);
+    setError(null);
   }
 
   return (
@@ -58,28 +74,34 @@ function FeatureCard({ spec, feature, onSave }: FeatureCardProps) {
       {options && (
         <span className="feature-actions">
           {draft === null ? (
-            <button type="button" className="button-ghost" onClick={() => setDraft(String(feature.value))}>
+            <button type="button" className="button-ghost" onClick={() => setDraft(draftOf(options, feature.value))}>
               Изменить
             </button>
           ) : (
             <>
-              <button type="button" className="button-primary button-xs" onClick={() => save(draft)}>
+              <button
+                type="button"
+                className="button-primary button-xs"
+                disabled={saving}
+                onClick={() => save(draft)}
+              >
                 Сохранить
               </button>
-              <button type="button" className="button-ghost" onClick={() => setDraft(null)}>
+              <button type="button" className="button-ghost" disabled={saving} onClick={cancel}>
                 Отмена
               </button>
             </>
           )}
         </span>
       )}
+      {error && <Alert text={error} />}
     </li>
   );
 }
 
 interface FeatureListProps {
   profile: ClientProfile;
-  onSave: (name: string, value: string) => Promise<boolean>;
+  onSave: (name: string, value: string) => Promise<string | null>;
 }
 
 function FeatureList({ profile, onSave }: FeatureListProps) {
@@ -105,16 +127,13 @@ export function ProfilePage() {
   const { company } = useCompany();
   const navigate = useNavigate();
   const [profile, setProfile] = useLoad(useCallback(() => api.profile(company.id), [company.id]));
-  const [saveError, setSaveError] = useState<string | null>(null);
 
-  async function save(name: string, value: string): Promise<boolean> {
-    setSaveError(null);
+  async function save(name: string, value: string): Promise<string | null> {
     try {
       setProfile(await api.patchFeature(company.id, name, value));
-      return true;
+      return null;
     } catch (failure) {
-      setSaveError(failure instanceof ApiError ? `Не удалось сохранить (${failure.status})` : "Сервер недоступен");
-      return false;
+      return failure instanceof ApiError ? `Не удалось сохранить (${failure.status})` : "Сервер недоступен";
     }
   }
 
@@ -123,7 +142,6 @@ export function ProfilePage() {
       <h1>Профиль компании</h1>
       <p className="page-sub">Проверьте, что банк знает о компании: по этим признакам Alpha Impact отбирает события</p>
       {profile.status === "failed" && <Alert text="Не удалось загрузить профиль" />}
-      {saveError && <Alert text={saveError} />}
       {profile.status === "ready" && (
         <>
           <FeatureList profile={profile.value} onSave={save} />

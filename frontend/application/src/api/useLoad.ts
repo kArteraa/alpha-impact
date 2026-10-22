@@ -2,27 +2,30 @@ import { useEffect, useState } from "react";
 
 export type Load<T> = { status: "loading" } | { status: "failed"; error: unknown } | { status: "ready"; value: T };
 
+interface Loaded<T> {
+  load: () => Promise<T>;
+  result: Load<T>;
+}
+
 export function useLoad<T>(load: () => Promise<T>): [Load<T>, (value: T) => void] {
-  const [state, setState] = useState<Load<T>>({ status: "loading" });
+  const [loaded, setLoaded] = useState<Loaded<T> | null>(null);
 
   useEffect(() => {
     let active = true;
+    const settle = (result: Load<T>) => {
+      if (active) {
+        setLoaded({ load, result });
+      }
+    };
     load().then(
-      (value) => {
-        if (active) {
-          setState({ status: "ready", value });
-        }
-      },
-      (error: unknown) => {
-        if (active) {
-          setState({ status: "failed", error });
-        }
-      },
+      (value) => settle({ status: "ready", value }),
+      (error: unknown) => settle({ status: "failed", error }),
     );
     return () => {
       active = false;
     };
   }, [load]);
 
-  return [state, (value) => setState({ status: "ready", value })];
+  const result: Load<T> = loaded?.load === load ? loaded.result : { status: "loading" };
+  return [result, (value) => setLoaded({ load, result: { status: "ready", value } })];
 }
