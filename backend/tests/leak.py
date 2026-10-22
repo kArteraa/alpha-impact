@@ -19,7 +19,10 @@ UNKNOWN_COMPANY = "U_999999999"
 UNKNOWN_INN = "7707083893"
 COMPANY_ID = re.compile(r"U_\d+")
 PERSON_ID = re.compile(r"F_\d+")
-UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}")
+MACHINE_VALUE = re.compile(
+    r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}"
+    r"|\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?"
+)
 SEPARATORS = " \N{NO-BREAK SPACE}\N{NARROW NO-BREAK SPACE}"
 WITHOUT_SEPARATORS = str.maketrans("", "", SEPARATORS)
 NUMBER = re.compile(
@@ -119,9 +122,13 @@ def assert_no_foreign_data(payload: object, client_id: str, foreign: ForeignData
         for label in PRODUCT_LABELS
         if label in text
     ]
-    values = {float(leaf) for leaf in leaves(dumped) if isinstance(leaf, int | float)}
-    for text in {UUID.sub(" ", text) for text in texts(dumped)}:
+    values = {
+        float(leaf)
+        for leaf in leaves(dumped)
+        if isinstance(leaf, int | float) and not isinstance(leaf, bool)
+    }
+    for text in {MACHINE_VALUE.sub(" ", text) for text in texts(dumped)}:
         leaks += text_leaks(text, client_id)
         values.update(numbers(text))
     leaks += [str(value) for value in values if value in foreign.amounts]
-    assert not leaks, f"{client_id} sees foreign data {leaks}"
+    assert not leaks, f"{client_id} sees foreign data {leaks} in {type(payload).__name__}"
