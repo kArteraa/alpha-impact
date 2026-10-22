@@ -45,6 +45,18 @@ describe("LoansPage", () => {
     ]);
   });
 
+  it("says a passed repayment is overdue", () => {
+    vi.setSystemTime(new Date("2027-01-21T09:00:00+03:00"));
+    render(<LoansPage />);
+
+    expect(screen.getByText("Ближайшее погашение").closest(".stat")?.textContent).toContain(
+      "Овердрафт · просрочено на 21 день",
+    );
+    const badge = document.querySelector("tbody tr td:last-child .badge");
+    expect(badge?.textContent).toBe("просрочено на 21 день");
+    expect(badge?.className).toBe("badge badge-danger");
+  });
+
   it("orders the loans by maturity with the days left", () => {
     render(<LoansPage />);
 

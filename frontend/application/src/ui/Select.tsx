@@ -71,13 +71,16 @@ export function Select({
   }, [activeId]);
 
   function show(index: number) {
+    if (options.length === 0) {
+      return;
+    }
     setActive(index);
     setOpen(true);
   }
 
   function choose(index: number) {
     setOpen(false);
-    if (index >= 0 && options[index].value !== value) {
+    if (index >= 0 && index < options.length && options[index].value !== value) {
       onChange(options[index].value);
     }
   }
@@ -98,7 +101,9 @@ export function Select({
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     const { key } = event;
-    if (key.length === 1 && key !== " " && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    const typing = Date.now() - typed.current.at <= TYPEAHEAD_RESET_MS;
+    const printable = key.length === 1 && (key !== " " || typing);
+    if (printable && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
       typeahead(key);
       return;
@@ -145,6 +150,7 @@ export function Select({
         aria-describedby={describedBy}
         onClick={() => (open ? setOpen(false) : show(Math.max(selectedIndex, 0)))}
         onKeyDown={onKeyDown}
+        onBlur={() => setOpen(false)}
       >
         {variant === "pill" && selected?.mark && <Mark text={selected.mark} />}
         <span className={selected ? "select-value" : "select-value select-placeholder"}>
@@ -153,7 +159,14 @@ export function Select({
         <Icon name="chevron-down" size={18} className="select-chevron" />
       </button>
       {open && (
-        <ul id={listId} role="listbox" aria-labelledby={labelId} className="select-list" tabIndex={-1}>
+        <ul
+          id={listId}
+          role="listbox"
+          aria-labelledby={labelId}
+          className="select-list"
+          tabIndex={-1}
+          onMouseDown={(event) => event.preventDefault()}
+        >
           {options.map((option, index) => (
             <li
               key={option.value}
@@ -161,7 +174,6 @@ export function Select({
               role="option"
               aria-selected={option.value === value}
               className={index === active ? "select-option is-active" : "select-option"}
-              onMouseDown={(event) => event.preventDefault()}
               onMouseEnter={() => setActive(index)}
               onClick={() => choose(index)}
             >

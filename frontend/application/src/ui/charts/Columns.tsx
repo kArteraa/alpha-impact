@@ -1,6 +1,8 @@
 import { ratio } from "./scale";
 import type { Tone } from "./tone";
 
+const MIN_BAR_PERCENT = 2;
+
 export interface ColumnSeries {
   name: string;
   tone: Tone;
@@ -52,14 +54,14 @@ export function Columns({ title, series, groups, format, showValues = false }: C
       <div className="columns-plot" aria-hidden="true">
         {groups.map((group) => (
           <div key={group.label} className="columns-group" data-active={group.active ?? false}>
-            {showValues && <span className="columns-caption">{format(group.values[0])}</span>}
+            {showValues && <span className="columns-caption">{group.values.map(format).join(" · ")}</span>}
             <span className="columns-bars">
               {group.values.map((value, index) => (
                 <span
                   key={series[index].name}
                   className="columns-bar"
                   data-tone={series[index].tone}
-                  style={{ height: `${Math.max(ratio(value, max) * 100, 2)}%` }}
+                  style={{ height: `${value > 0 ? Math.max(ratio(value, max) * 100, MIN_BAR_PERCENT) : 0}%` }}
                 />
               ))}
             </span>

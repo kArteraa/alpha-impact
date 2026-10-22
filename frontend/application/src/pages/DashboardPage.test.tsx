@@ -49,8 +49,8 @@ describe("DashboardPage", () => {
   it("shows the balance trend on the account tile", () => {
     renderWithCompany(<DashboardPage />);
 
-    expect(screen.getByRole("img", { name: "Остаток за 30 дней" })).toBeTruthy();
-    expect(document.querySelector(".account-change")?.textContent?.replace(/\s/g, " ")).toBe("+6,8 млн ₽ за 30 дней");
+    expect(screen.getByRole("img", { name: "Остаток за месяц" })).toBeTruthy();
+    expect(document.querySelector(".account-change")?.textContent?.replace(/\s/g, " ")).toBe("+6,8 млн ₽ за месяц");
   });
 
   it("sums up money in and out by week", () => {

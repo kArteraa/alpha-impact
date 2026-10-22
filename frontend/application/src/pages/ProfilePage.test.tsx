@@ -59,7 +59,7 @@ describe("ProfilePage", () => {
 
     expect(within(await card("Отрасль")).getByText("Оптовая торговля")).toBeTruthy();
     expect(within(await card("Регион")).getByText("Самарская область")).toBeTruthy();
-    expect(within(await card("Страны импорта")).getByText("Китай, Турция")).toBeTruthy();
+    expect(within(await card("Страны импорта")).getByText("КИТАЙ, ТУРЦИЯ")).toBeTruthy();
     expect(within(await card("Выручка")).getByText(/18\s500\s000\s000/)).toBeTruthy();
   });
 
