@@ -78,7 +78,7 @@ def cited_house_view(card: InsightCard) -> list[str]:
 def checked_followup(action: FollowupContext, limit: int) -> FollowupContext:
     question = action.question.strip()
     if not question or len(question) > limit:
-        raise DomainError(f"Вопрос к карточке пустой или длиннее {limit} символов")
+        raise DomainError(f"Followup question is empty or longer than {limit} characters")
     return action.model_copy(update={"question": question})
 
 
