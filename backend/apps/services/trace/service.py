@@ -61,5 +61,5 @@ class TraceRepository:
                 )
             )
 
-    async def find_by_card(self, user_id: str, client_id: str, card_id: str) -> Trace:
+    async def find_by_card(self, *, user_id: str, client_id: str, card_id: str) -> Trace:
         raise NotImplementedError("AH-26")

@@ -38,6 +38,11 @@ def test_registered_store_matches_port_signature(name: str) -> None:
     )
 
 
+def test_find_by_card_takes_keyword_only_arguments() -> None:
+    parameters = list(inspect.signature(TraceStore.find_by_card).parameters.values())[1:]
+    assert [parameter.kind for parameter in parameters] == [inspect.Parameter.KEYWORD_ONLY] * 3
+
+
 async def test_find_by_card_points_to_implementing_task() -> None:
     with pytest.raises(NotImplementedError, match="AH-26"):
-        await resolve().find_by_card("u1", "c1", "card-1")
+        await resolve().find_by_card(user_id="u1", client_id="c1", card_id="card-1")
