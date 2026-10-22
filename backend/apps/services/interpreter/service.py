@@ -1,5 +1,5 @@
-import asyncio
 import json
+from asyncio import gather
 from datetime import date, timedelta
 from time import perf_counter
 from uuid import uuid4
@@ -215,7 +215,7 @@ class Agent:
             self._profiles.get_profile(request.user_id, request.client_id),
         )
         as_of = journal.trace.created_at.date()
-        found = await asyncio.gather(
+        found = await gather(
             *(self._cited(journal, claim_id, as_of) for claim_id in cited_house_view(card))
         )
         cited = {claim.id: claim for batch in found for claim in batch}
