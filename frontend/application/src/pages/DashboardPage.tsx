@@ -1,31 +1,23 @@
 import { useId } from "react";
 import { Link } from "react-router";
-import { useCompany } from "../company/context";
+import { AccountTile } from "../dashboard/AccountTile";
+import { CashflowCard } from "../dashboard/CashflowCard";
 import { EventList } from "../dashboard/EventList";
 import { DEPOSIT_RATES } from "../data/depositRates";
 import { LOANS, LOANS_TOTAL } from "../data/loans";
 import { RATE, RUB_WHOLE } from "../money";
-import { Amount } from "../ui/Amount";
 import { Icon, type IconName } from "../ui/Icon";
+import { plural } from "../ui/plural";
 
-const WIDGET_EVENTS = 3;
+const WIDGET_EVENTS = 4;
 
-const PLURAL = new Intl.PluralRules("ru-RU");
-const PRODUCT_FORMS: Record<Intl.LDMLPluralRule, string> = {
-  zero: "продуктов",
-  one: "продукт",
-  two: "продукта",
-  few: "продукта",
-  many: "продуктов",
-  other: "продукта",
-};
-const products = (count: number) => `${count} ${PRODUCT_FORMS[PLURAL.select(count)]}`;
+const PRODUCTS = { one: "продукт", few: "продукта", many: "продуктов" };
 
 const BEST_RATE = Math.max(...Object.values(DEPOSIT_RATES));
 
 const TILE_META: Record<string, readonly [string, string]> = {
   "/deposits/new": [`до ${RATE.format(BEST_RATE)}%`, "годовых · демо-ставки"],
-  "/loans": [RUB_WHOLE.format(LOANS_TOTAL), `в портфеле · ${products(LOANS.length)}`],
+  "/loans": [RUB_WHOLE.format(LOANS_TOTAL), `в портфеле · ${plural(LOANS.length, PRODUCTS)}`],
 };
 
 const QUICK_ACTIONS: readonly (readonly [string, string, string, IconName, string])[] = [
@@ -35,7 +27,6 @@ const QUICK_ACTIONS: readonly (readonly [string, string, string, IconName, strin
 ];
 
 export function DashboardPage() {
-  const { company } = useCompany();
   const headingId = useId();
   return (
     <section>
@@ -55,16 +46,8 @@ export function DashboardPage() {
             }
           />
         </section>
-        <div className="card account">
-          <div className="account-head">
-            <span className="account-label">Расчётный счёт</span>
-            <span className="account-number">{company.account}</span>
-          </div>
-          <div className="account-body">
-            <span className="account-caption">Доступно сегодня</span>
-            <Amount className="account-amount" value={company.balance} />
-          </div>
-        </div>
+        <AccountTile />
+        <CashflowCard />
         <nav className="quick-actions" aria-label="Быстрые действия">
           {QUICK_ACTIONS.map(([to, title, caption, icon, tile]) => (
             <Link key={to} to={to} className={`card quick-action ${tile}`}>

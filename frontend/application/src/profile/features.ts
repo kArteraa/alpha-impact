@@ -1,5 +1,13 @@
 import type { Feature } from "@alpha-impact/plugin";
+import { FEATURE_GROUPS, FEATURES } from "../data/profile";
 import { NUMBER } from "../money";
+
+export interface FeatureSection {
+  title: string;
+  names: string[];
+}
+
+const SHOUTING = /\p{Lu}/u;
 
 export function isEditable(feature: Feature): boolean {
   return feature.source !== "bank";
@@ -19,4 +27,32 @@ export function formatFeatureValue(value: Feature["value"]): string {
     return value.join(", ");
   }
   return value;
+}
+
+function calm(text: string): string {
+  if (!SHOUTING.test(text) || text !== text.toUpperCase()) {
+    return text;
+  }
+  const lower = text.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+export function featureText(name: string, value: Feature["value"]): string {
+  const spec = FEATURES[name];
+  const labels = spec?.options ?? spec?.labels ?? {};
+  const word = (item: string) => labels[item] ?? calm(item);
+  if (typeof value === "string") {
+    return word(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(word).join(", ");
+  }
+  return formatFeatureValue(value);
+}
+
+export function groupFeatures(names: readonly string[]): FeatureSection[] {
+  return FEATURE_GROUPS.map(([group, title]) => ({
+    title,
+    names: Object.keys(FEATURES).filter((name) => FEATURES[name].group === group && names.includes(name)),
+  })).filter((section) => section.names.length > 0);
 }

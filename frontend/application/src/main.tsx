@@ -6,6 +6,8 @@ import "@alpha-impact/plugin/controls.css";
 import "./styles/base.css";
 import "./styles/layout.css";
 import "./styles/forms.css";
+import "./styles/controls.css";
+import "./styles/charts.css";
 import "./styles/pages.css";
 import "./styles/dashboard.css";
 import { App } from "./App";
