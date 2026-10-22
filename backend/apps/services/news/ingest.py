@@ -13,6 +13,7 @@ from apps.services.news.feed import FeedEntry, FeedTooLarge, fetch_feed
 from apps.services.news.repository import add_news, known, neighbours, news_count
 from shared.contracts.errors import BudgetExceeded, DomainError
 from shared.contracts.ports import LLMGateway
+from shared.db.models import NewsRow
 
 
 @dataclass(frozen=True)
@@ -64,21 +65,27 @@ async def unseen(
     return [entry for entry in entries if news_id(entry.title) not in ids and entry.url not in urls]
 
 
-async def repeats_indexed(
+async def repeat_of(
     sessions: async_sessionmaker[AsyncSession],
     entry: FeedEntry,
     vector: list[float],
     config: NewsConfig,
-) -> bool:
+) -> NewsRow | None:
     window = timedelta(hours=config.dedup_window_hours)
     async with sessions() as session:
         nearby = await neighbours(
             session, vector, entry.published_at, window, config.dedup_candidates
         )
     own = numbers(body(entry.title, entry.text))
-    return any(
-        is_duplicate(similarity, own, numbers(body(title, text)), config.dedup_threshold)
-        for title, text, similarity in nearby
+    return next(
+        (
+            row
+            for row, similarity in nearby
+            if is_duplicate(
+                similarity, own, numbers(body(row.title, row.text)), config.dedup_threshold
+            )
+        ),
+        None,
     )
 
 
@@ -98,7 +105,7 @@ async def ingest_news(
     for entry in candidates:
         try:
             vector = await llm.embed(body(entry.title, entry.text))
-            if await repeats_indexed(sessions, entry, vector, config):
+            if await repeat_of(sessions, entry, vector, config) is not None:
                 duplicates += 1
                 continue
             annotation, used_in, used_out = await annotate(

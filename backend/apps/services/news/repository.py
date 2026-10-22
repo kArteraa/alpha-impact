@@ -18,18 +18,30 @@ async def known(
     return {row.id for row in rows}, {row.url for row in rows}
 
 
+async def find_news(session: AsyncSession, news_id: str, url: str) -> NewsRow | None:
+    query = (
+        select(NewsRow)
+        .options(defer(NewsRow.embedding))
+        .where(or_(NewsRow.id == news_id, NewsRow.url == url))
+        .order_by(NewsRow.id != news_id)
+        .limit(1)
+    )
+    return (await session.scalars(query)).first()
+
+
 async def neighbours(
     session: AsyncSession, vector: list[float], moment: datetime, window: timedelta, limit: int
-) -> list[tuple[str, str, float]]:
+) -> list[tuple[NewsRow, float]]:
     distance = NewsRow.embedding.cosine_distance(vector)
     query = (
-        select(NewsRow.title, NewsRow.text, distance)
+        select(NewsRow, distance)
+        .options(defer(NewsRow.embedding))
         .where(NewsRow.published_at.between(moment - window, moment + window))
         .order_by(distance)
         .limit(limit)
     )
     rows = (await session.execute(query)).all()
-    return [(title, text, 1 - float(value)) for title, text, value in rows]
+    return [(row, 1 - float(value)) for row, value in rows]
 
 
 async def add_news(session: AsyncSession, item: NewsItem, vector: list[float]) -> bool:

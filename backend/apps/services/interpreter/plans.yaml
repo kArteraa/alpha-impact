@@ -20,3 +20,6 @@ templates:
   dashboard:
     focus: Значимость событий для компании и её текущих экспозиций
     context: [profile, news, house_view]
+  page:
+    focus: Значимость вставленной новости для компании и её текущих экспозиций
+    context: [profile, news, house_view]

@@ -130,6 +130,16 @@ class Prefilter:
                 if score >= self._threshold:
                     candidates.append(Candidate(news=item, score=score))
         candidates.sort(key=lambda candidate: (-candidate.score, candidate.news.id))
+        return await self._with_house_view(candidates, as_of)
+
+    async def assess(
+        self, item: NewsItem, profile: ClientProfile, action: ActionContext, *, as_of: date
+    ) -> PrefilterResult:
+        score = score_news(item, profile, None, action)
+        candidates = [Candidate(news=item, score=score)] if score >= self._threshold else []
+        return await self._with_house_view(candidates, as_of)
+
+    async def _with_house_view(self, candidates: list[Candidate], as_of: date) -> PrefilterResult:
         subjects = sorted(
             {
                 factor.name
