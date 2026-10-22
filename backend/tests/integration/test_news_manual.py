@@ -17,6 +17,8 @@ CONFIG = load_config()
 TITLE = "Ставка снижена до 16%"
 TEXT = "ЦБ снизил ключевую ставку до 16% годовых"
 URL = "https://a.example/1"
+OTHER_TITLE = "Ключевая ставка — 16%"
+OTHER_TEXT = "Банк России понизил ставку до 16% годовых"
 
 
 def index(sessions: async_sessionmaker[AsyncSession], llm: FakeNewsLlm) -> NewsIndex:
@@ -36,7 +38,11 @@ async def test_pasted_news_is_annotated_and_stored_as_manual(
     item = await index(sessions, llm).annotate(TITLE, TEXT, URL)
 
     assert item.id == manual_id(TITLE, TEXT)
-    assert (item.source, item.published_at, item.url) == (MANUAL_SOURCE, NOW, URL)
+    assert (item.source, item.published_at, item.url) == (
+        MANUAL_SOURCE,
+        NOW,
+        f"{MANUAL_SOURCE}:{item.id}",
+    )
     assert [factor.name for factor in item.factors] == ["key_rate"]
     assert "industry:finance" in item.entities
     assert llm.tasks == [CONFIG.llm_task]
@@ -44,7 +50,7 @@ async def test_pasted_news_is_annotated_and_stored_as_manual(
     assert (row.id, row.source, row.url, row.factor_names) == (
         item.id,
         MANUAL_SOURCE,
-        URL,
+        item.url,
         ["key_rate"],
     )
 
@@ -77,7 +83,7 @@ async def test_identical_paste_comes_from_index_without_model(
     assert len(await rows(sessions)) == 1
 
 
-async def test_same_news_in_other_words_comes_from_index(
+async def test_same_news_in_other_words_reuses_annotation_with_own_text(
     sessions: async_sessionmaker[AsyncSession],
 ) -> None:
     llm = FakeNewsLlm(
@@ -86,11 +92,26 @@ async def test_same_news_in_other_words_comes_from_index(
     )
     first = await index(sessions, llm).annotate(TITLE, TEXT, URL)
 
-    again = await index(sessions, llm).annotate(
-        "Ключевая ставка — 16%", "Банк России понизил ставку до 16% годовых", ""
-    )
+    again = await index(sessions, llm).annotate(OTHER_TITLE, OTHER_TEXT, "")
 
-    assert again == first
+    assert again.id == manual_id(OTHER_TITLE, OTHER_TEXT)
+    assert (again.title, again.text, again.source) == (OTHER_TITLE, OTHER_TEXT, MANUAL_SOURCE)
+    assert (again.factors, again.entities) == (first.factors, first.entities)
+    assert llm.tasks == [CONFIG.llm_task]
+    assert len(await rows(sessions)) == 2
+
+
+async def test_paste_close_to_feed_news_returns_feed_news(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    llm = FakeNewsLlm(vectors={"ЦБ снизил": unit(0), "Банк России понизил": near(0, 1)})
+    feed = rss(item(TITLE, "https://www.kommersant.ru/doc/9", NOW, TEXT))
+    await ingest(sessions, llm, {"https://www.kommersant.ru/rss/x.xml": feed})
+    [feed_row] = await rows(sessions)
+
+    found = await index(sessions, llm).annotate(OTHER_TITLE, OTHER_TEXT, "")
+
+    assert (found.id, found.text, found.source) == (feed_row.id, TEXT, feed_row.source)
     assert llm.tasks == [CONFIG.llm_task]
     assert len(await rows(sessions)) == 1
 
@@ -161,6 +182,19 @@ async def test_same_headline_with_other_text_is_new_news(
     assert len(await rows(sessions)) == 2
 
 
+async def test_same_url_with_other_text_is_new_news(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    llm = FakeNewsLlm()
+    first = await index(sessions, llm).annotate(TITLE, TEXT, URL)
+
+    other = await index(sessions, llm).annotate("Склады дорожают", "Аренда выросла на 12%", URL)
+
+    assert other.id != first.id
+    assert other.text == "Аренда выросла на 12%"
+    assert len(await rows(sessions)) == 2
+
+
 async def test_pasted_news_is_not_served_by_search(
     sessions: async_sessionmaker[AsyncSession],
 ) -> None:
@@ -183,6 +217,33 @@ async def test_feed_copy_of_pasted_news_is_still_ingested(
     result = await ingest(sessions, llm, {"https://www.kommersant.ru/rss/x.xml": feed})
 
     assert (result.added, result.duplicates) == (1, 0)
+
+
+async def test_feed_news_with_headline_of_one_line_paste_is_still_ingested(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    llm = FakeNewsLlm()
+    news = index(sessions, llm)
+    await news.annotate(TITLE, "", "")
+    feed = rss(item(TITLE, "https://www.kommersant.ru/doc/9", NOW, TEXT))
+
+    result = await ingest(sessions, llm, {"https://www.kommersant.ru/rss/x.xml": feed})
+
+    assert result.added == 1
+    since = (NOW - timedelta(days=1)).date()
+    assert [found.title for found in await news.search([], None, None, None, since)] == [TITLE]
+
+
+async def test_feed_news_at_pasted_url_is_still_ingested(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    llm = FakeNewsLlm()
+    await index(sessions, llm).annotate(TITLE, TEXT, URL)
+    feed = rss(item("Склады дорожают", URL, NOW, "Аренда выросла на 12%"))
+
+    result = await ingest(sessions, llm, {"https://a.example/rss.xml": feed})
+
+    assert result.added == 1
 
 
 async def test_lost_insert_returns_stored_news(

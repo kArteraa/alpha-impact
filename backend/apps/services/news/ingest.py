@@ -126,10 +126,24 @@ async def index_entry(
 ) -> Indexed:
     vector = await llm.embed(body(entry.title, entry.text))
     repeat = await repeat_of(sessions, entry, vector, config)
-    if repeat is not None:
+    if repeat is not None and repeat.source != MANUAL_SOURCE:
         return Indexed(repeat, None, False, 0, 0)
-    annotation, tokens_in, tokens_out = await annotate(llm, config, schema, entry.title, entry.text)
-    item = to_news_item(entry, annotation).model_copy(update={"id": key})
+    if repeat is None:
+        annotation, tokens_in, tokens_out = await annotate(
+            llm, config, schema, entry.title, entry.text
+        )
+        item = to_news_item(entry, annotation).model_copy(update={"id": key})
+    else:
+        tokens_in = tokens_out = 0
+        item = NewsItem.model_validate(repeat, from_attributes=True).model_copy(
+            update={
+                "id": key,
+                "title": entry.title,
+                "text": entry.text,
+                "url": entry.url,
+                "published_at": entry.published_at,
+            }
+        )
     async with sessions() as session, session.begin():
         added = await add_news(session, item, vector)
     return Indexed(None, item, added, tokens_in, tokens_out)
