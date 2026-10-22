@@ -7,6 +7,7 @@ from shared.contracts.schemas import (
     InsightCard,
     InterpretRequest,
     NewsItem,
+    SourceRef,
     Trace,
 )
 
@@ -39,6 +40,14 @@ def card_view(card: InsightCard) -> dict[str, object]:
     }
 
 
+def trace_refs(card: InsightCard) -> list[SourceRef]:
+    return [
+        ref
+        for ref in card.basis
+        if ref.kind in TRACE_SOURCES and (ref.kind != "news" or ref.published_at is not None)
+    ]
+
+
 def trace_evidence(card: InsightCard) -> dict[str, Evidence]:
     claims = card_claims(card)
     return {
@@ -48,8 +57,7 @@ def trace_evidence(card: InsightCard) -> dict[str, Evidence]:
             None,
             True,
         )
-        for ref in card.basis
-        if ref.kind in TRACE_SOURCES
+        for ref in trace_refs(card)
     }
 
 
@@ -65,7 +73,7 @@ def trace_news(card: InsightCard) -> list[NewsItem]:
             entities=[],
             factors=[],
         )
-        for ref in card.basis
+        for ref in trace_refs(card)
         if ref.kind == "news" and ref.published_at is not None
     ]
 

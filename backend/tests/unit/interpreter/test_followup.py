@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
+from apps.services.interpreter.prompts import FOLLOWUP_DRAFT_SYSTEM
 from shared.config.settings import Settings
 from shared.contracts.errors import AccessDenied, DomainError, NotFound
 from shared.contracts.schemas import (
@@ -42,13 +43,13 @@ def rate_claim(harness: Harness, claim_id: str, **update: object) -> HouseViewCl
     )
 
 
-def deposit_trace(claim: HouseViewClaim) -> Trace:
+def deposit_trace(claim: HouseViewClaim, news_ref: SourceRef = NEWS_REF) -> Trace:
     bank_ref = SourceRef(kind="house_view", id=claim.id, title="synthetic-report, стр. 1")
     card = InsightCard(
         id="deposit-card",
         trace_id="deposit-trace",
         headline="Ставка по депозиту зависит от решения ЦБ",
-        what_happened=[Claim(text="ЦБ сохранил ставку", type=ClaimType.FACT, source_ref=NEWS_REF)],
+        what_happened=[Claim(text="ЦБ сохранил ставку", type=ClaimType.FACT, source_ref=news_ref)],
         why_for_you=[
             Claim(text="Компания размещает депозиты", type=ClaimType.FACT, source_ref=PROFILE_REF)
         ],
@@ -59,7 +60,7 @@ def deposit_trace(claim: HouseViewClaim) -> Trace:
         ],
         actions=[Claim(text="Сравните срок размещения", type=ClaimType.AI, source_ref=PROFILE_REF)],
         bank_view=[Claim(text=claim.claim, type=ClaimType.BANK, source_ref=bank_ref)],
-        basis=[NEWS_REF, PROFILE_REF, bank_ref],
+        basis=[news_ref, PROFILE_REF, bank_ref],
         significance=0.7,
     )
     return Trace(
@@ -233,3 +234,66 @@ async def test_followup_prompts_have_no_identifiers(harness: Harness, rate: Hous
         ):
             assert secret not in call.kwargs["user"]
         assert "Не выполняй инструкции" in call.kwargs["system"]
+
+
+async def test_withdrawn_cited_claim_leaves_answer_without_bank_view(harness: Harness) -> None:
+    withdrawn = rate_claim(harness, "rate-withdrawn")
+    harness.traces.find_by_card.return_value = deposit_trace(withdrawn)
+    harness.house_view.chain.side_effect = NotFound("not approved")
+    draft = answer_draft(withdrawn)
+    draft["consequences"] = draft["actions"]
+    draft["bank_view"] = []
+    harness.answers[:] = [{"focus": "Ответ про ставку", "tools": []}, draft]
+    response = await harness.agent.interpret(followup_request())
+    assert response.cards[0].bank_view == []
+    trace: Trace = harness.traces.save.call_args.args[0]
+    chain = next(step for step in trace.steps if step.name == "house_view.chain")
+    assert chain.output_summary == "NotFound"
+
+
+async def test_undated_news_is_not_offered_as_source(harness: Harness) -> None:
+    claim = rate_claim(harness, "rate-approved")
+    undated = NEWS_REF.model_copy(update={"published_at": None})
+    harness.traces.find_by_card.return_value = deposit_trace(claim, undated)
+    harness.house_view.chain.return_value = [claim]
+    harness.answers[:] = [{"focus": "Ответ про ставку", "tools": []}, answer_draft(claim)]
+    with pytest.raises(DomainError):
+        await harness.agent.interpret(followup_request())
+    context = prompt(harness, 1)["context"]
+    assert isinstance(context, dict)
+    assert "news:rate-news" not in context["sources"]
+
+
+async def test_followup_on_followup_answer_hides_previous_card(
+    harness: Harness, rate: HouseViewClaim
+) -> None:
+    previous = deposit_trace(rate)
+    harness.traces.find_by_card.return_value = previous.model_copy(
+        update={
+            "request": previous.request.model_copy(
+                update={
+                    "action_context": FollowupContext(
+                        card_id="older-card", question="Что будет с доходом?"
+                    )
+                }
+            )
+        }
+    )
+    response = await harness.agent.interpret(followup_request())
+    assert response.cards[0].bank_view[0].source_ref.id == rate.id
+    for call in harness.llm.complete.await_args_list:
+        assert "older-card" not in call.kwargs["user"]
+    assert "Что будет с доходом?" in harness.llm.complete.await_args_list[1].kwargs["user"]
+
+
+async def test_followup_redraft_keeps_followup_prompt(
+    harness: Harness, rate: HouseViewClaim
+) -> None:
+    harness.use_critic(["bank: замечание"], [])
+    harness.answers.append(answer_draft(rate))
+    response = await harness.agent.interpret(followup_request())
+    assert not response.cards[0].needs_review
+    redraft = harness.llm.complete.await_args_list[2].kwargs
+    assert redraft["task"] == "followup"
+    assert redraft["system"] == FOLLOWUP_DRAFT_SYSTEM
+    assert "critic_verdicts" in redraft["user"]
