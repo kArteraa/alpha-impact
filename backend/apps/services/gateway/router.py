@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from apps.services.gateway.auth import SESSION_COOKIE, ContainerDep, CurrentUser, current_user
 from apps.services.gateway.errors import DomainErrorRoute
 from apps.services.gateway.service import InterpretGateway
+from shared.contracts.errors import AccessDenied, NotFound
 from shared.contracts.ports import ProfileService, TraceStore
 from shared.contracts.schemas import (
     ClientProfile,
@@ -96,9 +97,9 @@ async def feedback(body: CardFeedback, user_id: CurrentUser, container: Containe
 async def trace(trace_id: str, user_id: CurrentUser, container: ContainerDep) -> Trace:
     found = await container.resolve(TraceStore).get(trace_id)
     if found is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "unknown trace")
+        raise NotFound(f"Unknown trace {trace_id}")
     if found.request.user_id != user_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "trace of another user")
+        raise AccessDenied(f"Trace {trace_id} belongs to another user")
     return found
 
 

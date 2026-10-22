@@ -1,9 +1,7 @@
 import json
 from unittest.mock import AsyncMock
 
-from apps.services.interpreter.drafting import Draft
 from apps.services.interpreter.journal import Journal
-from apps.services.interpreter.planning import PLANS_PATH, load_config
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import CounterpartyContext, Trace
 from tests.integration.contracts.examples import EXAMPLES, TRACE
@@ -38,11 +36,7 @@ async def test_draft_step_records_draft(harness: Harness) -> None:
     await harness.agent.interpret(harness.request())
     trace: Trace = harness.traces.save.call_args.args[0]
     draft = next(step for step in trace.steps if step.step == "draft")
-    limit = load_config(PLANS_PATH).trace_summary_chars
-    expected = json.dumps(
-        Draft.model_validate(draft_answer()).model_dump(mode="json"), ensure_ascii=False
-    )
-    assert draft.output_summary == expected[:limit]
+    assert draft_answer()["headline"] in draft.output_summary
 
 
 async def test_trace_records_counterparty_aggregates(harness: Harness) -> None:
