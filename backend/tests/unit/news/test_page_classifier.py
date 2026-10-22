@@ -93,11 +93,18 @@ async def test_prompt_carries_url_and_text_cut_to_limit() -> None:
     assert llm.completions[0].count("я") == CONFIG.max_text_chars
 
 
-async def test_unknown_page_type_from_model_is_rejected() -> None:
-    llm = FakeNewsLlm(answers={"Ставка снижена": answer("blog")})
-
+def test_unknown_page_type_is_rejected_by_schema() -> None:
     with pytest.raises(ValidationError, match="page_type"):
-        await PageClassifier(llm, CONFIG).classify(ARTICLE)
+        page_schema(CONFIG).model_validate(answer("blog"))
+
+
+async def test_extension_zero_inn_is_rejected() -> None:
+    page = ARTICLE.model_copy(update={"entities": ["inn:0000000000", "inn:000000000000"]})
+    llm = FakeNewsLlm(answers={"Ставка снижена": answer("article")})
+
+    _, entities, _ = await PageClassifier(llm, CONFIG).classify(page)
+
+    assert entities == []
 
 
 def test_model_sees_page_types() -> None:

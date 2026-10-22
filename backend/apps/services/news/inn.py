@@ -1,8 +1,9 @@
 import re
 
-CANDIDATE = re.compile(r"(?<![0-9])(?:[0-9]{12}|[0-9]{10})(?![0-9])")
+CANDIDATE = re.compile(r"(?<![0-9A-Za-z_])(?:[0-9]{12}|[0-9]{10})(?![0-9A-Za-z_])")
 WEIGHTS = (3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8)
 CHECK_POSITIONS = {10: (9,), 12: (10, 11)}
+NO_REGION = "00"
 
 
 def check_digit(digits: str) -> str:
@@ -12,7 +13,7 @@ def check_digit(digits: str) -> str:
 
 
 def valid_inn(value: str) -> bool:
-    if CANDIDATE.fullmatch(value) is None:
+    if CANDIDATE.fullmatch(value) is None or value.startswith(NO_REGION):
         return False
     return all(value[n] == check_digit(value[:n]) for n in CHECK_POSITIONS[len(value)])
 
