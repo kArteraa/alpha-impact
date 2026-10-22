@@ -285,6 +285,7 @@ class TraceStore(Protocol):
     async def get(self, trace_id: str) -> Trace | None: ...
     async def metrics(self, since: date) -> dict[str, float]: ...
     async def feedback(self, user_id: str, card_id: str, useful: bool, comment: str | None) -> None: ...
+    async def find_by_card(self, user_id: str, card_id: str) -> Trace: ...
 
 
 class Critic(Protocol):
@@ -296,6 +297,8 @@ class Interpreter(Protocol):
 ```
 
 `TraceStore.feedback` — отзыв пользователя о карточке для `POST /feedback`: сервис `trace` находит трассу, в `result.cards` которой есть `card_id`, без перебора всех трасс, и записывает отзыв со ссылкой на неё; такая трасса одна: `id` карточки — новый UUID на каждый вызов interpreter, переписанный черновик сохраняет `id` в той же трассе, трасса сохраняется один раз, а ответ из кэша отдаёт ту же карточку без новой трассы; повторный отзыв о той же карточке заменяет прежний, чтобы метрика полезности считала карточку один раз. Нет такой карточки — `NotFound`; трасса принадлежит другому пользователю (`request.user_id` ≠ `user_id`) — `AccessDenied` (ошибки из `shared/contracts/errors.py`).
+
+`TraceStore.find_by_card` — исходная трасса карточки для followup-вопроса (AH-26): `FollowupContext` несёт только `card_id`, а `get` ищет по `trace_id`; interpreter читает таблицу `traces` только через этот порт. Сервис `trace` находит ту же единственную трассу, в `result.cards` которой есть `card_id`, что и `feedback`, и возвращает её целиком. Нет такой карточки — `NotFound`; трасса принадлежит другому пользователю (`request.user_id` ≠ `user_id`) — `AccessDenied`. HTTP-маршрута у метода нет.
 
 `HouseViewService.version()` — версия подтверждённого house view: первые 16 символов sha256 от всех утверждений со статусом `approved` (все поля, по порядку `id`). Меняется при любой правке подтверждённого набора, не меняется при повторном `seed` и от черновиков; статусы `superseded`/`expired`, вычисляемые на дату, в неё не входят. Gateway кладёт её в ключ кэша карточки.
 

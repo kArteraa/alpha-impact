@@ -60,3 +60,6 @@ class TraceRepository:
                     set_={**values, "created_at": func.now()},
                 )
             )
+
+    async def find_by_card(self, user_id: str, card_id: str) -> Trace:
+        raise NotImplementedError("AH-26")
