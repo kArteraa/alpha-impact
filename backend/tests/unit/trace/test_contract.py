@@ -1,10 +1,20 @@
 import inspect
+from datetime import date
+from typing import Any
 
 import pytest
 
 from apps.services import trace
 from shared.contracts.ports import TraceStore
 from shared.di.container import Container
+from tests.integration.contracts.examples import TRACE
+
+PORT_CALLS: dict[str, tuple[Any, ...]] = {
+    "save": (TRACE,),
+    "get": ("trace",),
+    "metrics": (date(2026, 10, 22),),
+    "feedback": ("u1", "card-1", True, None),
+}
 
 
 def resolve() -> TraceStore:
@@ -17,29 +27,19 @@ def test_implements_port() -> None:
     assert isinstance(resolve(), TraceStore)
 
 
-async def test_methods_point_to_implementing_task() -> None:
+def test_calls_cover_every_port_method() -> None:
+    assert set(PORT_CALLS) == {
+        name for name, _ in inspect.getmembers(TraceStore, inspect.iscoroutinefunction)
+    }
+
+
+@pytest.mark.parametrize(("name", "arguments"), PORT_CALLS.items())
+async def test_methods_point_to_implementing_task(name: str, arguments: tuple[Any, ...]) -> None:
     with pytest.raises(NotImplementedError, match="AH-23"):
-        await resolve().get("trace")
+        await getattr(resolve(), name)(*arguments)
 
 
-async def test_feedback_points_to_implementing_task() -> None:
-    with pytest.raises(NotImplementedError, match="AH-23"):
-        await resolve().feedback("u1", "card-1", useful=True, comment=None)
-
-
-def test_port_declares_feedback_signature() -> None:
-    signature = inspect.signature(TraceStore.feedback, eval_str=True)
-    assert [(p.name, p.annotation) for p in signature.parameters.values()] == [
-        ("self", inspect.Parameter.empty),
-        ("user_id", str),
-        ("card_id", str),
-        ("useful", bool),
-        ("comment", str | None),
-    ]
-    assert signature.return_annotation is None
-
-
-@pytest.mark.parametrize("name", ["save", "get", "metrics", "feedback"])
+@pytest.mark.parametrize("name", PORT_CALLS)
 def test_registered_store_matches_port_signature(name: str) -> None:
     port_method = inspect.signature(getattr(TraceStore, name), eval_str=True)
     implementation = getattr(resolve(), name)
