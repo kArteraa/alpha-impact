@@ -50,6 +50,9 @@ def trace_metrics(traces: list[Trace]) -> dict[str, float]:
             sum(step.tokens_in + step.tokens_out for trace in carded for step in trace.steps),
             len(cards),
         ),
+        "rub_per_card": ratio(
+            sum(step.cost_rub for trace in carded for step in trace.steps), len(cards)
+        ),
         "cache_share": ratio(
             sum(step.tokens_in == 0 and step.tokens_out == 0 for step in llm_steps),
             len(llm_steps),

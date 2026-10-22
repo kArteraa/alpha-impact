@@ -43,7 +43,15 @@ class TraceRepository:
                 select(TraceRow.payload).where(TraceRow.created_at >= start)
             )
             traces = [Trace.model_validate(payload) for payload in payloads]
-        return trace_metrics(traces)
+            useful, rated = (
+                await session.execute(
+                    select(
+                        func.count().filter(FeedbackRow.useful), func.count(FeedbackRow.id)
+                    ).where(FeedbackRow.created_at >= start)
+                )
+            ).one()
+        shares = trace_metrics(traces)
+        return shares if not rated else {**shares, "useful_share": useful / rated}
 
     async def feedback(self, user_id: str, card_id: str, useful: bool, comment: str | None) -> None:
         card_trace = select(TraceRow.id, TraceRow.user_id).where(card_filter(card_id))

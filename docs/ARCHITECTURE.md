@@ -20,7 +20,7 @@ alpha-impact/
       whatif/                  арифметика: нагрузка по ставке, сравнение сроков депозита, курс; порт WhatIfService
       products/                каталог правил «ситуация → продукт» (YAML); порт ProductRulesService
       llm/                     LLM-шлюз: маршрутизация по разрешённым моделям, кэш, счётчик токенов, локальные эмбеддинги multilingual-e5-small (ONNX, embedder.json); порт LLMGateway
-      trace/                   трасса, метрики, обратная связь; порт TraceStore
+      trace/                   трасса, метрики (тезисы с источником, критик с первого раза, молчание, токены и рубли на карточку по `TraceStep.cost_rub`, кэш, полезность по отзывам), обратная связь; порт TraceStore
     shared/
       contracts/
         schemas.py             Pydantic: ActionContext (discriminated union), InsightCard, Claim, Trace, ClientProfile, CounterpartyContext, NewsItem, HouseViewClaim, WhatIfResult, ProductOffer, InterpretRequest/Response
