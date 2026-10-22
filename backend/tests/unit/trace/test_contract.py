@@ -3,7 +3,6 @@ import inspect
 import pytest
 
 from apps.services import trace
-from apps.services.trace.service import TraceRepository
 from shared.contracts.ports import TraceStore
 from shared.di.container import Container
 
@@ -40,7 +39,11 @@ def test_port_declares_feedback_signature() -> None:
     assert signature.return_annotation is None
 
 
-def test_feedback_stub_matches_port_signature() -> None:
-    assert inspect.signature(TraceRepository.feedback, eval_str=True) == inspect.signature(
-        TraceStore.feedback, eval_str=True
+@pytest.mark.parametrize("name", ["save", "get", "metrics", "feedback"])
+def test_registered_store_matches_port_signature(name: str) -> None:
+    port_method = inspect.signature(getattr(TraceStore, name), eval_str=True)
+    implementation = getattr(resolve(), name)
+    assert inspect.iscoroutinefunction(implementation)
+    assert inspect.signature(implementation, eval_str=True) == port_method.replace(
+        parameters=list(port_method.parameters.values())[1:]
     )
