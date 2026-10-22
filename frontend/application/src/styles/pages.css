@@ -239,6 +239,66 @@
   line-height: var(--lh-20);
 }
 
+.trace-layout {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.trace-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--s-4);
+}
+
+.trace-facts {
+  display: grid;
+  align-content: start;
+  gap: var(--s-4);
+  margin: 0;
+  padding: var(--s-6);
+}
+
+.trace-facts dt {
+  color: var(--text-secondary);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
+}
+
+.trace-facts dd {
+  margin: 0;
+  font-size: var(--fs-18);
+  line-height: var(--lh-26);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.verdicts {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
+}
+
+.verdicts li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.verdict-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--s-6);
+  height: var(--s-6);
+  border-radius: var(--r-pill);
+  background: var(--bg-success);
+  color: var(--success-text);
+}
+
 .trace-steps {
   display: grid;
   gap: 0;
@@ -375,7 +435,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .loans-summary {
+  .loans-summary,
+  .trace-summary {
     grid-template-columns: minmax(0, 1fr);
   }
 
