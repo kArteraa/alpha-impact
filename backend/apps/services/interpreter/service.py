@@ -1,5 +1,4 @@
 import json
-from asyncio import gather
 from datetime import date, timedelta
 from time import perf_counter
 from uuid import uuid4
@@ -12,6 +11,7 @@ from apps.services.interpreter.followup import (
     cited_house_view,
     followup_evidence,
     followup_payload,
+    followup_question,
     original_card,
     trace_news,
 )
@@ -36,6 +36,7 @@ from shared.contracts.ports import (
     TraceStore,
 )
 from shared.contracts.schemas import (
+    CounterpartyContext,
     FollowupContext,
     HouseViewClaim,
     InsightCard,
@@ -77,6 +78,8 @@ class Agent:
         self._prefilter = Prefilter(news, house_view, threshold=threshold)
 
     async def interpret(self, request: InterpretRequest) -> InterpretResponse:
+        if isinstance(request.action_context, FollowupContext):
+            followup_question(request.action_context, self._config.max_question_chars)
         trace = Trace(
             id=str(uuid4()),
             request=request,
@@ -133,14 +136,7 @@ class Agent:
             "authorized client features",
             self._profiles.get_profile(request.user_id, request.client_id),
         )
-        counterparty = None
-        if isinstance(request.action_context, PaymentContext):
-            action = request.action_context
-            counterparty = await journal.tool(
-                "counterparty.context",
-                "recipient aggregates",
-                self._counterparties.context(request.client_id, action.beneficiary_id, action.inn),
-            )
+        counterparty = await self._counterparty(journal, request)
         as_of = journal.trace.created_at.date()
         pasted = await self._pasted_news(request, journal)
         prefilter_started_at = utc_now()
@@ -203,9 +199,7 @@ class Agent:
     async def _followup(
         self, request: InterpretRequest, action: FollowupContext, journal: Journal
     ) -> InterpretResponse:
-        question = action.question.strip()
-        if not question or len(question) > self._config.max_question_chars:
-            raise DomainError("Followup question is empty or exceeds the configured limit")
+        question = followup_question(action, self._config.max_question_chars)
         original = await self._card_trace(journal, request, action.card_id)
         card = original_card(original, action.card_id)
         root = await self._root_request(journal, request, original)
@@ -214,11 +208,11 @@ class Agent:
             "authorized client features",
             self._profiles.get_profile(request.user_id, request.client_id),
         )
+        counterparty = await self._counterparty(journal, root)
         as_of = journal.trace.created_at.date()
-        found = await gather(
-            *(self._cited(journal, claim_id, as_of) for claim_id in cited_house_view(card))
-        )
-        cited = {claim.id: claim for batch in found for claim in batch}
+        cited: dict[str, HouseViewClaim] = {}
+        for claim_id in cited_house_view(card):
+            cited.update({claim.id: claim for claim in await self._cited(journal, claim_id, as_of)})
         house_view = [cited[key] for key in sorted(cited)]
         prompt_request = root.model_copy(update={"role": request.role})
         plan = await self._plan(
@@ -230,14 +224,15 @@ class Agent:
                 prompt_request,
                 card,
                 profile,
-                followup_evidence(card, profile, house_view),
+                counterparty,
+                followup_evidence(card, profile, counterparty, house_view),
             ),
         )
         current = await self._collect(journal, plan, house_view, as_of)
-        evidence = followup_evidence(card, profile, current)
+        evidence = followup_evidence(card, profile, counterparty, current)
         payload: dict[str, object] = {
             "plan": plan.model_dump(),
-            **followup_payload(question, prompt_request, card, profile, evidence),
+            **followup_payload(question, prompt_request, card, profile, counterparty, evidence),
         }
         draft = await journal.generate(
             "draft", FOLLOWUP_DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
@@ -286,9 +281,25 @@ class Agent:
     async def _root_request(
         self, journal: Journal, request: InterpretRequest, trace: Trace
     ) -> InterpretRequest:
-        while isinstance(trace.request.action_context, FollowupContext):
+        for _ in range(self._config.max_followup_depth):
+            if not isinstance(trace.request.action_context, FollowupContext):
+                return trace.request
             trace = await self._card_trace(journal, request, trace.request.action_context.card_id)
+        if isinstance(trace.request.action_context, FollowupContext):
+            raise DomainError("Followup chain exceeds the configured depth")
         return trace.request
+
+    async def _counterparty(
+        self, journal: Journal, request: InterpretRequest
+    ) -> CounterpartyContext | None:
+        if not isinstance(request.action_context, PaymentContext):
+            return None
+        action = request.action_context
+        return await journal.tool(
+            "counterparty.context",
+            "recipient aggregates",
+            self._counterparties.context(request.client_id, action.beneficiary_id, action.inn),
+        )
 
     async def _cited(self, journal: Journal, claim_id: str, as_of: date) -> list[HouseViewClaim]:
         try:

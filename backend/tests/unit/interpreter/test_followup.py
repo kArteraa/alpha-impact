@@ -1,5 +1,4 @@
 import json
-from datetime import UTC, datetime
 
 import pytest
 
@@ -10,123 +9,22 @@ from shared.contracts.errors import AccessDenied, DomainError, NotFound
 from shared.contracts.schemas import (
     Claim,
     ClaimType,
-    DepositContext,
     FollowupContext,
     HouseViewClaim,
-    InsightCard,
-    InterpretRequest,
-    InterpretResponse,
-    Role,
     SourceRef,
     Trace,
 )
-from tests.unit.interpreter.support import Harness
-
-QUESTION = "А если ЦБ снизит ставку в октябре?"
-NEWS_REF = SourceRef(
-    kind="news",
-    id="rate-news",
-    title="ЦБ сохранил ключевую ставку",
-    url="https://example.invalid/rate-news",
-    published_at=datetime(2026, 10, 21, 12, tzinfo=UTC),
+from tests.unit.interpreter.followup_support import (
+    NEWS_REF,
+    PROFILE_REF,
+    QUESTION,
+    answer_draft,
+    deposit_trace,
+    followup_request,
+    prompt,
+    rate_claim,
 )
-PROFILE_REF = SourceRef(kind="profile", id="products", title="Признак компании: products")
-
-
-def rate_claim(harness: Harness, claim_id: str, **update: object) -> HouseViewClaim:
-    return harness.seed.house_view[0].model_copy(
-        update={
-            "id": claim_id,
-            "claim": "Банк ожидает снижения ключевой ставки до конца года",
-            "subject": "key_rate",
-            **update,
-        }
-    )
-
-
-def deposit_trace(claim: HouseViewClaim, news_ref: SourceRef = NEWS_REF) -> Trace:
-    bank_ref = SourceRef(kind="house_view", id=claim.id, title="synthetic-report, стр. 1")
-    card = InsightCard(
-        id="deposit-card",
-        trace_id="deposit-trace",
-        headline="Ставка по депозиту зависит от решения ЦБ",
-        what_happened=[Claim(text="ЦБ сохранил ставку", type=ClaimType.FACT, source_ref=news_ref)],
-        why_for_you=[
-            Claim(text="Компания размещает депозиты", type=ClaimType.FACT, source_ref=PROFILE_REF)
-        ],
-        consequences=[
-            Claim(
-                text="Доход по депозиту зависит от ставки", type=ClaimType.AI, source_ref=NEWS_REF
-            )
-        ],
-        actions=[Claim(text="Сравните срок размещения", type=ClaimType.AI, source_ref=PROFILE_REF)],
-        bank_view=[Claim(text=claim.claim, type=ClaimType.BANK, source_ref=bank_ref)],
-        basis=[news_ref, PROFILE_REF, bank_ref],
-        significance=0.7,
-    )
-    return Trace(
-        id="deposit-trace",
-        request=InterpretRequest(
-            user_id="private-user",
-            client_id="private-client",
-            role=Role.CFO,
-            action_context=DepositContext(amount=5_000_000, term_days=90),
-        ),
-        steps=[],
-        critic_verdicts=["1: ok"],
-        result=InterpretResponse(silent=False, cards=[card]),
-        created_at=datetime(2026, 10, 21, 12, tzinfo=UTC),
-    )
-
-
-def answer_draft(claim: HouseViewClaim) -> dict[str, object]:
-    return {
-        "headline": "Снижение ставки уменьшит доход по новым депозитам",
-        "what_happened": [
-            {"text": "ЦБ сохранил ставку", "type": "fact", "source": "news:rate-news"}
-        ],
-        "why_for_you": [
-            {"text": "Компания размещает депозиты", "type": "fact", "source": "profile:products"}
-        ],
-        "consequences": [
-            {
-                "text": "При снижении ставки доход по депозиту снизится",
-                "type": "ai",
-                "source": f"house_view:{claim.id}",
-            }
-        ],
-        "actions": [
-            {"text": "Зафиксируйте ставку на срок", "type": "ai", "source": "profile:products"}
-        ],
-        "bank_view": [{"text": claim.claim, "type": "bank", "source": f"house_view:{claim.id}"}],
-        "significance": 0.6,
-    }
-
-
-def followup_request() -> InterpretRequest:
-    return InterpretRequest(
-        user_id="private-user",
-        client_id="private-client",
-        role=Role.CFO,
-        action_context=FollowupContext(card_id="deposit-card", question=QUESTION),
-    )
-
-
-@pytest.fixture
-def rate(harness: Harness) -> HouseViewClaim:
-    claim = rate_claim(harness, "rate-approved")
-    harness.traces.find_by_card.return_value = deposit_trace(claim)
-    harness.house_view.chain.return_value = [claim]
-    harness.house_view.claims.return_value = [claim]
-    harness.answers[:] = [{"focus": "Ответ про ставку", "tools": []}, answer_draft(claim)]
-    return claim
-
-
-def prompt(harness: Harness, index: int) -> dict[str, object]:
-    loaded: dict[str, object] = json.loads(
-        harness.llm.complete.await_args_list[index].kwargs["user"]
-    )
-    return loaded
+from tests.unit.interpreter.support import Harness
 
 
 async def test_rate_question_on_deposit_card_cites_house_view(
@@ -307,26 +205,34 @@ def without_fact_on_news(trace: Trace) -> Trace:
     return trace.model_copy(update={"result": trace.result.model_copy(update={"cards": [answer]})})
 
 
-async def test_trace_source_offers_only_fact_claims(harness: Harness, rate: HouseViewClaim) -> None:
+async def test_trace_news_source_carries_ref_and_fact_claims(
+    harness: Harness, rate: HouseViewClaim
+) -> None:
     await harness.agent.interpret(followup_request())
     context = prompt(harness, 1)["context"]
     assert isinstance(context, dict)
     news = context["sources"]["news:rate-news"]
-    assert news["value"] == ["ЦБ сохранил ставку"]
+    assert news["value"] == {
+        "title": NEWS_REF.title,
+        "url": NEWS_REF.url,
+        "published_at": "2026-10-21T12:00:00Z",
+        "facts": ["ЦБ сохранил ставку"],
+    }
     assert news["factual"] is True
 
 
-async def test_ai_claim_of_original_card_cannot_return_as_fact(
-    harness: Harness, rate: HouseViewClaim
-) -> None:
+async def test_ai_claim_text_is_not_in_trace_source(harness: Harness, rate: HouseViewClaim) -> None:
     harness.traces.find_by_card.return_value = without_fact_on_news(deposit_trace(rate))
-    with pytest.raises(DomainError):
-        await harness.agent.interpret(followup_request())
+    response = await harness.agent.interpret(followup_request())
+    assert not response.cards[0].needs_review
     context = prompt(harness, 1)["context"]
     assert isinstance(context, dict)
     news = context["sources"]["news:rate-news"]
-    assert news["value"] == []
-    assert news["factual"] is False
+    assert news["value"]["facts"] == []
+    assert news["value"]["title"] == NEWS_REF.title
+    assert "Доход по депозиту зависит от ставки" not in json.dumps(
+        context["sources"], ensure_ascii=False
+    )
 
 
 @pytest.mark.parametrize(
@@ -343,6 +249,7 @@ async def test_invalid_question_stops_before_store_and_model(
     with pytest.raises(DomainError):
         await harness.agent.interpret(request)
     harness.traces.find_by_card.assert_not_awaited()
+    harness.traces.save.assert_not_awaited()
     harness.llm.complete.assert_not_awaited()
 
 
