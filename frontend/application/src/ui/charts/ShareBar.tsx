@@ -1,7 +1,7 @@
 import { shares } from "./scale";
 import type { Tone } from "./tone";
 
-export interface Share {
+interface Share {
   label: string;
   value: number;
   tone: Tone;

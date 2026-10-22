@@ -30,7 +30,8 @@
 
 .field input,
 .field select,
-.field textarea {
+.field textarea,
+.field .select-trigger {
   width: 100%;
   min-height: var(--control-h);
   padding: 25px var(--s-4) 5px;
@@ -54,13 +55,15 @@
 
 .field input:hover,
 .field select:hover,
-.field textarea:hover {
+.field textarea:hover,
+.field .select-trigger:hover {
   background-color: var(--bg-neutral-strong);
 }
 
 .field input:focus,
 .field select:focus,
-.field textarea:focus {
+.field textarea:focus,
+.field .select-trigger:focus {
   outline: 2px solid transparent;
   background-color: var(--bg-card);
   box-shadow: inset 0 0 0 1px var(--border);
@@ -68,7 +71,8 @@
 
 .field input:focus-visible,
 .field select:focus-visible,
-.field textarea:focus-visible {
+.field textarea:focus-visible,
+.field .select-trigger:focus-visible {
   box-shadow:
     inset 0 0 0 1px var(--border),
     var(--focus-ring);

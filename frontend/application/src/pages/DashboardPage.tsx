@@ -22,8 +22,8 @@ const TILE_META: Record<string, readonly [string, string]> = {
 
 const QUICK_ACTIONS: readonly (readonly [string, string, string, IconName, string])[] = [
   ["/payments/new", "Платёж", "Контрагенту по реквизитам", "payment", "tile-pay"],
-  ["/deposits/new", "Депозит", "Разместить свободные средства", "deposit", "tile-deposit"],
-  ["/loans", "Кредиты", "Портфель и новый транш", "loans", "tile-loans"],
+  ["/deposits/new", "Депозит", "Разместить свободные средства", "deposit", "tile-deposit tile-side"],
+  ["/loans", "Кредиты", "Портфель и новый транш", "loans", "tile-loans tile-side"],
 ];
 
 export function DashboardPage() {

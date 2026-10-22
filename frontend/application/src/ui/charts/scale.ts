@@ -1,4 +1,4 @@
-export type Point = [number, number];
+type Point = [number, number];
 
 export function linePoints(values: readonly number[], width: number, height: number, inset: number): Point[] {
   const min = Math.min(...values);

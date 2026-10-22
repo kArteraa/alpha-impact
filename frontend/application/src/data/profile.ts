@@ -3,8 +3,8 @@ export type FeatureGroup = "company" | "geography" | "scale" | "bank";
 export interface FeatureSpec {
   label: string;
   group: FeatureGroup;
-  options?: Record<string, string>;
   labels?: Record<string, string>;
+  editable?: boolean;
   money?: boolean;
 }
 
@@ -51,7 +51,7 @@ const CLIENT_TYPES: Record<string, string> = {
 };
 
 export const FEATURES: Record<string, FeatureSpec> = {
-  industry_class: { label: "Отрасль", group: "company", options: INDUSTRIES },
+  industry_class: { label: "Отрасль", group: "company", labels: INDUSTRIES, editable: true },
   okved_name: { label: "Основной вид деятельности", group: "company" },
   okved_code: { label: "Код ОКВЭД", group: "company" },
   company_age: { label: "Возраст компании, лет", group: "company" },

@@ -21,10 +21,8 @@ export function CashflowCard() {
   if (!weeks) {
     return null;
   }
-  const totals = [
-    weeks.reduce((sum, week) => sum + week.inflow, 0),
-    weeks.reduce((sum, week) => sum + week.outflow, 0),
-  ];
+  const rows = weeks.map((week) => [week.inflow, week.outflow]);
+  const totals = SERIES.map((_, index) => rows.reduce((sum, row) => sum + row[index], 0));
   return (
     <section className="card cashflow" aria-labelledby={headingId}>
       <div className="cashflow-head">
@@ -45,10 +43,7 @@ export function CashflowCard() {
       <Columns
         title="Поступления и списания по неделям, с понедельника"
         series={SERIES}
-        groups={weeks.map((week) => ({
-          label: WEEK.format(new Date(week.start)),
-          values: [week.inflow, week.outflow],
-        }))}
+        groups={weeks.map((week, index) => ({ label: WEEK.format(new Date(week.start)), values: rows[index] }))}
         format={(value) => RUB_COMPACT.format(value)}
       />
     </section>

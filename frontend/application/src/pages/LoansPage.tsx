@@ -1,14 +1,13 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 import { LOANS, LOANS_TOTAL } from "../data/loans";
 import { daysUntil } from "../loans/maturity";
-import { RUB_WHOLE } from "../money";
+import { PERCENT, RUB_WHOLE } from "../money";
 import { ShareBar } from "../ui/charts/ShareBar";
 import type { Tone } from "../ui/charts/tone";
 import { Icon } from "../ui/Icon";
 import { plural } from "../ui/plural";
 
 const DATE = new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC" });
-const PERCENT = new Intl.NumberFormat("ru-RU", { style: "percent", maximumFractionDigits: 0 });
 const DAYS = { one: "день", few: "дня", many: "дней" };
 const SOON_DAYS = 90;
 const TONES: readonly Tone[] = ["primary", "soft", "muted"];
@@ -23,7 +22,7 @@ function untilText(days: number): string {
 
 export function LoansPage() {
   const titleId = useId();
-  const today = new Date();
+  const [today] = useState(() => new Date());
   const nearestDays = daysUntil(NEAREST.maturity, today);
   return (
     <section>
