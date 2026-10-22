@@ -2,7 +2,6 @@ from apps.services.interpreter.context import Evidence, prompt_context, source_k
 from apps.services.interpreter.drafting import CLAIM_BLOCKS, card_claims
 from shared.contracts.errors import DomainError, NotFound
 from shared.contracts.schemas import (
-    Claim,
     ClaimType,
     ClientProfile,
     CounterpartyContext,
@@ -53,39 +52,20 @@ def traceable_news(ref: SourceRef) -> bool:
     )
 
 
-def trace_refs(card: InsightCard) -> list[SourceRef]:
-    return [ref for ref in card.basis if traceable_news(ref)]
-
-
-def news_evidence(ref: SourceRef, facts: list[Claim]) -> Evidence:
-    return Evidence(
-        ref,
-        {
-            **ref.model_dump(mode="json", include=NEWS_REF_FIELDS - {"id"}),
-            "facts": [claim.text for claim in facts if claim.source_ref == ref],
-        },
-        None,
-        True,
-    )
-
-
-def trace_evidence(card: InsightCard) -> dict[str, Evidence]:
-    facts = [claim for claim in card_claims(card) if claim.type == ClaimType.FACT]
-    return {source_key(ref): news_evidence(ref, facts) for ref in trace_refs(card)}
-
-
 def trace_news(card: InsightCard) -> list[NewsItem]:
+    facts = [claim for claim in card_claims(card) if claim.type == ClaimType.FACT]
     return [
         NewsItem.model_validate(
             {
                 **ref.model_dump(include=NEWS_REF_FIELDS),
-                "text": "",
+                "text": "\n".join(claim.text for claim in facts if claim.source_ref == ref),
                 "source": TRACE_NEWS_SOURCE,
                 "entities": [],
                 "factors": [],
             }
         )
-        for ref in trace_refs(card)
+        for ref in card.basis
+        if traceable_news(ref)
     ]
 
 
@@ -106,7 +86,7 @@ def followup_evidence(
     counterparty: CounterpartyContext | None,
     house_view: list[HouseViewClaim],
 ) -> dict[str, Evidence]:
-    return {**sources(profile, counterparty, [], house_view), **trace_evidence(card)}
+    return sources(profile, counterparty, trace_news(card), house_view)
 
 
 def followup_payload(

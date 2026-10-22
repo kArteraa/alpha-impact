@@ -212,12 +212,10 @@ async def test_trace_news_source_carries_ref_and_fact_claims(
     context = prompt(harness, 1)["context"]
     assert isinstance(context, dict)
     news = context["sources"]["news:rate-news"]
-    assert news["value"] == {
-        "title": NEWS_REF.title,
-        "url": NEWS_REF.url,
-        "published_at": "2026-10-21T12:00:00Z",
-        "facts": ["ЦБ сохранил ставку"],
-    }
+    assert news["value"]["title"] == NEWS_REF.title
+    assert news["value"]["url"] == NEWS_REF.url
+    assert news["value"]["published_at"] == "2026-10-21T12:00:00Z"
+    assert news["value"]["text"] == "ЦБ сохранил ставку"
     assert news["factual"] is True
 
 
@@ -228,7 +226,7 @@ async def test_ai_claim_text_is_not_in_trace_source(harness: Harness, rate: Hous
     context = prompt(harness, 1)["context"]
     assert isinstance(context, dict)
     news = context["sources"]["news:rate-news"]
-    assert news["value"]["facts"] == []
+    assert news["value"]["text"] == ""
     assert news["value"]["title"] == NEWS_REF.title
     assert "Доход по депозиту зависит от ставки" not in json.dumps(
         context["sources"], ensure_ascii=False

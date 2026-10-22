@@ -9,9 +9,7 @@ from shared.contracts.schemas import (
     ClaimType,
     FollowupContext,
     HouseViewClaim,
-    InterpretRequest,
     NewsItem,
-    Role,
     SourceRef,
     Trace,
 )
@@ -34,14 +32,7 @@ def payment_trace(harness: Harness, claim: HouseViewClaim, field: str) -> Trace:
     answered = card.model_copy(update={"consequences": [guess], "basis": [*card.basis, graph_ref]})
     return trace.model_copy(
         update={
-            "request": InterpretRequest(
-                user_id="private-user",
-                client_id="private-client",
-                role=Role.CFO,
-                action_context=harness.seed.payment.model_copy(
-                    update={"beneficiary_id": "logistics"}
-                ),
-            ),
+            "request": harness.request(),
             "result": trace.result.model_copy(update={"cards": [answered]}),
         }
     )
