@@ -219,18 +219,36 @@ async def test_trace_news_source_carries_ref_and_fact_claims(
     assert news["factual"] is True
 
 
-async def test_ai_claim_text_is_not_in_trace_source(harness: Harness, rate: HouseViewClaim) -> None:
+async def test_news_cited_only_by_ai_claims_cannot_return_as_fact(
+    harness: Harness, rate: HouseViewClaim
+) -> None:
     harness.traces.find_by_card.return_value = without_fact_on_news(deposit_trace(rate))
-    response = await harness.agent.interpret(followup_request())
-    assert not response.cards[0].needs_review
+    with pytest.raises(DomainError):
+        await harness.agent.interpret(followup_request())
     context = prompt(harness, 1)["context"]
     assert isinstance(context, dict)
     news = context["sources"]["news:rate-news"]
+    assert news["factual"] is False
     assert news["value"]["text"] == ""
     assert news["value"]["title"] == NEWS_REF.title
     assert "Доход по депозиту зависит от ставки" not in json.dumps(
         context["sources"], ensure_ascii=False
     )
+
+
+async def test_validated_question_is_trimmed_in_trace_and_prompt(
+    harness: Harness, rate: HouseViewClaim
+) -> None:
+    request = followup_request().model_copy(
+        update={
+            "action_context": FollowupContext(card_id="deposit-card", question=f"  {QUESTION}\n")
+        }
+    )
+    await harness.agent.interpret(request)
+    trace: Trace = harness.traces.save.call_args.args[0]
+    assert isinstance(trace.request.action_context, FollowupContext)
+    assert trace.request.action_context.question == QUESTION
+    assert prompt(harness, 1)["question"] == QUESTION
 
 
 @pytest.mark.parametrize(

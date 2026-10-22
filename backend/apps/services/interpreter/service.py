@@ -79,7 +79,14 @@ class Agent:
 
     async def interpret(self, request: InterpretRequest) -> InterpretResponse:
         if isinstance(request.action_context, FollowupContext):
-            followup_question(request.action_context, self._config.max_question_chars)
+            question = followup_question(request.action_context, self._config.max_question_chars)
+            request = request.model_copy(
+                update={
+                    "action_context": request.action_context.model_copy(
+                        update={"question": question}
+                    )
+                }
+            )
         trace = Trace(
             id=str(uuid4()),
             request=request,
@@ -199,7 +206,6 @@ class Agent:
     async def _followup(
         self, request: InterpretRequest, action: FollowupContext, journal: Journal
     ) -> InterpretResponse:
-        question = action.question.strip()
         original = await self._card_trace(journal, request, action.card_id)
         card = original_card(original, action.card_id)
         root = await self._root_request(journal, request, original)
@@ -220,7 +226,7 @@ class Agent:
             FOLLOWUP_PLAN_SYSTEM,
             {"focus": self._config.followup_focus},
             followup_payload(
-                question,
+                action.question,
                 prompt_request,
                 card,
                 profile,
@@ -232,7 +238,9 @@ class Agent:
         evidence = followup_evidence(card, profile, counterparty, current)
         payload: dict[str, object] = {
             "plan": plan.model_dump(),
-            **followup_payload(question, prompt_request, card, profile, counterparty, evidence),
+            **followup_payload(
+                action.question, prompt_request, card, profile, counterparty, evidence
+            ),
         }
         draft = await journal.generate(
             "draft", FOLLOWUP_DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
@@ -286,7 +294,10 @@ class Agent:
                 return trace.request
             trace = await self._card_trace(journal, request, trace.request.action_context.card_id)
         if isinstance(trace.request.action_context, FollowupContext):
-            raise DomainError("Followup chain exceeds the configured depth")
+            raise DomainError(
+                f"Диалог по карточке длиннее {self._config.max_followup_depth} вопросов: "
+                "задайте вопрос к исходной карточке"
+            )
         return trace.request
 
     async def _counterparty(
