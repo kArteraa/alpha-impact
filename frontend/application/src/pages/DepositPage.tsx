@@ -1,10 +1,10 @@
 import { useId, useState } from "react";
 import { DEPOSIT_RATES } from "../data/depositRates";
 import { DEPOSIT_TERMS, type DepositTerm, depositIncome } from "../deposit/calc";
-import { parseAmount, RUB } from "../money";
+import { parseAmount, RATE } from "../money";
+import { Amount } from "../ui/Amount";
 
 const DEFAULT_TERM: DepositTerm = 6;
-const RATE = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 
 export function DepositPage() {
   const termLabelId = useId();
@@ -27,7 +27,7 @@ export function DepositPage() {
               onChange={(event) => setAmountText(event.target.value)}
             />
           </label>
-          <div className="field">
+          <div className="field field-static">
             <span className="muted" id={termLabelId}>
               Срок
             </span>
@@ -51,11 +51,12 @@ export function DepositPage() {
           {amount === null ? (
             <p className="empty">Введите сумму — посчитаю доход за выбранный срок</p>
           ) : (
-            <strong className="amount-lg" data-testid="deposit-income">
-              {RUB.format(depositIncome(amount, term, rate))}
-            </strong>
+            <Amount className="amount-lg" testId="deposit-income" value={depositIncome(amount, term, rate)} />
           )}
-          <span className="muted">{RATE.format(rate)}% годовых · демо-ставки</span>
+          <div className="deposit-meta">
+            <span className="badge">{RATE.format(rate)}% годовых</span>
+            <span className="badge badge-warning">демо-ставки</span>
+          </div>
         </aside>
       </div>
     </section>
