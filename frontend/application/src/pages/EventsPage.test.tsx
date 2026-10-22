@@ -7,7 +7,7 @@ describe("EventsPage", () => {
   afterEach(cleanup);
 
   it("lists every event of the company by significance", () => {
-    renderWithCompany(<EventsPage />, "/events");
+    renderWithCompany(<EventsPage />, { path: "/events" });
 
     const headlines = screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
     expect(headlines).toEqual([
@@ -20,7 +20,7 @@ describe("EventsPage", () => {
   });
 
   it("names the company under the heading", () => {
-    renderWithCompany(<EventsPage />, "/events");
+    renderWithCompany(<EventsPage />, { path: "/events" });
 
     expect(screen.getByText("ООО «Северный опт»")).toBeTruthy();
   });

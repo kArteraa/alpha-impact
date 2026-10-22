@@ -1,5 +1,6 @@
 import type { ClientProfile, Feature } from "@alpha-impact/plugin";
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { Route } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TEST_CLIENT, renderWithCompany, stubApi } from "../testing";
 import { ProfilePage } from "./ProfilePage";
@@ -32,6 +33,10 @@ function profile(industry: Feature): ClientProfile {
 
 const LOADED = profile(feature("wholesale", "inferred"));
 
+function renderProfile() {
+  renderWithCompany(<ProfilePage />, { path: "/profile", routes: <Route path="/" element={<h1>Главный экран</h1>} /> });
+}
+
 async function card(label: string) {
   return screen.findByRole("listitem", { name: label });
 }
@@ -44,7 +49,7 @@ describe("ProfilePage", () => {
 
   it("shows what the bank knows about the company", async () => {
     stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
-    renderWithCompany(<ProfilePage />, "/profile");
+    renderProfile();
 
     expect(within(await card("Отрасль")).getByText("Оптовая торговля")).toBeTruthy();
     expect(within(await card("Регион")).getByText("Самарская область")).toBeTruthy();
@@ -54,7 +59,7 @@ describe("ProfilePage", () => {
 
   it("keeps bank facts read-only", async () => {
     stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
-    renderWithCompany(<ProfilePage />, "/profile");
+    renderProfile();
 
     const region = await card("Регион");
     expect(within(region).getByText("по данным банка")).toBeTruthy();
@@ -66,7 +71,7 @@ describe("ProfilePage", () => {
       [`GET ${PROFILE_URL}`]: [200, LOADED],
       [PATCH_URL]: [200, profile(feature("logistics", "user"))],
     });
-    renderWithCompany(<ProfilePage />, "/profile");
+    renderProfile();
     const industry = await card("Отрасль");
     expect(within(industry).getByText("определено по данным")).toBeTruthy();
 
@@ -82,7 +87,7 @@ describe("ProfilePage", () => {
 
   it("drops an edit on cancel", async () => {
     const fetchMock = stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
-    renderWithCompany(<ProfilePage />, "/profile");
+    renderProfile();
     const industry = await card("Отрасль");
 
     fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
@@ -95,7 +100,7 @@ describe("ProfilePage", () => {
 
   it("says why a correction was not saved", async () => {
     stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED], [PATCH_URL]: [404, "unknown industry"] });
-    renderWithCompany(<ProfilePage />, "/profile");
+    renderProfile();
     const industry = await card("Отрасль");
 
     fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
@@ -106,21 +111,21 @@ describe("ProfilePage", () => {
 
   it("explains a company the bank has no card for", async () => {
     stubApi({ [`GET ${PROFILE_URL}`]: [200, { ...LOADED, features: {} }] });
-    renderWithCompany(<ProfilePage />, "/profile");
+    renderProfile();
 
     expect(await screen.findByText("Данных о компании у банка нет")).toBeTruthy();
   });
 
   it("says so when the profile cannot be loaded", async () => {
     stubApi({ [`GET ${PROFILE_URL}`]: [500, "boom"] });
-    renderWithCompany(<ProfilePage />, "/profile");
+    renderProfile();
 
     expect((await screen.findByRole("alert")).textContent).toBe("Не удалось загрузить профиль");
   });
 
   it("confirms the profile and opens the main screen", async () => {
     stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
-    renderWithCompany(<ProfilePage />, "/profile");
+    renderProfile();
     await card("Отрасль");
 
     fireEvent.click(screen.getByRole("button", { name: "Всё верно" }));

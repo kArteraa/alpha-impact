@@ -1,6 +1,5 @@
 import type { Feature } from "@alpha-impact/plugin";
-
-const NUMBER = new Intl.NumberFormat("ru-RU");
+import { NUMBER } from "../money";
 
 export function isEditable(feature: Feature): boolean {
   return feature.source !== "bank";

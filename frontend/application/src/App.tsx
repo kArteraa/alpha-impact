@@ -10,6 +10,7 @@ import { PaymentPage } from "./pages/PaymentPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RolePage } from "./pages/RolePage";
 import { TracePage } from "./pages/TracePage";
+import { RequireSession } from "./session/RequireSession";
 
 export function App() {
   return (
@@ -17,14 +18,16 @@ export function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/role" element={<RolePage />} />
       <Route path="/showcase" element={<Showcase />} />
-      <Route element={<Layout />}>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/events" element={<EventsPage />} />
-        <Route path="/payments/new" element={<PaymentPage />} />
-        <Route path="/deposits/new" element={<DepositPage />} />
-        <Route path="/loans" element={<LoansPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/trace/:id" element={<TracePage />} />
+      <Route element={<RequireSession />}>
+        <Route element={<Layout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/events" element={<EventsPage />} />
+          <Route path="/payments/new" element={<PaymentPage />} />
+          <Route path="/deposits/new" element={<DepositPage />} />
+          <Route path="/loans" element={<LoansPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/trace/:id" element={<TracePage />} />
+        </Route>
       </Route>
     </Routes>
   );
