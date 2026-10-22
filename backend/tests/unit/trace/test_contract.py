@@ -40,4 +40,4 @@ def test_registered_store_matches_port_signature(name: str) -> None:
 
 async def test_find_by_card_points_to_implementing_task() -> None:
     with pytest.raises(NotImplementedError, match="AH-26"):
-        await resolve().find_by_card("u1", "card-1")
+        await resolve().find_by_card("u1", "c1", "card-1")
