@@ -282,7 +282,7 @@
 ### AH-63 · TraceStore.find_by_card — трасса карточки для followup
 - Эпик: AH-21 · День: 3 · Тип: contract · Зависит от: AH-23
 - Ответственный: Участник 3
-- Что сделать: метод порта `TraceStore.find_by_card(user_id, client_id, card_id) -> Trace` для followup из AH-26: `FollowupContext` несёт только `card_id`, а `get` ищет трассу по `trace_id`; таблица `traces` принадлежит сервису `trace`, interpreter читает её только через порт; пользователя и клиента трассы сверяет хранилище; контрактный тест → `shared/contracts/ports.py` → заглушка в `apps/services/trace` (`NotImplementedError("AH-26")`) → `docs/CONTRACTS.md`; взял Участник 3 вместо Участника 2, как AH-62: метод нужен его AH-26, а сервис `trace` — его.
+- Что сделать: метод порта `TraceStore.find_by_card(*, user_id, client_id, card_id) -> Trace` (аргументы только по имени) для followup из AH-26: `FollowupContext` несёт только `card_id`, а `get` ищет трассу по `trace_id`; таблица `traces` принадлежит сервису `trace`, interpreter читает её только через порт; пользователя и клиента трассы сверяет хранилище; контрактный тест → `shared/contracts/ports.py` → заглушка в `apps/services/trace` (`NotImplementedError("AH-26")`) → `docs/CONTRACTS.md`; взял Участник 3 вместо Участника 2, как AH-62: метод нужен его AH-26, а сервис `trace` — его.
 - Готово, когда: метод есть в порту и в `docs/CONTRACTS.md` с ошибками `NotFound` (нет карточки) и `AccessDenied` (карточка чужого пользователя или чужого клиента); `tests/unit/trace/test_contract.py` проверяет соответствие порту и что новый метод указывает на AH-26; HTTP-контракт не меняется.
 
 
