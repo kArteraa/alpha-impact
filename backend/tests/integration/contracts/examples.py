@@ -43,6 +43,7 @@ STEP = s.TraceStep(
     model="glm-5.3-flash",
     tokens_in=120,
     tokens_out=40,
+    cost_rub=0.03,
     duration_ms=850,
     started_at=NOW,
 )

@@ -6,6 +6,7 @@
  */
 
 export interface TraceStep {
+  cost_rub?: number;
   duration_ms?: number;
   input_summary: string;
   model?: string | null;

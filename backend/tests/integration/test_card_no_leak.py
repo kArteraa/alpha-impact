@@ -50,13 +50,13 @@ class EchoModel:
 
     async def complete(
         self, task: str, system: str, user: str, schema: type | None = None
-    ) -> tuple[object, int, int]:
+    ) -> tuple[object, int, int, float]:
         assert schema is not None and issubclass(schema, BaseModel)
         self.prompts += [system, user]
         if task == "critic":
-            return schema.model_validate({"items": []}), 0, 0
+            return schema.model_validate({"items": []}), 0, 0, 0.0
         if "tools" in schema.model_fields:
-            return schema.model_validate({"focus": user, "tools": []}), 0, 0
+            return schema.model_validate({"focus": user, "tools": []}), 0, 0, 0.0
         sources = json.loads(user)["context"]["sources"]
         client_facts = [key for key in sources if key.startswith(("profile:", "graph:"))][:1]
         echo = [
@@ -72,7 +72,7 @@ class EchoModel:
             "bank_view": [],
             "significance": 0.5,
         }
-        return schema.model_validate(answer), 0, 0
+        return schema.model_validate(answer), 0, 0, 0.0
 
 
 def probe_news() -> NewsItem:
