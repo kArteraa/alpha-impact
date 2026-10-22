@@ -2,7 +2,6 @@ import { NavLink, Outlet } from "react-router";
 import { Brand } from "./Brand";
 import { CompanyProvider } from "./company/CompanyContext";
 import { useCompany } from "./company/context";
-import { COMPANIES } from "./data/companies";
 import { EVENTS } from "./data/events";
 import { Icon, type IconName } from "./ui/Icon";
 
@@ -22,13 +21,13 @@ function monogram(name: string): string {
 }
 
 function CompanySwitcher() {
-  const { company, select } = useCompany();
+  const { company, companies, select } = useCompany();
   const mark = (
     <span className="company-mark" aria-hidden="true">
       {monogram(company.name)}
     </span>
   );
-  if (COMPANIES.length === 1) {
+  if (companies.length === 1) {
     return (
       <span className="company">
         {mark}
@@ -45,7 +44,7 @@ function CompanySwitcher() {
         value={company.id}
         onChange={(event) => select(event.target.value)}
       >
-        {COMPANIES.map((candidate) => (
+        {companies.map((candidate) => (
           <option key={candidate.id} value={candidate.id}>
             {candidate.name}
           </option>
@@ -82,22 +81,29 @@ function MainNav() {
   );
 }
 
+function Shell() {
+  const { company } = useCompany();
+  return (
+    <div className="shell">
+      <header className="shell-top">
+        <Brand />
+        <MainNav />
+        <div className="shell-top-end">
+          <span className="badge badge-warning">Тестовый режим</span>
+          <CompanySwitcher />
+        </div>
+      </header>
+      <main className="shell-main" key={company.id}>
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+
 export function Layout() {
   return (
     <CompanyProvider>
-      <div className="shell">
-        <header className="shell-top">
-          <Brand />
-          <MainNav />
-          <div className="shell-top-end">
-            <span className="badge badge-warning">Тестовый режим</span>
-            <CompanySwitcher />
-          </div>
-        </header>
-        <main className="shell-main">
-          <Outlet />
-        </main>
-      </div>
+      <Shell />
     </CompanyProvider>
   );
 }
