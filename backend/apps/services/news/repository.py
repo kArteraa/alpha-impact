@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
@@ -24,7 +24,12 @@ async def find_news(session: AsyncSession, news_id: str, url: str) -> NewsRow | 
     query = (
         select(NewsRow)
         .options(defer(NewsRow.embedding))
-        .where(or_(NewsRow.id == news_id, NewsRow.url == url))
+        .where(
+            or_(
+                NewsRow.id == news_id,
+                and_(NewsRow.url == url, NewsRow.source != MANUAL_SOURCE),
+            )
+        )
         .order_by(NewsRow.id != news_id)
         .limit(1)
     )
