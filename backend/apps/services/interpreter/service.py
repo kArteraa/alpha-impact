@@ -162,8 +162,8 @@ class Agent:
             ),
             Plan,
         )
-        journal.trace.steps[-1].output_summary = json.dumps(
-            {"template": template.model_dump(), **plan.model_dump()}, ensure_ascii=False
+        journal.trace.steps[-1].output_summary = journal.summary(
+            {"template": template.model_dump(), **plan.model_dump()}
         )
         plan.validate_tools(self._config, house_view)
         collected = {claim.id: claim for claim in house_view}

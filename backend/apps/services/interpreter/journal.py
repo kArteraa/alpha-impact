@@ -22,7 +22,7 @@ class Journal:
         self.model = model
         self.summary_chars = summary_chars
 
-    def _summary(self, value: object) -> str:
+    def summary(self, value: object) -> str:
         return json.dumps(to_jsonable_python(value), ensure_ascii=False)[: self.summary_chars]
 
     @asynccontextmanager
@@ -48,7 +48,7 @@ class Journal:
             )
         ) as step:
             result = await operation
-            step.output_summary = self._summary(result)
+            step.output_summary = self.summary(result)
             return result
 
     async def generate[T: BaseModel](self, name: str, system: str, user: str, schema: type[T]) -> T:
@@ -66,7 +66,7 @@ class Journal:
                 task="interpret", system=system, user=user, schema=schema
             )
             result = schema.model_validate(raw)
-            step.output_summary = self._summary(result)
+            step.output_summary = self.summary(result)
             return result
 
     async def review(
