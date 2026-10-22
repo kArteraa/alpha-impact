@@ -171,23 +171,11 @@ class Agent:
         news = [candidate.news for candidate in selection.candidates]
         house_view = selection.house_view
         evidence = sources(profile, counterparty, news, house_view)
-        context = prompt_context(request, profile, counterparty, evidence)
-        plan = await journal.generate(
-            "plan",
+        plan = await self._plan(
+            journal,
             PLAN_SYSTEM,
-            json.dumps(
-                {
-                    "template": template.model_dump(),
-                    "context": context,
-                    "allowed_subjects": sorted(FACTORS),
-                    "max_tool_calls": self._config.max_tool_calls,
-                },
-                ensure_ascii=False,
-            ),
-            Plan,
-        )
-        journal.trace.steps[-1].output_summary = journal.summary(
-            {"template": template.model_dump(), **plan.model_dump()}
+            template.model_dump(),
+            {"context": prompt_context(request, profile, counterparty, evidence)},
         )
         current = await self._collect(journal, plan, house_view, as_of)
         evidence = sources(profile, counterparty, news, current)
@@ -221,19 +209,49 @@ class Agent:
         as_of = journal.trace.created_at.date()
         cited: dict[str, HouseViewClaim] = {}
         for claim_id in cited_house_view(card):
-            batch = await journal.tool(
-                "house_view.chain", claim_id, self._house_view.chain(claim_id=claim_id)
-            )
-            cited.update({claim.id: claim for claim in current_claims(batch, as_of)})
+            cited.update({claim.id: claim for claim in await self._chain(journal, claim_id, as_of)})
         house_view = [cited[key] for key in sorted(cited)]
-        template = {"focus": self._config.followup_focus}
+        prompt_request = original.request.model_copy(update={"role": request.role})
+        plan = await self._plan(
+            journal,
+            FOLLOWUP_PLAN_SYSTEM,
+            {"focus": self._config.followup_focus},
+            followup_payload(
+                action.question,
+                prompt_request,
+                card,
+                profile,
+                followup_evidence(card, profile, house_view),
+            ),
+        )
+        current = await self._collect(journal, plan, house_view, as_of)
+        evidence = followup_evidence(card, profile, current)
+        payload: dict[str, object] = {
+            "plan": plan.model_dump(),
+            **followup_payload(action.question, prompt_request, card, profile, evidence),
+        }
+        draft = await journal.generate(
+            "draft", FOLLOWUP_DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+        )
+        answer = await self._reviewed(
+            journal, FOLLOWUP_DRAFT_SYSTEM, payload, draft, evidence, current, trace_news(card)
+        )
+        return InterpretResponse(silent=False, cards=[answer])
+
+    async def _plan(
+        self,
+        journal: Journal,
+        system: str,
+        template: dict[str, object],
+        context: dict[str, object],
+    ) -> Plan:
         plan = await journal.generate(
             "plan",
-            FOLLOWUP_PLAN_SYSTEM,
+            system,
             json.dumps(
                 {
                     "template": template,
-                    **followup_payload(request, original, action, card, profile, house_view),
+                    **context,
                     "allowed_subjects": sorted(FACTORS),
                     "max_tool_calls": self._config.max_tool_calls,
                 },
@@ -244,24 +262,13 @@ class Agent:
         journal.trace.steps[-1].output_summary = journal.summary(
             {"template": template, **plan.model_dump()}
         )
-        current = await self._collect(journal, plan, house_view, as_of)
-        payload: dict[str, object] = {
-            "plan": plan.model_dump(),
-            **followup_payload(request, original, action, card, profile, current),
-        }
-        draft = await journal.generate(
-            "draft", FOLLOWUP_DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+        return plan
+
+    async def _chain(self, journal: Journal, claim_id: str, as_of: date) -> list[HouseViewClaim]:
+        batch = await journal.tool(
+            "house_view.chain", claim_id, self._house_view.chain(claim_id=claim_id)
         )
-        answer = await self._reviewed(
-            journal,
-            FOLLOWUP_DRAFT_SYSTEM,
-            payload,
-            draft,
-            followup_evidence(card, profile, current),
-            current,
-            trace_news(card),
-        )
-        return InterpretResponse(silent=False, cards=[answer])
+        return current_claims(batch, as_of)
 
     async def _collect(
         self, journal: Journal, plan: Plan, house_view: list[HouseViewClaim], as_of: date
@@ -275,13 +282,12 @@ class Agent:
                     call.argument,
                     self._house_view.claims(subject=call.argument, as_of=as_of),
                 )
-                batch = [claim for claim in batch if claim.subject == call.argument]
-            else:
-                batch = await journal.tool(
-                    call.tool, call.argument, self._house_view.chain(claim_id=call.argument)
+                found = current_claims(
+                    [claim for claim in batch if claim.subject == call.argument], as_of
                 )
-            for claim in current_claims(batch, as_of):
-                collected[claim.id] = claim
+            else:
+                found = await self._chain(journal, call.argument, as_of)
+            collected.update({claim.id: claim for claim in found})
         return [collected[key] for key in sorted(collected)]
 
     async def _reviewed(
