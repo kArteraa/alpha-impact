@@ -115,3 +115,10 @@ async def test_long_single_line_is_cut_to_title_and_kept_as_body(page: Harness) 
     text = "Ставка снижена " * limit
     await page.agent.interpret(page_request(page, text))
     page.news.annotate.assert_awaited_once_with(text[:limit].rstrip(), text.strip(), URL)
+
+
+async def test_headline_only_page_news_is_still_a_fact_source(page: Harness) -> None:
+    page.news.annotate.return_value = pasted_news(page, text="")
+    response = await page.agent.interpret(page_request(page, "Ставка снижена до 16%"))
+    assert response.cards[0].what_happened[0].type.value == "fact"
+    assert response.cards[0].what_happened[0].source_ref.id == "pasted-news"

@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from apps.services.interpreter.context import Evidence, prompt_context, source_key, sources
 from apps.services.interpreter.drafting import CLAIM_BLOCKS, card_claims
 from shared.contracts.errors import DomainError, NotFound
@@ -86,7 +88,15 @@ def followup_evidence(
     counterparty: CounterpartyContext | None,
     house_view: list[HouseViewClaim],
 ) -> dict[str, Evidence]:
-    return sources(profile, counterparty, trace_news(card), house_view)
+    news = trace_news(card)
+    evidence = sources(profile, counterparty, news, house_view)
+    unfactual = {item.id for item in news if not item.text}
+    return {
+        key: replace(item, factual=False)
+        if item.ref.kind == "news" and item.ref.id in unfactual
+        else item
+        for key, item in evidence.items()
+    }
 
 
 def followup_payload(

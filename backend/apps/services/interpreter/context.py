@@ -72,7 +72,7 @@ def sources(
                 ),
                 item.model_dump(mode="json"),
                 None,
-                bool(item.text),
+                True,
             )
         )
     for claim in house_view:
