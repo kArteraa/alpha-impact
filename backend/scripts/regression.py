@@ -8,7 +8,7 @@ from typing import Protocol
 
 from main import build_container
 from scripts.regression_cases import CASES_DIR, Case, bank_claims, check, load_cases
-from shared.contracts.errors import DomainError, NotFound
+from shared.contracts.errors import NotFound
 from shared.contracts.ports import HouseViewService, Interpreter, LLMGateway
 from shared.contracts.schemas import HouseViewClaim, InterpretResponse
 
@@ -68,7 +68,7 @@ async def run_case(
         request = case.with_parent_card(parent_card)
     try:
         response = await interpreter.interpret(request)
-    except DomainError as error:
+    except Exception as error:
         return CaseResult(case.id, case.title, (f"{type(error).__name__}: {error}",), None)
     first = response.cards[0] if response.cards else None
     if first is not None:
@@ -96,7 +96,7 @@ def render_report(
         "# Регрессия",
         "",
         f"Дата: {day.isoformat()} · коммит `{commit}` · пройдено {passed}/{len(results)} "
-        f"· потрачено {spent_rub:.4f} ₽",
+        f"· потрачено {spent_rub:.4f} руб.",
         "",
         "| Кейс | Что проверяет | Результат | Причины | trace_id |",
         "|---|---|---|---|---|",
@@ -124,6 +124,7 @@ def current_commit() -> str:
 
 async def main() -> int:
     cases = load_cases(CASES_DIR)
+    commit = current_commit()
     container = build_container()
     try:
         llm = container.resolve(LLMGateway)
@@ -134,9 +135,7 @@ async def main() -> int:
         spent = budget_before - await llm.budget_left_rub()
     finally:
         await container.aclose()
-    report = render_report(
-        results, commit=current_commit(), day=datetime.now(UTC).date(), spent_rub=spent
-    )
+    report = render_report(results, commit=commit, day=datetime.now(UTC).date(), spent_rub=spent)
     REPORT_PATH.write_text(report, encoding="utf-8")
     print(report)
     return exit_code(results)

@@ -54,6 +54,8 @@ class Case(BaseModel):
         is_followup = isinstance(self.request.action_context, FollowupContext)
         if is_followup != (self.followup_of is not None):
             raise ValueError("followup_of is set exactly for followup action contexts")
+        if self.when_card.silent is not None:
+            raise ValueError("when_card is checked only on cards and cannot set silent")
         return self
 
     def with_parent_card(self, card_id: str) -> InterpretRequest:
