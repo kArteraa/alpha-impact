@@ -2,13 +2,14 @@ from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from apps.services.counterparty.batch import rebuild_graph
 from apps.services.counterparty.service import CounterpartyAggregates
 from scripts.seed import RAW_DIR, seed_users
 from shared.contracts.schemas import CounterpartyContext
 from shared.db.models import ClientGraphRow, CounterpartyCardRow
+from shared.db.session import make_session_factory
 from tests.leak import (
     CONFIG,
     PAYMENTS_FILE,
@@ -167,15 +168,19 @@ async def test_rebuild_drops_rows_missing_from_data(
 
 @pytest.mark.skipif(not PAYMENTS_FILE.exists(), reason="data/raw is not present")
 async def test_seed_clients_see_only_aggregates_of_their_counterparties(
-    sessions: async_sessionmaker[AsyncSession],
+    sessions: async_sessionmaker[AsyncSession], migrated_db: str
 ) -> None:
     await seed_users(sessions)
     await rebuild_graph(sessions, RAW_DIR, CONFIG)
-    service = CounterpartyAggregates(sessions, CONFIG)
+    pooled = create_async_engine(migrated_db)
+    service = CounterpartyAggregates(make_session_factory(pooled), CONFIG)
 
-    for client_id, foreign in seed_foreign_data().items():
-        assert foreign.counterparties
-        for beneficiary_id, inn in probes(foreign):
-            assert_no_leak(
-                await service.context(client_id, beneficiary_id, inn), client_id, foreign
-            )
+    try:
+        for client_id, foreign in seed_foreign_data().items():
+            assert foreign.counterparties
+            for beneficiary_id, inn in probes(foreign):
+                assert_no_leak(
+                    await service.context(client_id, beneficiary_id, inn), client_id, foreign
+                )
+    finally:
+        await pooled.dispose()
