@@ -45,14 +45,18 @@ async def test_pasted_news_is_annotated_and_stored_as_manual(
     )
 
 
-async def test_annotation_prompt_is_cut_to_limit(
+async def test_pasted_text_is_cut_to_limit_everywhere(
     sessions: async_sessionmaker[AsyncSession],
 ) -> None:
     llm = FakeNewsLlm()
 
-    await index(sessions, llm).annotate("Заголовок", "я" * (CONFIG.max_text_chars * 2), URL)
+    item = await index(sessions, llm).annotate("Заголовок", "я" * (CONFIG.max_text_chars * 2), URL)
 
     assert llm.completions[0].count("я") == CONFIG.max_text_chars
+    assert llm.embedded[0].count("я") == CONFIG.max_text_chars
+    assert len(item.text) == CONFIG.max_text_chars
+    [row] = await rows(sessions)
+    assert row.text == item.text
 
 
 async def test_identical_paste_comes_from_index_without_model(

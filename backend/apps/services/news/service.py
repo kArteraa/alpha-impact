@@ -65,7 +65,9 @@ class NewsIndex:
 
     async def annotate(self, title: str, text: str, url: str) -> NewsItem:
         key = news_id(title)
-        entry = FeedEntry(title, text, url or f"{MANUAL_SOURCE}:{key}", self._now(), MANUAL_SOURCE)
+        address = url or f"{MANUAL_SOURCE}:{key}"
+        text = text[: self._config.max_text_chars]
+        entry = FeedEntry(title, text, address, self._now(), MANUAL_SOURCE)
         async with self._sessions() as session:
             known = await find_news(session, key, entry.url)
         if known is not None:
