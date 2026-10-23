@@ -71,6 +71,7 @@ def load_models(path: Path) -> ModelsFile:
 
 def build_catalog(
     settings: Settings,
+    *,
     allowed: frozenset[str],
     reasoning_off: frozenset[str],
     interactive: frozenset[str],

@@ -27,9 +27,9 @@ def catalog_from_file() -> ModelCatalog:
     models = load_models(MODELS_PATH)
     return build_catalog(
         Settings(_env_file=None),
-        models.models,
-        models.reasoning_off_tasks,
-        models.interactive_tasks,
+        allowed=models.models,
+        reasoning_off=models.reasoning_off_tasks,
+        interactive=models.interactive_tasks,
     )
 
 
@@ -103,7 +103,10 @@ def test_interactive_switch_for_unknown_task_is_rejected(settings_env: dict[str,
     models = load_models(MODELS_PATH)
     with pytest.raises(UnknownTask, match="interpert"):
         build_catalog(
-            Settings(_env_file=None), models.models, frozenset(), frozenset({"interpert"})
+            Settings(_env_file=None),
+            allowed=models.models,
+            reasoning_off=frozenset(),
+            interactive=frozenset({"interpert"}),
         )
 
 
