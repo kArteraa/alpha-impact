@@ -46,14 +46,13 @@ def test_catalog_has_twenty_valid_cases() -> None:
 
 def test_catalog_compares_cfo_and_treasurer_cards() -> None:
     cases = {item.id: item for item in load_cases(CASES_DIR)}
-    pairs = [item for item in cases.values() if item.differs_from is not None]
+    pairs = [
+        (item, cases[item.differs_from]) for item in cases.values() if item.differs_from is not None
+    ]
 
     assert len(pairs) >= 2
-    for item in cases.values():
-        if item.differs_from is None:
-            continue
-        roles = {item.request.role.value, cases[item.differs_from].request.role.value}
-        assert roles == {"cfo", "treasurer"}, item.id
+    for item, peer in pairs:
+        assert {item.request.role.value, peer.request.role.value} == {"cfo", "treasurer"}, item.id
 
 
 def test_every_catalog_case_expects_something() -> None:
