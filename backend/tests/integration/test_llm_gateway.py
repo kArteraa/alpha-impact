@@ -83,27 +83,29 @@ def make_gateway(
     return build
 
 
-async def test_followup_without_reasoning_validates_accounts_and_caches(
+@pytest.mark.parametrize("task", ["followup", "interpret", "critic"])
+async def test_task_without_reasoning_validates_accounts_and_caches(
+    task: str,
     make_gateway: Callable[..., ModelGateway],
     server: MockModelServer,
     sessions: async_sessionmaker[AsyncSession],
 ) -> None:
-    result = await make_gateway().complete("followup", "sys", "usr", Factor)
+    result = await make_gateway().complete(task, "sys", "usr", Factor)
     assert result == (Factor(name="key_rate", strength=0.8), 2000, 400, 0.05)
-    assert server.bodies[0]["model"] == "qwen/qwen3.6-35b-a3b"
+    assert server.bodies[0]["model"] == fakes.ROUTES[task]
     assert server.bodies[0]["reasoning"] == {"enabled": False}
     assert server.bodies[0]["response_format"]["type"] == "json_schema"
     async with sessions() as session:
         usage = (await session.scalars(select(LlmUsageRow))).one()
         assert await session.scalar(select(func.count()).select_from(LlmCacheRow)) == 1
     assert (usage.task, usage.model, usage.tokens_in, usage.tokens_out) == (
-        "followup",
-        "qwen/qwen3.6-35b-a3b",
+        task,
+        fakes.ROUTES[task],
         2000,
         400,
     )
     assert float(usage.cost_rub) == pytest.approx(0.05)
-    assert await make_gateway().complete("followup", "sys", "usr", Factor) == (
+    assert await make_gateway().complete(task, "sys", "usr", Factor) == (
         Factor(name="key_rate", strength=0.8),
         0,
         0,
