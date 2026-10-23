@@ -33,6 +33,15 @@ describe("DashboardPage", () => {
     expect(within(widget()).getAllByLabelText("Банк").length).toBeGreaterThan(0);
   });
 
+  it("marks the consequence phrase with the type of its own source", () => {
+    renderDashboard();
+
+    const logistics = within(widget()).getByRole("link", { name: "Логистика в убытке" }).closest("li");
+    expect([...(logistics?.querySelectorAll(".claim-badge") ?? [])].map((badge) => badge.getAttribute("aria-label"))).toEqual([
+      "Факт",
+    ]);
+  });
+
   it("opens the full card of an event", () => {
     renderDashboard();
 
@@ -50,7 +59,7 @@ describe("DashboardPage", () => {
   it("shows that it is still looking for events", () => {
     renderDashboard({ response: undefined });
 
-    expect(within(widget()).getByText("Смотрю новости и позицию банка за 14 дней")).toBeTruthy();
+    expect(within(widget()).getByText("Смотрю новости и позицию банка")).toBeTruthy();
     expect(within(widget()).queryAllByRole("heading", { level: 3 })).toHaveLength(0);
   });
 

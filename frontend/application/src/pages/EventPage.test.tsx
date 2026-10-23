@@ -33,6 +33,6 @@ describe("EventPage", () => {
   it("shows that it is still looking for events", () => {
     renderEvent("ev-rate", { response: undefined });
 
-    expect(screen.getByText("Смотрю новости и позицию банка за 14 дней")).toBeTruthy();
+    expect(screen.getByText("Смотрю новости и позицию банка")).toBeTruthy();
   });
 });

@@ -209,6 +209,7 @@ class Agent:
                     as_of,
                     counterparty=counterparty,
                     calculation=calculation,
+                    critic_view=house_view,
                 )
                 for group in groups
             ),
@@ -240,6 +241,7 @@ class Agent:
         *,
         counterparty: CounterpartyContext | None,
         calculation: WhatIfResult | None,
+        critic_view: list[HouseViewClaim],
     ) -> InsightCard:
         evidence = {
             **sources(profile, counterparty, news, house_view),
@@ -263,7 +265,16 @@ class Agent:
         draft = await journal.generate(
             "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft, journal.summary
         )
-        card = await self._reviewed(journal, DRAFT_SYSTEM, payload, draft, evidence, current, news)
+        checked = {claim.id: claim for claim in [*critic_view, *current]}
+        card = await self._reviewed(
+            journal,
+            DRAFT_SYSTEM,
+            payload,
+            draft,
+            evidence,
+            [checked[key] for key in sorted(checked)],
+            news,
+        )
         return card.model_copy(update={"calculation": calculation})
 
     async def _followup(
