@@ -15,8 +15,8 @@ function block(selector: string): string {
 }
 
 describe("design tokens", () => {
-  const light = declarations(block(":root {"));
-  const systemDark = declarations(block(':root:not([data-theme="light"])'));
+  const light = declarations(block(":root,\n:host {"));
+  const systemDark = declarations(block(':root:not([data-theme="light"]),\n  :host {'));
   const forcedDark = declarations(block(':root[data-theme="dark"]'));
 
   it("uses the same dark values for the system setting and the forced theme", () => {
@@ -25,6 +25,10 @@ describe("design tokens", () => {
 
   it("redefines in dark only tokens the light theme has", () => {
     expect([...systemDark.keys()].filter((name) => !light.has(name))).toEqual([]);
+  });
+
+  it("gives a shadow host the reduced motion tokens too", () => {
+    expect(declarations(block(":root,\n  :host {")).get("--t-fast")).toBe("0ms linear");
   });
 
   it("keeps the font in the font stack without loading files", () => {

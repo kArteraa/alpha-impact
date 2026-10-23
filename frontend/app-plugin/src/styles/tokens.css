@@ -1,4 +1,5 @@
-:root {
+:root,
+:host {
   --font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
   --fw-regular: 400;
@@ -93,14 +94,16 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root {
+  :root,
+  :host {
     --t-fast: 0ms linear;
     --t-base: 0ms linear;
   }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme="light"]),
+  :host {
     --bg-page: #0f0f11;
     --bg-card: #1c1c1f;
     --bg-neutral: rgba(255, 255, 255, 0.07);

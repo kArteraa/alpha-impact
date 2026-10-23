@@ -17,3 +17,33 @@ export const AUTOSHOW_DEFAULT: Record<PageType, boolean> = {
   tender: true,
   fx_rate: true,
 };
+
+export const PAGE_DOMAINS: Record<PageType, readonly string[]> = {
+  article: [
+    "kommersant.ru",
+    "vedomosti.ru",
+    "interfax.ru",
+    "rbc.ru",
+    "tass.ru",
+    "forbes.ru",
+    "frankmedia.ru",
+    "expert.ru",
+  ],
+  counterparty: ["rusprofile.ru", "checko.ru", "list-org.com", "focus.kontur.ru", "zachestnyibiznes.ru", "sbis.ru"],
+  tender: ["zakupki.gov.ru", "rts-tender.ru", "sberbank-ast.ru", "roseltorg.ru", "b2b-center.ru", "fabrikant.ru"],
+  fx_rate: ["cbr.ru", "moex.com", "investing.com", "profinance.ru"],
+};
+
+export const PAGE_TEXT_MAX_CHARS = 2000;
+
+export const ARTICLE_MIN_CHARS = 300;
+
+export const FX_CURRENCY_CODES = ["USD", "EUR", "CNY"];
+
+export const TENDER_SUBJECT_LABELS = [
+  "Объект закупки",
+  "Наименование объекта закупки",
+  "Предмет закупки",
+  "Предмет договора",
+  "Наименование закупки",
+];
