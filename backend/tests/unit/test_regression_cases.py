@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from scripts.regression_cases import CASES_DIR, Case, check, load_cases
+from apps.services.interpreter.drafting import CLAIM_BLOCKS
+from scripts.regression_cases import CASES_DIR, ROLE_BLOCKS, Case, check, load_cases
 from shared.contracts.schemas import Claim, ClaimType, InsightCard, ProductOffer, SourceRef
 from tests.regression_data import (
     CITED,
@@ -376,3 +377,19 @@ def test_load_cases_rejects_followup_of_later_case(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="child"):
         load_cases(tmp_path)
+
+
+def test_role_pair_fails_when_cards_cite_other_news() -> None:
+    other_news = SourceRef(kind="news", id="n2", title="Другая", url="https://n.example/2")
+    treasurer = role_card("card-t", "Остатки выгоднее держать", "Сдвинуть платёжный календарь")
+    elsewhere = treasurer.model_copy(
+        update={"what_happened": [claim(other_news)], "basis": [other_news, PROFILE, RATE]}
+    )
+
+    failures = check(case(differs_from="cfo"), answer(elsewhere), CITED, CFO_CARD)
+
+    assert failures == ["card card-t: no news shared with card card-cfo of cfo"]
+
+
+def test_role_blocks_are_card_blocks() -> None:
+    assert set(ROLE_BLOCKS) <= set(CLAIM_BLOCKS)
