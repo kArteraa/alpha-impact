@@ -1,0 +1,17 @@
+id: page_fx_treasurer
+title: Ослабление рубля казначею автодилера — другие «почему важно» и «действия», чем у финдиректора
+request:
+  user_id: user_cfo_autodealer
+  client_id: U_44245
+  role: treasurer
+  action_context:
+    type: page
+    url: https://regression.example/ruble-weakens
+    text: |
+      Рубль ослаб до 88 за доллар на фоне снижения экспортной выручки
+      Курс доллара на Московской бирже поднялся выше 88 рублей. Аналитики связывают ослабление рубля с сокращением продаж валюты экспортёрами и ростом импорта автомобилей.
+expect:
+  silent: false
+  bank_subject: fx_rate
+  basis_kinds: [news, house_view]
+differs_from: page_fx_bank

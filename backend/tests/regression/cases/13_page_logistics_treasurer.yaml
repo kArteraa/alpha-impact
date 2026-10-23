@@ -1,0 +1,16 @@
+id: page_logistics_treasurer
+title: Рост тарифов грузоперевозок казначею оптовика — другие «почему важно» и «действия», чем у финдиректора
+request:
+  user_id: user_cfo_wholesale
+  client_id: U_1941
+  role: treasurer
+  action_context:
+    type: page
+    url: https://regression.example/freight-tariffs
+    text: |
+      Тарифы на автомобильные грузоперевозки выросли на 12% с начала осени
+      Логистические компании повышают ставки на перевозку грузов по России из-за дефицита водителей и роста цен на топливо. Оптовые компании пересматривают сроки поставок и договоры с перевозчиками.
+expect:
+  silent: false
+  basis_kinds: [news, profile]
+differs_from: page_logistics
