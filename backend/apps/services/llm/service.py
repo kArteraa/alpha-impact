@@ -150,8 +150,10 @@ class ModelGateway:
                 model, system, user, output_format, reasoning, timeout_seconds
             )
         except ModelUnavailable as error:
-            if error.cost_rub is not None:
+            if error.cost_known:
                 await self._record(reservation, error.tokens_in, error.tokens_out, error.cost_rub)
+            else:
+                error.cost_rub = self._call_reserve_rub
             raise
         except BaseException:
             await self._store.settle(reservation, 0, 0, 0.0)
