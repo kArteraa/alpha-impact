@@ -363,8 +363,14 @@
 
 .insight-feedback {
   display: inline-flex;
+  align-items: center;
   gap: var(--s-1);
   margin-left: auto;
+}
+
+.feedback-note {
+  margin-right: var(--s-2);
+  color: var(--danger-text);
 }
 
 .insight-panel-compact .insight-card {

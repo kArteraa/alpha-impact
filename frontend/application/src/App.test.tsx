@@ -1,6 +1,7 @@
 import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TEST_CLIENT, answerFeed, renderApp, signIn, stubApi } from "./testing";
+import { TRACE } from "./trace/trace.fixture";
 
 const ROUTES: Array<[string, string]> = [
   ["/login", "Вход"],
@@ -10,7 +11,7 @@ const ROUTES: Array<[string, string]> = [
   ["/deposits/new", "Новый депозит"],
   ["/loans", "Кредиты"],
   ["/profile", "Профиль компании"],
-  ["/trace/trace-mock-1", "Как получен вывод"],
+  [`/trace/${TRACE.id}`, "Как получен вывод"],
   ["/events", "Все события"],
   ["/events/ev-logistics", "Событие"],
   ["/showcase", "Витрина InsightPanel"],
@@ -23,6 +24,7 @@ describe("routing", () => {
       "GET /api/clients": [200, [TEST_CLIENT]],
       [`GET /api/profile/${TEST_CLIENT}`]: [200, { client_id: TEST_CLIENT, features: {} }],
       "POST /api/interpret": answerFeed,
+      [`GET /api/trace/${TRACE.id}`]: [200, TRACE],
     });
   });
 

@@ -1,6 +1,7 @@
-import { type ActionContext, InsightPanel, useInterpret } from "@alpha-impact/plugin";
+import { type ActionContext, useInterpret } from "@alpha-impact/plugin";
 import type { ReactNode } from "react";
 import { useSession } from "../session/context";
+import { Panel } from "./Panel";
 import { useInterpretFetcher } from "./useInterpretFetcher";
 
 interface ActionPanelProps {
@@ -15,7 +16,7 @@ export function ActionPanel({ context, placeholder }: ActionPanelProps) {
     return <>{placeholder}</>;
   }
   return (
-    <InsightPanel
+    <Panel
       actionContext={context}
       role={role}
       response={insight.response}

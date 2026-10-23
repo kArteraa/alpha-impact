@@ -95,7 +95,7 @@ const rateDecision: SourceRef = {
   kind: "house_view",
   id: "59ec63fc7ca7374b6a9f5c192e824432",
   title: "ALFA-Macro_Insights-Policy_Rate_11Sep.pdf, стр. 1",
-  url: null,
+  url: "/reports/ALFA-Macro_Insights-Policy_Rate_11Sep.pdf#page=1",
   published_at: null,
 };
 
@@ -105,6 +105,7 @@ const rateForecast: SourceRef = {
   ...rateDecision,
   id: "c05308c76bb5c18c057c5bc2edb8b4f1",
   title: "ALFA-Macro_Insights-Policy_Rate_11Sep.pdf, стр. 2",
+  url: "/reports/ALFA-Macro_Insights-Policy_Rate_11Sep.pdf#page=2",
 };
 
 const depositCalc: SourceRef = {

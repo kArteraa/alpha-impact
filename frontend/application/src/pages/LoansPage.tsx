@@ -6,10 +6,9 @@ import { PERCENT, RUB_WHOLE } from "../money";
 import { ShareBar } from "../ui/charts/ShareBar";
 import type { Tone } from "../ui/charts/tone";
 import { Icon } from "../ui/Icon";
-import { plural } from "../ui/plural";
+import { DAYS, plural } from "../ui/plural";
 
 const DATE = new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC" });
-const DAYS = { one: "день", few: "дня", many: "дней" };
 const SOON_DAYS = 90;
 const TONES: readonly Tone[] = ["primary", "soft", "muted"];
 

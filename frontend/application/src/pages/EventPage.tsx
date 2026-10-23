@@ -1,8 +1,8 @@
-import { InsightPanel } from "@alpha-impact/plugin";
 import { Link, useParams } from "react-router";
 import { useCompany } from "../company/context";
 import { FeedStatus } from "../dashboard/FeedStatus";
 import { DASHBOARD } from "../feed/context";
+import { Panel } from "../insight/Panel";
 import { useSession } from "../session/context";
 
 export function EventPage() {
@@ -27,7 +27,7 @@ export function EventPage() {
               </div>
             );
           }
-          return <InsightPanel actionContext={DASHBOARD} role={role} response={{ silent: false, cards: [card] }} />;
+          return <Panel actionContext={DASHBOARD} role={role} response={{ silent: false, cards: [card] }} />;
         }}
       </FeedStatus>
     </section>

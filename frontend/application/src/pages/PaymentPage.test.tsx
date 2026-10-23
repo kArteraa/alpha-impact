@@ -1,5 +1,5 @@
 import { mockResponses } from "@alpha-impact/plugin";
-import { cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { COUNTERPARTIES } from "../data/counterparties";
 import {
@@ -110,6 +110,21 @@ describe("PaymentPage", () => {
       role: "cfo",
       action_context: { type: "payment", amount: 1500000, beneficiary_id: CARRIER },
     });
+  });
+
+  it("sends feedback on the card", async () => {
+    fetchMock = stubApi({ "POST /api/interpret": [200, mockResponses.cards], "POST /api/feedback": [204, null] });
+    render();
+    fill(CARRIER, "1500000");
+    await answer();
+
+    fireEvent.click(screen.getByRole("button", { name: "Полезно" }));
+    await act(async () => {});
+
+    const [url, init] = fetchMock.mock.calls[1];
+    expect(url).toBe("/api/feedback");
+    expect(JSON.parse(String(init?.body))).toEqual({ card_id: "card-mock-1", useful: true });
+    expect(screen.getByRole("button", { name: "Полезно" }).getAttribute("aria-pressed")).toBe("true");
   });
 
   it("shows the panel for the role of the user", async () => {
