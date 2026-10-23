@@ -97,7 +97,10 @@ async def test_news_window_uses_explicit_limits(harness: Harness) -> None:
     assert call["limit"] == 200
 
 
-@pytest.mark.parametrize("field", ["lookback_days", "search_limit", "max_tool_calls"])
+@pytest.mark.parametrize(
+    "field",
+    ["lookback_days", "search_limit", "max_tool_calls", "max_title_chars", "trace_summary_chars"],
+)
 def test_invalid_plan_limits_fail_at_startup(tmp_path: Path, field: str) -> None:
     data = yaml.safe_load(PLANS_PATH.read_text(encoding="utf-8"))
     data[field] = 0
@@ -107,9 +110,10 @@ def test_invalid_plan_limits_fail_at_startup(tmp_path: Path, field: str) -> None
         load_config(path)
 
 
-def test_missing_template_is_a_configuration_error(tmp_path: Path) -> None:
+@pytest.mark.parametrize("action", ["payment", "page"])
+def test_missing_template_is_a_configuration_error(tmp_path: Path, action: str) -> None:
     data = yaml.safe_load(PLANS_PATH.read_text(encoding="utf-8"))
-    del data["templates"]["payment"]
+    del data["templates"][action]
     path = tmp_path / "plans.yaml"
     path.write_text(yaml.safe_dump(data), encoding="utf-8")
     with pytest.raises(ValidationError, match="all business actions"):

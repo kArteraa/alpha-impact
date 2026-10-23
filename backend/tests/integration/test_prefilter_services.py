@@ -28,8 +28,8 @@ from shared.contracts.ports import (
 from shared.contracts.schemas import FxContext, NewsItem
 from shared.db.models import UserClientRow, UserRow
 from shared.di.container import Container
+from tests.house_view_data import APPROVED_FILE
 
-BACKEND = Path(__file__).resolve().parents[2]
 USER = "prefilter-user"
 CLIENT = "prefilter-client"
 LOGISTICS = "prefilter-logistics"
@@ -37,7 +37,7 @@ STATIONERY = "prefilter-stationery"
 VECTOR = [1.0, *([0.0] * (EMBEDDING_DIMENSION - 1))]
 
 
-def company_files(directory: Path) -> None:
+def company_files(directory: Path, *products: str) -> None:
     base = {
         "SYNTHETIC_U": CLIENT,
         "OKFS_NAME": "ЧАСТНАЯ СОБСТВЕННОСТЬ",
@@ -56,7 +56,7 @@ def company_files(directory: Path) -> None:
         "REGION": "Санкт-Петербург",
         **{column: "0.0" for column in profile_config().products},
     }
-    base["CL_PRODUCT_RKO_MARK"] = "1.0"
+    base.update({column: "1.0" for column in ("CL_PRODUCT_RKO_MARK", *products)})
     with (directory / "df_Uid_data_hack.csv").open("w", encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=list(base), delimiter=";")
         writer.writeheader()
@@ -83,20 +83,24 @@ def company_files(directory: Path) -> None:
             )
 
 
-@pytest.fixture
-async def services(
-    sessions: async_sessionmaker[AsyncSession], tmp_path: Path
-) -> AsyncIterator[Container]:
-    company_files(tmp_path)
+async def seed_client(
+    sessions: async_sessionmaker[AsyncSession], directory: Path, *products: str
+) -> None:
+    company_files(directory, *products)
     async with sessions() as session, session.begin():
         session.add(UserRow(id=USER, name="CFO"))
         await session.flush()
         session.add(UserClientRow(user_id=USER, client_id=CLIENT))
-    await rebuild_profiles(sessions, tmp_path, profile_config())
-    await rebuild_graph(sessions, tmp_path, counterparty_config())
-    await load_house_view(
-        sessions, BACKEND / "data/seed/house_view_approved.json", house_view_config().expired_docs
-    )
+    await rebuild_profiles(sessions, directory, profile_config())
+    await rebuild_graph(sessions, directory, counterparty_config())
+    await load_house_view(sessions, APPROVED_FILE, house_view_config().expired_docs)
+
+
+@pytest.fixture
+async def services(
+    sessions: async_sessionmaker[AsyncSession], tmp_path: Path
+) -> AsyncIterator[Container]:
+    await seed_client(sessions, tmp_path)
     container = build_container()
     container.register(async_sessionmaker, lambda _: sessions)
     yield container

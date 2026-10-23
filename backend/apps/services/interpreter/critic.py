@@ -3,7 +3,7 @@ import re
 
 from pydantic import BaseModel, ConfigDict
 
-from apps.services.interpreter.drafting import CLAIM_BLOCKS
+from apps.services.interpreter.drafting import card_claims
 from apps.services.interpreter.prompts import CRITIC_SYSTEM
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Claim, ClaimType, HouseViewClaim, InsightCard, NewsItem
@@ -22,10 +22,6 @@ class Contradiction(BaseModel):
 class Contradictions(BaseModel):
     model_config = ConfigDict(extra="forbid")
     items: list[Contradiction]
-
-
-def claims(card: InsightCard) -> list[Claim]:
-    return [claim for name in CLAIM_BLOCKS for claim in getattr(card, name)]
 
 
 def source_verdicts(
@@ -82,18 +78,22 @@ class CriticAgent:
 
     async def review(
         self, card: InsightCard, house_view: list[HouseViewClaim], news: list[NewsItem]
-    ) -> list[str]:
-        checked = claims(card)
-        return [
+    ) -> tuple[list[str], int, int, float]:
+        checked = card_claims(card)
+        contradictions, tokens_in, tokens_out, cost_rub = await self._contradictions(
+            checked, house_view
+        )
+        verdicts = [
             *source_verdicts(card, checked, house_view, news),
             *bank_verdicts(card, checked, house_view),
-            *await self._contradictions(checked, house_view),
+            *contradictions,
             *retelling_verdicts(checked),
         ]
+        return verdicts, tokens_in, tokens_out, cost_rub
 
     async def _contradictions(
         self, checked: list[Claim], house_view: list[HouseViewClaim]
-    ) -> list[str]:
+    ) -> tuple[list[str], int, int, float]:
         unmarked = sorted(
             {
                 claim.text
@@ -102,7 +102,7 @@ class CriticAgent:
             }
         )
         if not house_view or not unmarked:
-            return []
+            return [], 0, 0, 0.0
         user = json.dumps(
             {
                 "claims": [{"id": index, "text": text} for index, text in enumerate(unmarked)],
@@ -118,7 +118,7 @@ class CriticAgent:
             },
             ensure_ascii=False,
         )
-        raw, _, _ = await self._llm.complete(
+        raw, tokens_in, tokens_out, cost_rub = await self._llm.complete(
             task="critic", system=CRITIC_SYSTEM, user=user, schema=Contradictions
         )
         known = {claim.id for claim in house_view}
@@ -127,7 +127,8 @@ class CriticAgent:
             for item in Contradictions.model_validate(raw).items
             if 0 <= item.claim_id < len(unmarked) and item.house_view_id in known
         }
-        return [
+        verdicts = [
             f"contradiction: «{unmarked[claim_id]}» противоречит {house_view_id}: {reason}"
             for (claim_id, house_view_id), reason in found.items()
         ]
+        return verdicts, tokens_in, tokens_out, cost_rub

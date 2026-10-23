@@ -7,6 +7,10 @@ from shared.contracts.schemas import Claim, ClaimType, InsightCard, SourceRef
 CLAIM_BLOCKS = ("what_happened", "why_for_you", "consequences", "actions", "bank_view")
 
 
+def card_claims(card: InsightCard) -> list[Claim]:
+    return [claim for name in CLAIM_BLOCKS for claim in getattr(card, name)]
+
+
 class DraftClaim(BaseModel):
     model_config = ConfigDict(extra="forbid")
     text: str = Field(min_length=1)

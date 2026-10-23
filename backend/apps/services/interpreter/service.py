@@ -1,5 +1,5 @@
 import json
-from datetime import timedelta
+from datetime import date, timedelta
 from time import perf_counter
 from uuid import uuid4
 
@@ -7,12 +7,25 @@ from pydantic import ValidationError
 
 from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
 from apps.services.interpreter.drafting import Draft, build_card
+from apps.services.interpreter.followup import (
+    checked_followup,
+    cited_house_view,
+    followup_evidence,
+    followup_payload,
+    original_card,
+    trace_news,
+)
 from apps.services.interpreter.journal import Journal, utc_now
 from apps.services.interpreter.planning import Plan, PlanConfig
 from apps.services.interpreter.prefilter import Prefilter
-from apps.services.interpreter.prompts import DRAFT_SYSTEM, PLAN_SYSTEM
+from apps.services.interpreter.prompts import (
+    DRAFT_SYSTEM,
+    FOLLOWUP_DRAFT_SYSTEM,
+    FOLLOWUP_PLAN_SYSTEM,
+    PLAN_SYSTEM,
+)
 from shared.config.factors import FACTORS
-from shared.contracts.errors import DomainError
+from shared.contracts.errors import DomainError, NotFound
 from shared.contracts.ports import (
     CounterpartyService,
     Critic,
@@ -23,11 +36,14 @@ from shared.contracts.ports import (
     TraceStore,
 )
 from shared.contracts.schemas import (
+    CounterpartyContext,
+    FollowupContext,
     HouseViewClaim,
     InsightCard,
     InterpretRequest,
     InterpretResponse,
     NewsItem,
+    PageContext,
     PaymentContext,
     Trace,
     TraceStep,
@@ -47,18 +63,24 @@ class Agent:
         config: PlanConfig,
         threshold: float,
         model: str,
+        followup_model: str,
     ) -> None:
         self._profiles = profiles
         self._counterparties = counterparties
+        self._news = news
         self._house_view = house_view
         self._llm = llm
         self._traces = traces
         self._critic = critic
         self._config = config
         self._model = model
+        self._followup_model = followup_model
         self._prefilter = Prefilter(news, house_view, threshold=threshold)
 
     async def interpret(self, request: InterpretRequest) -> InterpretResponse:
+        if isinstance(request.action_context, FollowupContext):
+            checked = checked_followup(request.action_context, self._config.max_question_chars)
+            request = request.model_copy(update={"action_context": checked})
         trace = Trace(
             id=str(uuid4()),
             request=request,
@@ -67,7 +89,14 @@ class Agent:
             result=None,
             created_at=utc_now(),
         )
-        journal = Journal(trace, self._llm, self._model)
+        followup = isinstance(request.action_context, FollowupContext)
+        journal = Journal(
+            trace,
+            self._llm,
+            "followup" if followup else "interpret",
+            self._followup_model if followup else self._model,
+            self._config.trace_summary_chars,
+        )
         try:
             response = await self._run(request, journal)
         except Exception as error:
@@ -98,6 +127,8 @@ class Agent:
         return response
 
     async def _run(self, request: InterpretRequest, journal: Journal) -> InterpretResponse:
+        if isinstance(request.action_context, FollowupContext):
+            return await self._followup(request, request.action_context, journal)
         template = self._config.templates.get(request.action_context.type)
         if template is None:
             raise DomainError(f"Unsupported interpreter workflow: {request.action_context.type}")
@@ -106,30 +137,31 @@ class Agent:
             "authorized client features",
             self._profiles.get_profile(request.user_id, request.client_id),
         )
-        counterparty = None
-        if isinstance(request.action_context, PaymentContext):
-            action = request.action_context
-            counterparty = await journal.tool(
-                "counterparty.context",
-                "recipient aggregates",
-                self._counterparties.context(request.client_id, action.beneficiary_id, action.inn),
-            )
+        counterparty = await self._counterparty(journal, request)
         as_of = journal.trace.created_at.date()
+        pasted = await self._pasted_news(request, journal)
         prefilter_started_at = utc_now()
         start = perf_counter()
-        selection = await self._prefilter.select(
-            profile,
-            request.action_context,
-            counterparty,
-            since=as_of - timedelta(days=self._config.lookback_days),
-            as_of=as_of,
-            limit=self._config.search_limit,
-        )
+        if pasted is None:
+            scope = f"limit={self._config.search_limit}"
+            selection = await self._prefilter.select(
+                profile,
+                request.action_context,
+                counterparty,
+                since=as_of - timedelta(days=self._config.lookback_days),
+                as_of=as_of,
+                limit=self._config.search_limit,
+            )
+        else:
+            scope = f"pasted={pasted.id}"
+            selection = await self._prefilter.rank(
+                [pasted], profile, request.action_context, counterparty, as_of=as_of
+            )
         journal.trace.steps.append(
             TraceStep(
                 step="prefilter",
                 name="relevance",
-                input_summary=f"limit={self._config.search_limit}",
+                input_summary=scope,
                 output_summary=json.dumps(
                     {
                         "candidates": [c.news.id for c in selection.candidates],
@@ -147,14 +179,85 @@ class Agent:
         news = [candidate.news for candidate in selection.candidates]
         house_view = selection.house_view
         evidence = sources(profile, counterparty, news, house_view)
-        context = prompt_context(request, profile, counterparty, evidence)
+        plan = await self._plan(
+            journal,
+            PLAN_SYSTEM,
+            template.model_dump(),
+            {"context": prompt_context(request, profile, counterparty, evidence)},
+        )
+        current = await self._collect(journal, plan, house_view, as_of)
+        evidence = sources(profile, counterparty, news, current)
+        payload: dict[str, object] = {
+            "plan": plan.model_dump(),
+            "context": prompt_context(request, profile, counterparty, evidence),
+        }
+        draft = await journal.generate(
+            "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+        )
+        card = await self._reviewed(journal, DRAFT_SYSTEM, payload, draft, evidence, current, news)
+        return InterpretResponse(silent=False, cards=[card])
+
+    async def _followup(
+        self, request: InterpretRequest, action: FollowupContext, journal: Journal
+    ) -> InterpretResponse:
+        original = await self._card_trace(journal, request, action.card_id)
+        card = original_card(original, action.card_id)
+        root = await self._root_request(journal, request, original)
+        profile = await journal.tool(
+            "profile.get_profile",
+            "authorized client features",
+            self._profiles.get_profile(request.user_id, request.client_id),
+        )
+        counterparty = await self._counterparty(journal, root)
+        as_of = journal.trace.created_at.date()
+        cited: dict[str, HouseViewClaim] = {}
+        for claim_id in cited_house_view(card):
+            cited.update({claim.id: claim for claim in await self._cited(journal, claim_id, as_of)})
+        house_view = [cited[key] for key in sorted(cited)]
+        prompt_request = root.model_copy(update={"role": request.role})
+        plan = await self._plan(
+            journal,
+            FOLLOWUP_PLAN_SYSTEM,
+            {"focus": self._config.followup_focus},
+            followup_payload(
+                action.question,
+                prompt_request,
+                card,
+                profile,
+                counterparty,
+                followup_evidence(card, profile, counterparty, house_view),
+            ),
+        )
+        current = await self._collect(journal, plan, house_view, as_of)
+        evidence = followup_evidence(card, profile, counterparty, current)
+        payload: dict[str, object] = {
+            "plan": plan.model_dump(),
+            **followup_payload(
+                action.question, prompt_request, card, profile, counterparty, evidence
+            ),
+        }
+        draft = await journal.generate(
+            "draft", FOLLOWUP_DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+        )
+        answer = await self._reviewed(
+            journal, FOLLOWUP_DRAFT_SYSTEM, payload, draft, evidence, current, trace_news(card)
+        )
+        return InterpretResponse(silent=False, cards=[answer])
+
+    async def _plan(
+        self,
+        journal: Journal,
+        system: str,
+        template: dict[str, object],
+        context: dict[str, object],
+    ) -> Plan:
         plan = await journal.generate(
             "plan",
-            PLAN_SYSTEM,
+            system,
             json.dumps(
                 {
-                    "template": template.model_dump(),
-                    "context": context,
+                    "template": template,
+                    **context,
                     "allowed_subjects": sorted(FACTORS),
                     "max_tool_calls": self._config.max_tool_calls,
                 },
@@ -162,9 +265,62 @@ class Agent:
             ),
             Plan,
         )
-        journal.trace.steps[-1].output_summary = json.dumps(
-            {"template": template.model_dump(), **plan.model_dump()}, ensure_ascii=False
+        journal.trace.steps[-1].output_summary = journal.summary(
+            {"template": template, **plan.model_dump()}
         )
+        return plan
+
+    async def _card_trace(self, journal: Journal, request: InterpretRequest, card_id: str) -> Trace:
+        return await journal.lookup(
+            "trace.find_by_card",
+            "trace of the questioned card",
+            self._traces.find_by_card(
+                user_id=request.user_id, client_id=request.client_id, card_id=card_id
+            ),
+            lambda trace: trace.id,
+        )
+
+    async def _root_request(
+        self, journal: Journal, request: InterpretRequest, trace: Trace
+    ) -> InterpretRequest:
+        for _ in range(self._config.max_followup_depth):
+            if not isinstance(trace.request.action_context, FollowupContext):
+                return trace.request
+            trace = await self._card_trace(journal, request, trace.request.action_context.card_id)
+        if isinstance(trace.request.action_context, FollowupContext):
+            raise DomainError(
+                f"Followup chain is longer than {self._config.max_followup_depth} questions; "
+                "ask about the original card"
+            )
+        return trace.request
+
+    async def _counterparty(
+        self, journal: Journal, request: InterpretRequest
+    ) -> CounterpartyContext | None:
+        if not isinstance(request.action_context, PaymentContext):
+            return None
+        action = request.action_context
+        return await journal.tool(
+            "counterparty.context",
+            "recipient aggregates",
+            self._counterparties.context(request.client_id, action.beneficiary_id, action.inn),
+        )
+
+    async def _cited(self, journal: Journal, claim_id: str, as_of: date) -> list[HouseViewClaim]:
+        try:
+            return await self._chain(journal, claim_id, as_of)
+        except NotFound:
+            return []
+
+    async def _chain(self, journal: Journal, claim_id: str, as_of: date) -> list[HouseViewClaim]:
+        batch = await journal.tool(
+            "house_view.chain", claim_id, self._house_view.chain(claim_id=claim_id)
+        )
+        return current_claims(batch, as_of)
+
+    async def _collect(
+        self, journal: Journal, plan: Plan, house_view: list[HouseViewClaim], as_of: date
+    ) -> list[HouseViewClaim]:
         plan.validate_tools(self._config, house_view)
         collected = {claim.id: claim for claim in house_view}
         for call in plan.tools:
@@ -174,28 +330,34 @@ class Agent:
                     call.argument,
                     self._house_view.claims(subject=call.argument, as_of=as_of),
                 )
-                batch = [claim for claim in batch if claim.subject == call.argument]
-            else:
-                batch = await journal.tool(
-                    call.tool, call.argument, self._house_view.chain(claim_id=call.argument)
+                found = current_claims(
+                    [claim for claim in batch if claim.subject == call.argument], as_of
                 )
-            for claim in current_claims(batch, as_of):
-                collected[claim.id] = claim
-        current = [collected[key] for key in sorted(collected)]
-        evidence = sources(profile, counterparty, news, current)
-        payload: dict[str, object] = {
-            "plan": plan.model_dump(),
-            "context": prompt_context(request, profile, counterparty, evidence),
-        }
-        draft = await journal.generate(
-            "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+            else:
+                found = await self._chain(journal, call.argument, as_of)
+            collected.update({claim.id: claim for claim in found})
+        return [collected[key] for key in sorted(collected)]
+
+    async def _pasted_news(self, request: InterpretRequest, journal: Journal) -> NewsItem | None:
+        if not isinstance(request.action_context, PageContext):
+            return None
+        text = request.action_context.text.strip()
+        if not text:
+            raise DomainError("Page text is empty")
+        first, _, rest = text.partition("\n")
+        first = first.rstrip()
+        limit = self._config.max_title_chars
+        body = rest.strip() if len(first) <= limit else text
+        return await journal.tool(
+            "news.annotate",
+            "pasted page text",
+            self._news.annotate(first[:limit].rstrip(), body, request.action_context.url),
         )
-        card = await self._reviewed(journal, payload, draft, evidence, current, news)
-        return InterpretResponse(silent=False, cards=[card])
 
     async def _reviewed(
         self,
         journal: Journal,
+        system: str,
         payload: dict[str, object],
         draft: Draft,
         evidence: dict[str, Evidence],
@@ -211,7 +373,7 @@ class Agent:
             round_number = 2
             redraft = await journal.generate(
                 "redraft",
-                DRAFT_SYSTEM,
+                system,
                 json.dumps(
                     {**payload, "previous_draft": draft.model_dump(), "critic_verdicts": verdicts},
                     ensure_ascii=False,

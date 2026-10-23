@@ -210,6 +210,7 @@ class TraceStep(BaseModel):
     model: str | None = None
     tokens_in: int = 0
     tokens_out: int = 0
+    cost_rub: float = 0.0
     duration_ms: int = 0
     started_at: datetime
 
@@ -275,7 +276,7 @@ class ProductRulesService(Protocol):
 
 
 class LLMGateway(Protocol):
-    async def complete(self, task: str, system: str, user: str, schema: type | None = None) -> tuple[object, int, int]: ...
+    async def complete(self, task: str, system: str, user: str, schema: type | None = None) -> tuple[object, int, int, float]: ...
     async def embed(self, text: str) -> list[float]: ...
     async def budget_left_rub(self) -> float: ...
 
@@ -284,17 +285,25 @@ class TraceStore(Protocol):
     async def save(self, trace: Trace) -> None: ...
     async def get(self, trace_id: str) -> Trace | None: ...
     async def metrics(self, since: date) -> dict[str, float]: ...
+    async def feedback(self, user_id: str, card_id: str, useful: bool, comment: str | None) -> None: ...
+    async def find_by_card(self, *, user_id: str, client_id: str, card_id: str) -> Trace: ...
 
 
 class Critic(Protocol):
-    async def review(self, card: InsightCard, house_view: list[HouseViewClaim], news: list[NewsItem]) -> list[str]: ...
+    async def review(self, card: InsightCard, house_view: list[HouseViewClaim], news: list[NewsItem]) -> tuple[list[str], int, int, float]: ...
 
 
 class Interpreter(Protocol):
     async def interpret(self, request: InterpretRequest) -> InterpretResponse: ...
 ```
 
+`TraceStore.feedback` — отзыв пользователя о карточке для `POST /feedback`: сервис `trace` находит трассу, в `result.cards` которой есть `card_id`, без перебора всех трасс, и записывает отзыв со ссылкой на неё; такая трасса одна: `id` карточки — новый UUID на каждый вызов interpreter, переписанный черновик сохраняет `id` в той же трассе, трасса сохраняется один раз, а ответ из кэша отдаёт ту же карточку без новой трассы; повторный отзыв о той же карточке заменяет прежний, чтобы метрика полезности считала карточку один раз. Нет такой карточки — `NotFound`; трасса принадлежит другому пользователю (`request.user_id` ≠ `user_id`) — `AccessDenied` (ошибки из `shared/contracts/errors.py`).
+
+`TraceStore.find_by_card` — исходная трасса карточки для followup-вопроса (AH-26): `FollowupContext` несёт только `card_id`, а `get` ищет по `trace_id`; interpreter читает таблицу `traces` только через этот порт. Сервис `trace` находит ту же единственную трассу, в `result.cards` которой есть `card_id`, что и `feedback`, и возвращает её целиком. Нет такой карточки — `NotFound`; трасса принадлежит другому пользователю (`request.user_id` ≠ `user_id`) или другому клиенту (`request.client_id` ≠ `client_id` из запроса followup) — `AccessDenied`: и пользователя, и клиента сверяет хранилище, а не вызывающий. Ответ на followup — карточка с новым `id` в новой трассе, поэтому трасса с исходным `card_id` остаётся единственной. Аргументы передаются только по имени: три строки `user_id`, `client_id`, `card_id` нельзя перепутать местами. HTTP-маршрута у метода нет.
+
 `HouseViewService.version()` — версия подтверждённого house view: первые 16 символов sha256 от всех утверждений со статусом `approved` (все поля, по порядку `id`). Меняется при любой правке подтверждённого набора, не меняется при повторном `seed` и от черновиков; статусы `superseded`/`expired`, вычисляемые на дату, в неё не входят. Gateway кладёт её в ключ кэша карточки.
+
+`LLMGateway.complete` возвращает `(ответ, tokens_in, tokens_out, cost_rub)`: стоимость вызова в рублях берётся из `usage.cost` ответа прокси кейса и совпадает со списанием в `llm_usage`; ответ из кэша — `0, 0, 0.0`. `Critic.review` возвращает `(вердикты, tokens_in, tokens_out, cost_rub)` своего вызова модели, без вызова — нули. Interpreter пишет токены и стоимость в шаги `plan`, `draft`, `redraft` и `critic` трассы (`TraceStep.cost_rub`, у старых трасс — 0). Если прокси уже списал вызов, а ответ невалиден, шлюз бросает `ChargedModelError` (`shared/contracts/errors.py`; в `llm` это `ModelOutputInvalid`) с токенами и стоимостью этого вызова, и interpreter записывает их в шаг, хотя шаг упал; из шагов AH-29 считает рубли на карточку.
 
 ## HTTP (gateway)
 
