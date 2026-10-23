@@ -136,5 +136,5 @@ def test_plan_may_ask_house_view_topic_outside_factors() -> None:
     ).validate_tools(config, [])
     with pytest.raises(DomainError):
         Plan(
-            focus="Сталь", tools=[ToolCall(tool="house_view.claims", argument="steel")]
+            focus="Космос", tools=[ToolCall(tool="house_view.claims", argument="space")]
         ).validate_tools(config, [])
