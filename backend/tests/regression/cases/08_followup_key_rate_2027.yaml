@@ -1,0 +1,15 @@
+id: followup_key_rate_2027
+title: Вопрос к карточке о ставке — прогноз банка от 11.09
+followup_of: page_key_rate_bank
+request:
+  user_id: user_cfo_wholesale
+  client_id: U_1941
+  role: cfo
+  action_context:
+    type: followup
+    card_id: ""
+    question: Что банк ждёт по ключевой ставке на конец 2027 года?
+expect:
+  silent: false
+  bank_subject: key_rate
+  bank_date: 2026-09-11

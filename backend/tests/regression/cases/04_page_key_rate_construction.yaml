@@ -1,0 +1,16 @@
+id: page_key_rate_construction
+title: Решение ЦБ по ставке стройгруппе — ставка и признаки клиента
+request:
+  user_id: user_cfo_construction
+  client_id: U_9250
+  role: cfo
+  action_context:
+    type: page
+    url: https://regression.example/key-rate-construction
+    text: |
+      Высокая ключевая ставка 14% тормозит ипотеку и спрос на новостройки
+      Банк России сохраняет ключевую ставку 14%, застройщики фиксируют снижение продаж и рост стоимости проектного финансирования. Девелоперы переносят запуск новых проектов.
+expect:
+  silent: false
+  bank_subject: key_rate
+  basis_kinds: [news, house_view, profile]
