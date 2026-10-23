@@ -8,3 +8,8 @@ export async function logIn(page: Page, userId = "user_cfo_wholesale", role = "�
   await page.getByRole("button", { name: "Продолжить" }).click();
   await expect(page.getByRole("heading", { name: "Профиль компании" })).toBeVisible();
 }
+
+export async function enter(page: Page, userId = "user_cfo_wholesale") {
+  await logIn(page, userId);
+  await page.getByRole("button", { name: "Всё верно" }).click();
+}
