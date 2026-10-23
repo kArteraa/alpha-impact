@@ -1,6 +1,14 @@
 import type { InterpretResponse, PageContext } from "../../src";
 import { AUTOSHOW_DEFAULT } from "../config";
-import type { ExtensionState, Result, Send, Settings, SettingsPatch, WorkerRequest } from "../messages";
+import type {
+  DetectedPage,
+  ExtensionState,
+  Result,
+  Send,
+  Settings,
+  SettingsPatch,
+  WorkerRequest,
+} from "../messages";
 import { ApiError, type ExtensionApi, NetworkError } from "./api";
 import { type CacheEntries, cacheKey, readCached, writeCached } from "./cache";
 import type { Store } from "./store";
@@ -61,6 +69,14 @@ function signedIn(active: Session, settings: Settings): ExtensionState {
 }
 
 export function createWorker({ api, session, local, now }: WorkerDeps): Send {
+  const running = new Map<string, Promise<InterpretResponse>>();
+
+  function shared(key: string, request: () => Promise<InterpretResponse>): Promise<InterpretResponse> {
+    const pending = running.get(key) ?? request().finally(() => running.delete(key));
+    running.set(key, pending);
+    return pending;
+  }
+
   async function endSession(): Promise<ExtensionState> {
     await session.remove(SESSION_KEY);
     await session.remove(CACHE_KEY);
@@ -137,12 +153,14 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
     }
     let response: InterpretResponse;
     try {
-      response = await api.interpret(active.token, {
-        user_id: active.userId,
-        client_id: clientId,
-        role,
-        action_context: { ...page, type: "page" },
-      });
+      response = await shared(key, () =>
+        api.interpret(active.token, {
+          user_id: active.userId,
+          client_id: clientId,
+          role,
+          action_context: { ...page, type: "page" },
+        }),
+      );
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         await endSession();
@@ -156,7 +174,18 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
     return ok(response);
   }
 
-  function handle(request: WorkerRequest): Promise<ExtensionState | Result<ExtensionState | InterpretResponse>> {
+  async function report(detected: DetectedPage): Promise<boolean> {
+    const active = await current();
+    if (active === null || !(await settingsOf(active)).autoshow[detected.pageType]) {
+      return false;
+    }
+    const reply = await interpret(detected.page);
+    return reply.ok && !reply.value.silent && (reply.value.cards ?? []).length > 0;
+  }
+
+  function handle(
+    request: WorkerRequest,
+  ): Promise<ExtensionState | Result<ExtensionState | InterpretResponse> | boolean> {
     switch (request.type) {
       case "state":
         return state();
@@ -168,6 +197,8 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
         return updateSettings(request.patch);
       case "interpret":
         return interpret(request.page);
+      case "page":
+        return report(request.detected);
     }
   }
 
