@@ -1,6 +1,5 @@
-import type { ActionContext, InterpretRequest, LoanContext, TraceStep } from "@alpha-impact/plugin";
+import { type ActionContext, type InterpretRequest, type LoanContext, ROLE_LABELS, type TraceStep } from "@alpha-impact/plugin";
 import { NUMBER, RUB_WHOLE } from "../money";
-import { ROLE_LABELS } from "../session/roles";
 import { DAYS, plural } from "../ui/plural";
 
 const STEP_NAMES: Record<string, string> = {

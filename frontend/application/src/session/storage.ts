@@ -1,5 +1,4 @@
-import type { Role } from "@alpha-impact/plugin";
-import { ROLE_LABELS } from "./roles";
+import { ROLE_LABELS, type Role } from "@alpha-impact/plugin";
 
 const USER_KEY = "alpha-impact.user";
 
