@@ -1,5 +1,5 @@
 import json
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -12,30 +12,11 @@ from shared.contracts.schemas import (
     InterpretRequest,
     LoanContext,
     NewsItem,
-    Trace,
 )
-from tests.unit.interpreter.followup_support import followup_request
-from tests.unit.interpreter.support import Harness
+from tests.unit.interpreter.followup_support import followup_request, prompt
+from tests.unit.interpreter.support import Harness, key_rate_claim, saved, tool_names
 
 TODAY = datetime.now(UTC).date()
-
-
-def key_rate_claim(
-    claim_id: str, kind: str, value: str, day: date, valid_until: date | None
-) -> HouseViewClaim:
-    return HouseViewClaim(
-        id=claim_id,
-        claim=f"Банк: ключевая ставка {value}",
-        type=kind,
-        subject=KEY_RATE,
-        value=value,
-        date=day,
-        valid_until=valid_until,
-        source_doc="macro.pdf",
-        page=2,
-        superseded_by=None,
-        status="approved",
-    )
 
 
 RATES = [
@@ -90,19 +71,17 @@ def moment(harness: Harness, action: ActionContext, calc: str | None) -> Interpr
     return harness.request().model_copy(update={"action_context": action})
 
 
-def saved(harness: Harness) -> Trace:
-    trace: Trace = harness.traces.save.call_args.args[0]
-    return trace
-
-
-def tool_names(harness: Harness) -> list[str]:
-    return [step.name for step in saved(harness).steps if step.step == "tool"]
-
-
 def draft_sources(harness: Harness) -> dict[str, object]:
-    payload = json.loads(harness.llm.complete.await_args_list[1].kwargs["user"])
-    sources: dict[str, object] = payload["context"]["sources"]
+    context = prompt(harness, 1)["context"]
+    assert isinstance(context, dict)
+    sources: dict[str, object] = context["sources"]
     return sources
+
+
+def rate_fetches(harness: Harness) -> int:
+    return sum(
+        call.kwargs["subject"] == KEY_RATE for call in harness.house_view.claims.await_args_list
+    )
 
 
 async def test_deposit_card_carries_calculation_on_bank_rate_path(harness: Harness) -> None:
@@ -120,8 +99,10 @@ async def test_deposit_card_carries_calculation_on_bank_rate_path(harness: Harne
     assert card.bank_view[0].source_ref.id == FORECAST.id
     assert not card.needs_review
     assert "calc:deposit_terms" in draft_sources(harness)
-    assert {"house_view.claims", "whatif.deposit_terms"} <= set(tool_names(harness))
-    harness.house_view.claims.assert_any_await(subject=KEY_RATE, as_of=TODAY)
+    assert "whatif.deposit_terms" in tool_names(harness)
+    assert rate_fetches(harness) == 1
+    prefilter = next(step for step in saved(harness).steps if step.step == "prefilter")
+    assert {claim.id for claim in RATES} <= set(json.loads(prefilter.output_summary)["house_view"])
 
 
 async def test_floating_loan_card_carries_rate_burden(harness: Harness) -> None:
@@ -166,15 +147,14 @@ async def test_rate_claims_reach_draft_even_without_rate_news(harness: Harness) 
     response = await harness.agent.interpret(request)
     assert response.cards[0].calculation is not None
     assert f"house_view:{FORECAST.id}" in draft_sources(harness)
+    assert rate_fetches(harness) == 1
 
 
 async def test_payment_gets_no_rate_step_or_calculation(harness: Harness) -> None:
     response = await harness.agent.interpret(harness.request())
     assert response.cards[0].calculation is None
     assert not any(name.startswith("whatif.") for name in tool_names(harness))
-    assert all(
-        call.kwargs["subject"] != KEY_RATE for call in harness.house_view.claims.await_args_list
-    )
+    assert rate_fetches(harness) == 0
 
 
 async def test_followup_answer_has_no_calculation(harness: Harness, rate: HouseViewClaim) -> None:

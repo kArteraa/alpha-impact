@@ -5,11 +5,7 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
-from apps.services.interpreter.calculation import (
-    KEY_RATE,
-    calculation_evidence,
-    plan_calculation,
-)
+from apps.services.interpreter.calculation import calculation_evidence, plan_calculation
 from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
 from apps.services.interpreter.drafting import Draft, build_card
 from apps.services.interpreter.followup import (
@@ -44,13 +40,11 @@ from shared.contracts.ports import (
 from shared.contracts.schemas import (
     ActionContext,
     CounterpartyContext,
-    DepositContext,
     FollowupContext,
     HouseViewClaim,
     InsightCard,
     InterpretRequest,
     InterpretResponse,
-    LoanContext,
     NewsItem,
     PageContext,
     PaymentContext,
@@ -163,11 +157,17 @@ class Agent:
                 since=as_of - timedelta(days=self._config.lookback_days),
                 as_of=as_of,
                 limit=self._config.search_limit,
+                subjects=template.house_view_subjects,
             )
         else:
             scope = f"pasted={pasted.id}"
             selection = await self._prefilter.rank(
-                [pasted], profile, request.action_context, counterparty, as_of=as_of
+                [pasted],
+                profile,
+                request.action_context,
+                counterparty,
+                as_of=as_of,
+                subjects=template.house_view_subjects,
             )
         journal.trace.steps.append(
             TraceStep(
@@ -189,9 +189,7 @@ class Agent:
                 silent=True, silent_reason="Нет значимых событий для этого действия"
             )
         news = [candidate.news for candidate in selection.candidates]
-        house_view = await self._with_key_rate(
-            journal, request.action_context, selection.house_view, as_of
-        )
+        house_view = selection.house_view
         evidence = sources(profile, counterparty, news, house_view)
         plan = await self._plan(
             journal,
@@ -201,9 +199,10 @@ class Agent:
         )
         current = await self._collect(journal, plan, house_view, as_of)
         calculation = await self._calculation(journal, request.action_context, current, as_of)
-        evidence = sources(profile, counterparty, news, current)
-        if calculation is not None:
-            evidence.update(calculation_evidence(calculation))
+        evidence = {
+            **sources(profile, counterparty, news, current),
+            **calculation_evidence(calculation),
+        }
         payload: dict[str, object] = {
             "plan": plan.model_dump(),
             "context": prompt_context(request, profile, counterparty, evidence),
@@ -357,25 +356,9 @@ class Agent:
             collected.update({claim.id: claim for claim in found})
         return [collected[key] for key in sorted(collected)]
 
-    async def _with_key_rate(
-        self, journal: Journal, action: ActionContext, house_view: list[HouseViewClaim], as_of: date
-    ) -> list[HouseViewClaim]:
-        if not isinstance(action, DepositContext | LoanContext):
-            return house_view
-        batch = await journal.tool(
-            "house_view.claims",
-            KEY_RATE,
-            self._house_view.claims(subject=KEY_RATE, as_of=as_of),
-        )
-        rates = current_claims([claim for claim in batch if claim.subject == KEY_RATE], as_of)
-        merged = {claim.id: claim for claim in [*house_view, *rates]}
-        return [merged[key] for key in sorted(merged)]
-
     async def _calculation(
         self, journal: Journal, action: ActionContext, house_view: list[HouseViewClaim], as_of: date
     ) -> WhatIfResult | None:
-        if not isinstance(action, DepositContext | LoanContext):
-            return None
         calculation = plan_calculation(action, house_view, as_of, self._config.loan_horizon_months)
         if calculation is None:
             return None

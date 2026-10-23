@@ -42,6 +42,7 @@ async def run_prefilter(
         since=seed.since,
         as_of=seed.as_of,
         limit=200,
+        subjects=[],
     )
 
 
@@ -118,6 +119,7 @@ async def test_invalid_search_arguments_fail_before_port_calls(
             since=seed.as_of + timedelta(days=1) if invalid_input == "dates" else seed.since,
             as_of=seed.as_of,
             limit=0 if invalid_input == "limit" else 200,
+            subjects=[],
         )
     news.search.assert_not_awaited()
     house_view.claims.assert_not_awaited()

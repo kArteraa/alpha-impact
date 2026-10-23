@@ -14,7 +14,7 @@ from shared.contracts.schemas import (
     PayrollContext,
     Trace,
 )
-from tests.unit.interpreter.support import Harness, draft_answer
+from tests.unit.interpreter.support import Harness, draft_answer, saved
 
 
 async def test_logistics_payment_returns_sourced_draft(harness: Harness) -> None:
@@ -298,11 +298,6 @@ async def test_card_failing_second_round_needs_review(harness: Harness) -> None:
         "round 2",
     ]
     assert trace.result == response
-
-
-def saved(harness: Harness) -> Trace:
-    trace: Trace = harness.traces.save.call_args.args[0]
-    return trace
 
 
 async def test_critic_budget_error_returns_first_card_for_review(harness: Harness) -> None:
