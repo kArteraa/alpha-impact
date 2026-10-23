@@ -66,14 +66,15 @@ async def run_case(
                 case.id, case.title, (f"parent case {case.followup_of} gave no card",), None
             )
         request = case.with_parent_card(parent_card)
+    first = None
     try:
         response = await interpreter.interpret(request)
+        first = response.cards[0] if response.cards else None
+        if first is not None:
+            cards[case.id] = first.id
+        failures = check(case, response, await cited_claims(response, house_view))
     except Exception as error:
-        return CaseResult(case.id, case.title, (f"{type(error).__name__}: {error}",), None)
-    first = response.cards[0] if response.cards else None
-    if first is not None:
-        cards[case.id] = first.id
-    failures = check(case, response, await cited_claims(response, house_view))
+        failures = [f"{type(error).__name__}: {error}"]
     return CaseResult(case.id, case.title, tuple(failures), first.trace_id if first else None)
 
 

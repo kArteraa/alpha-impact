@@ -199,10 +199,36 @@ def test_invariants_apply_without_expectations() -> None:
     assert check(case(), answer(card(basis=[])), CITED) != []
 
 
-def test_expectations_hold_for_every_card() -> None:
+def test_expectations_pass_when_one_card_of_several_matches() -> None:
     other = card(id="card-2", bank_view=[], basis=[NEWS, PROFILE])
 
-    assert check(case({"bank_subject": "key_rate"}), answer(card(), other), CITED) != []
+    assert check(case({"bank_subject": "key_rate"}), answer(other, card()), CITED) == []
+
+
+def test_expectations_fail_when_no_card_matches_and_name_every_card() -> None:
+    first = card(id="card-1", bank_view=[], basis=[NEWS, PROFILE])
+    second = card(id="card-2", bank_view=[], basis=[NEWS, PROFILE])
+
+    failures = check(case({"bank_subject": "key_rate"}), answer(first, second), CITED)
+
+    assert len(failures) == 1
+    assert "card-1" in failures[0] and "card-2" in failures[0]
+
+
+def test_expectations_must_meet_in_one_card() -> None:
+    with_rate = card(id="card-1")
+    with_graph = card(
+        id="card-2", bank_view=[], basis=[NEWS, PROFILE, SourceRef(kind="graph", id="segment")]
+    )
+    expect = {"bank_subject": "key_rate", "basis_kinds": ["graph"]}
+
+    assert check(case(expect), answer(with_rate, with_graph), CITED) != []
+
+
+def test_invariants_apply_to_every_card() -> None:
+    broken = card(id="card-2", basis=[NEWS, RATE])
+
+    assert check(case({"bank_subject": "key_rate"}), answer(card(), broken), CITED) != []
 
 
 def test_failure_names_the_source() -> None:

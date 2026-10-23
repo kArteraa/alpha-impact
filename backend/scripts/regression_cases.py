@@ -140,7 +140,11 @@ def expectation_failures(
         return [f"expected silent={expect.silent}, got silent={response.silent}"]
     if not response.cards:
         return ["expected a card, got none"] if expect.needs_card() else []
-    return [failure for card in response.cards for failure in card_failures(card, expect, cited)]
+    per_card = [card_failures(card, expect, cited) for card in response.cards]
+    if any(not failures for failures in per_card):
+        return []
+    reasons = "; ".join(failure for failures in per_card for failure in failures)
+    return [f"no card meets expectations: {reasons}"]
 
 
 def check(case: Case, response: InterpretResponse, cited: dict[str, HouseViewClaim]) -> list[str]:
