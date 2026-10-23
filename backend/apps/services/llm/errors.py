@@ -1,7 +1,7 @@
 from shared.contracts.errors import ChargedModelError, DomainError
 
 
-class ModelUnavailable(DomainError):
+class ModelUnavailable(ChargedModelError):
     def __init__(
         self,
         message: str,
@@ -9,10 +9,8 @@ class ModelUnavailable(DomainError):
         tokens_out: int = 0,
         cost_rub: float | None = 0.0,
     ) -> None:
-        super().__init__(message)
-        self.tokens_in = tokens_in
-        self.tokens_out = tokens_out
-        self.cost_rub = cost_rub
+        super().__init__(message, tokens_in, tokens_out, cost_rub or 0.0)
+        self.cost_known = cost_rub is not None
 
 
 class ModelOutputInvalid(ChargedModelError):
