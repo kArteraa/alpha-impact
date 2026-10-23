@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from apps.services.llm.catalog import ModelCatalog
+from apps.services.llm.catalog import INTERACTIVE_TASKS, ModelCatalog
 from apps.services.llm.client import ModelClient
 from apps.services.llm.embedder import EmbedderSpec, TextEmbedder, load_spec
 from apps.services.llm.service import ModelGateway
@@ -20,7 +20,6 @@ ROUTES = {
     for task in ("annotate", "extract", "interpret", "critic", "followup")
 }
 ALLOWED = frozenset(ROUTES.values())
-INTERACTIVE_TASKS = ("interpret", "followup")
 TIMEOUTS = {
     task: float(
         SETTINGS_ENV[
