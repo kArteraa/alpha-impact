@@ -1,6 +1,4 @@
-import { ROLE_LABELS, type Role } from "@alpha-impact/plugin";
-
-export { ROLE_LABELS };
+import type { Role } from "@alpha-impact/plugin";
 
 export const ROLE_FOCUS: Record<Role, string> = {
   owner: "Риски для бизнеса и стоимости компании",

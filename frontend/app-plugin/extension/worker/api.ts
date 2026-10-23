@@ -11,23 +11,13 @@ export class ApiError extends Error {
 
 export class NetworkError extends Error {}
 
-export interface ExtensionToken {
-  token: string;
-  expires_at: string;
-}
-
-export interface ExtensionApi {
-  authMock(userId: string): Promise<{ user_id: string }>;
-  extensionToken(): Promise<ExtensionToken>;
-  clients(): Promise<string[]>;
-  interpret(token: string, body: InterpretRequest): Promise<InterpretResponse>;
-}
-
 type Fetch = (url: string, init: RequestInit) => Promise<Response>;
+
+export type ExtensionApi = ReturnType<typeof createApi>;
 
 const JSON_BODY = { "Content-Type": "application/json" };
 
-export function createApi(base: string, fetch: Fetch): ExtensionApi {
+export function createApi(base: string, fetch: Fetch) {
   async function request<T>(path: string, init: RequestInit): Promise<T> {
     let response: Response;
     try {
@@ -42,17 +32,21 @@ export function createApi(base: string, fetch: Fetch): ExtensionApi {
   }
 
   return {
-    authMock: (userId) =>
-      request("/auth/mock", {
+    authMock: (userId: string) =>
+      request<{ user_id: string }>("/auth/mock", {
         method: "POST",
         credentials: "include",
         headers: JSON_BODY,
         body: JSON.stringify({ user_id: userId }),
       }),
-    extensionToken: () => request("/auth/extension-token", { method: "POST", credentials: "include" }),
-    clients: () => request("/clients", { method: "GET", credentials: "include" }),
-    interpret: (token, body) =>
-      request("/interpret", {
+    extensionToken: () =>
+      request<{ token: string; expires_at: string }>("/auth/extension-token", {
+        method: "POST",
+        credentials: "include",
+      }),
+    clients: () => request<string[]>("/clients", { method: "GET", credentials: "include" }),
+    interpret: (token: string, body: InterpretRequest) =>
+      request<InterpretResponse>("/interpret", {
         method: "POST",
         credentials: "omit",
         headers: { ...JSON_BODY, Authorization: `Bearer ${token}` },

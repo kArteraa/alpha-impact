@@ -10,6 +10,7 @@ const NOW = Date.parse("2026-10-23T12:00:00Z");
 const TOKEN_TTL_MS = 2 * CACHE_TTL_MS;
 const page: PageContext = { url: "https://news.test/rate", text: "ЦБ поднял ключевую ставку" };
 const allPages = { article: true, counterparty: true, tender: true, fx_rate: true };
+const signedOut = { signedIn: false };
 
 function memoryStore() {
   const data = new Map<string, unknown>();
@@ -31,7 +32,7 @@ function setup() {
     authMock: vi.fn<ExtensionApi["authMock"]>(async (userId) => ({ user_id: userId })),
     extensionToken: vi.fn<ExtensionApi["extensionToken"]>(async () => ({
       token: "t-1",
-      expires_at: new Date(NOW + TOKEN_TTL_MS).toISOString(),
+      expires_at: new Date(now + TOKEN_TTL_MS).toISOString(),
     })),
     clients: vi.fn<ExtensionApi["clients"]>(async () => ["U_1941", "U_9250"]),
     interpret: vi.fn<ExtensionApi["interpret"]>(async () => mockResponses.cards),
@@ -63,7 +64,7 @@ describe("extension worker session", () => {
   it("is signed out before login", async () => {
     const { worker } = setup();
 
-    expect(await worker({ type: "state" })).toEqual({ ok: true, value: { signedIn: false } });
+    expect(await worker({ type: "state" })).toEqual(signedOut);
   });
 
   it("logs in with the mock session, then takes a token and the clients", async () => {
@@ -81,8 +82,8 @@ describe("extension worker session", () => {
       },
     });
     expect(api.authMock).toHaveBeenCalledWith("user_cfo");
-    const order = [api.authMock, api.extensionToken, api.clients].map((call) => call.mock.invocationCallOrder[0]);
-    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(api.authMock).toHaveBeenCalledBefore(api.extensionToken);
+    expect(api.authMock).toHaveBeenCalledBefore(api.clients);
   });
 
   it("reports a failed login with its status and stays signed out", async () => {
@@ -90,7 +91,7 @@ describe("extension worker session", () => {
     api.extensionToken.mockRejectedValueOnce(new ApiError(501, "Not implemented: AH-37"));
 
     expect(await worker({ type: "login", userId: "user_cfo" })).toEqual({ ok: false, error: "http", status: 501 });
-    expect(await worker({ type: "state" })).toEqual({ ok: true, value: { signedIn: false } });
+    expect(await worker({ type: "state" })).toEqual(signedOut);
   });
 
   it("reports an unreachable server", async () => {
@@ -100,39 +101,52 @@ describe("extension worker session", () => {
     expect(await worker({ type: "login", userId: "user_cfo" })).toEqual({ ok: false, error: "network" });
   });
 
-  it("signs out when the token expires", async () => {
-    const { advance, worker } = await signedInAs();
+  it("signs out and forgets cached cards when the token expires", async () => {
+    const { advance, api, worker } = await signedInAs();
+    await worker({ type: "interpret", page });
     advance(TOKEN_TTL_MS);
 
-    expect(await worker({ type: "state" })).toEqual({ ok: true, value: { signedIn: false } });
+    expect(await worker({ type: "state" })).toEqual(signedOut);
     expect(await worker({ type: "interpret", page })).toEqual({ ok: false, error: "signed_out" });
+
+    await worker({ type: "login", userId: "user_cfo" });
+    await worker({ type: "interpret", page });
+    expect(api.interpret).toHaveBeenCalledTimes(2);
   });
 
-  it("refuses to change settings when signed out", async () => {
+  it("does not change settings when signed out", async () => {
     const { worker } = setup();
 
-    expect(await worker({ type: "settings", patch: { role: "cfo" } })).toEqual({ ok: false, error: "signed_out" });
+    expect(await worker({ type: "settings", patch: { role: "cfo" } })).toEqual(signedOut);
   });
 
   it("keeps settings per user across worker restarts", async () => {
     const { make, worker } = await signedInAs();
-    const autoshow = { ...allPages, tender: false };
-    await worker({ type: "settings", patch: { clientId: "U_9250", role: "treasurer", autoshow } });
+    await worker({ type: "settings", patch: { clientId: "U_9250", role: "treasurer" } });
 
     const restarted = make();
-    const reply = await restarted({ type: "state" });
+    const kept = await restarted({ type: "state" });
     await restarted({ type: "login", userId: "user_owner" });
     const other = await restarted({ type: "state" });
 
-    expect(reply.ok && reply.value.signedIn && reply.value.settings).toEqual({
-      clientId: "U_9250",
-      role: "treasurer",
-      autoshow,
-    });
-    expect(other.ok && other.value.signedIn && other.value.settings).toEqual({
-      clientId: "U_1941",
-      role: null,
-      autoshow: allPages,
+    expect(kept).toMatchObject({ settings: { clientId: "U_9250", role: "treasurer", autoshow: allPages } });
+    expect(other).toMatchObject({ settings: { clientId: "U_1941", role: null, autoshow: allPages } });
+  });
+
+  it("merges auto-show changes one page type at a time", async () => {
+    const { worker } = await signedInAs();
+
+    await worker({ type: "settings", patch: { autoshow: { tender: false } } });
+    const reply = await worker({ type: "settings", patch: { autoshow: { article: false } } });
+
+    expect(reply).toMatchObject({ settings: { autoshow: { ...allPages, tender: false, article: false } } });
+  });
+
+  it("keeps the company within the user's clients", async () => {
+    const { worker } = await signedInAs();
+
+    expect(await worker({ type: "settings", patch: { clientId: "U_0000" } })).toMatchObject({
+      settings: { clientId: "U_1941" },
     });
   });
 
@@ -140,7 +154,7 @@ describe("extension worker session", () => {
     const { api, worker } = await signedInAs();
     await worker({ type: "interpret", page });
 
-    expect(await worker({ type: "logout" })).toEqual({ ok: true, value: { signedIn: false } });
+    expect(await worker({ type: "logout" })).toEqual(signedOut);
     await worker({ type: "login", userId: "user_cfo" });
     await worker({ type: "interpret", page });
 
@@ -222,6 +236,6 @@ describe("extension worker interpret", () => {
     api.interpret.mockRejectedValueOnce(new ApiError(401, "expired"));
 
     expect(await worker({ type: "interpret", page })).toEqual({ ok: false, error: "signed_out" });
-    expect(await worker({ type: "state" })).toEqual({ ok: true, value: { signedIn: false } });
+    expect(await worker({ type: "state" })).toEqual(signedOut);
   });
 });

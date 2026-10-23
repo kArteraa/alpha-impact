@@ -1,6 +1,8 @@
-import { companyName, ROLE_LABELS, type Role } from "../../src";
+import { companyName } from "../../src/companies";
+import { ROLES } from "../../src/roles";
+import type { Role } from "../../src/types";
 import { PAGE_TYPE_LABELS, type PageType } from "../config";
-import { type ExtensionState, type Send, type Settings, stateOf } from "../messages";
+import type { ExtensionState, Send, SettingsPatch } from "../messages";
 
 interface PreferencesProps {
   state: Extract<ExtensionState, { signedIn: true }>;
@@ -8,18 +10,17 @@ interface PreferencesProps {
   onState: (state: ExtensionState) => void;
 }
 
-const ROLES = Object.entries(ROLE_LABELS) as [Role, string][];
 const PAGE_TYPES = Object.entries(PAGE_TYPE_LABELS) as [PageType, string][];
 
 export function Preferences({ state, send, onState }: PreferencesProps) {
   const { userId, clients, settings } = state;
 
-  async function update(patch: Partial<Settings>) {
-    onState(stateOf(await send({ type: "settings", patch })));
+  async function update(patch: SettingsPatch) {
+    onState(await send({ type: "settings", patch }));
   }
 
   async function logout() {
-    onState(stateOf(await send({ type: "logout" })));
+    onState(await send({ type: "logout" }));
   }
 
   return (
@@ -60,7 +61,7 @@ export function Preferences({ state, send, onState }: PreferencesProps) {
             <input
               type="checkbox"
               checked={settings.autoshow[type]}
-              onChange={(event) => update({ autoshow: { ...settings.autoshow, [type]: event.target.checked } })}
+              onChange={(event) => update({ autoshow: { [type]: event.target.checked } })}
             />
             {label}
           </label>

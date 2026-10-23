@@ -1,13 +1,9 @@
 import { type FormEvent, useState } from "react";
-import type { ExtensionState, Send, WorkerReply } from "../messages";
+import type { ExtensionState, Send } from "../messages";
 
 interface LoginProps {
   send: Send;
   onState: (state: ExtensionState) => void;
-}
-
-function failureText(reply: Extract<WorkerReply<unknown>, { ok: false }>): string {
-  return reply.error === "http" ? `Вход не удался (${reply.status})` : "Сервер недоступен";
 }
 
 export function Login({ send, onState }: LoginProps) {
@@ -24,7 +20,7 @@ export function Login({ send, onState }: LoginProps) {
     if (reply.ok) {
       onState(reply.value);
     } else {
-      setError(failureText(reply));
+      setError(reply.error === "http" ? `Вход не удался (${reply.status})` : "Сервер недоступен");
     }
   }
 
@@ -32,13 +28,7 @@ export function Login({ send, onState }: LoginProps) {
     <form className="popup-form" onSubmit={submit}>
       <label className="popup-field">
         <span>Тестовый пользователь</span>
-        <input
-          name="user_id"
-          value={userId}
-          placeholder="user_cfo_wholesale"
-          onChange={(event) => setUserId(event.target.value)}
-          required
-        />
+        <input value={userId} placeholder="user_cfo_wholesale" onChange={(event) => setUserId(event.target.value)} />
       </label>
       <button className="popup-button" type="submit" disabled={sending || userId.trim() === ""}>
         Войти

@@ -7,3 +7,5 @@ export const ROLE_LABELS: Record<Role, string> = {
   treasurer: "Казначей",
   chief_accountant: "Главный бухгалтер",
 };
+
+export const ROLES = Object.entries(ROLE_LABELS) as [Role, string][];

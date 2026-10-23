@@ -5,7 +5,7 @@ import { chromeStore } from "./worker/store";
 import { createWorker } from "./worker/worker";
 
 const worker = createWorker({
-  api: createApi(API_BASE, (url, init) => fetch(url, init)),
+  api: createApi(API_BASE, fetch),
   session: chromeStore(chrome.storage.session),
   local: chromeStore(chrome.storage.local),
   now: Date.now,
