@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from shared.config.settings import Settings
 
 MODELS_PATH = Path(__file__).with_name("models.yaml")
-INTERACTIVE_TASKS = frozenset({"interpret", "followup"})
 
 
 class UnknownTask(LookupError):
@@ -22,6 +21,7 @@ class ModelsFile(BaseModel):
 
     models: frozenset[str] = Field(min_length=1)
     reasoning_off_tasks: frozenset[str]
+    interactive_tasks: frozenset[str]
 
 
 class ModelCatalog:
@@ -66,7 +66,10 @@ def load_models(path: Path) -> ModelsFile:
 
 
 def build_catalog(
-    settings: Settings, allowed: frozenset[str], reasoning_off: frozenset[str]
+    settings: Settings,
+    allowed: frozenset[str],
+    reasoning_off: frozenset[str],
+    interactive: frozenset[str],
 ) -> ModelCatalog:
     routes = {
         "annotate": settings.MODEL_ANNOTATE,
@@ -75,9 +78,12 @@ def build_catalog(
         "critic": settings.MODEL_CRITIC,
         "followup": settings.MODEL_FOLLOWUP,
     }
+    unknown = sorted(interactive - set(routes))
+    if unknown:
+        raise UnknownTask(f"interactive timeout is set for unknown tasks: {unknown}")
     timeouts = {
-        task: settings.LLM_INTERPRET_TIMEOUT_SECONDS
-        if task in INTERACTIVE_TASKS
+        task: settings.LLM_INTERACTIVE_TIMEOUT_SECONDS
+        if task in interactive
         else settings.LLM_TIMEOUT_SECONDS
         for task in routes
     }
