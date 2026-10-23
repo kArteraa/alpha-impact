@@ -6,8 +6,8 @@ export const TRACES: Record<string, Trace> = {
     id: "trace-mock-1",
     created_at: "2026-10-20T10:15:00Z",
     request: {
-      action_context: { type: "payment", amount: 1_500_000, beneficiary_id: "cp_logistics_spb" },
-      client_id: "client_wholesale",
+      action_context: { type: "payment", amount: 1_500_000, beneficiary_id: "U_96105" },
+      client_id: "U_1941",
       role: "cfo",
       user_id: "user_cfo_wholesale",
     },

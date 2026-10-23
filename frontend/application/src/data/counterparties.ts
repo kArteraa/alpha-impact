@@ -5,6 +5,6 @@ export interface Counterparty {
 }
 
 export const COUNTERPARTIES: Counterparty[] = [
-  { id: "cp_logistics_spb", name: "ООО «Северо-Западная логистика»", description: "Грузоперевозки, Санкт-Петербург" },
-  { id: "cp_stationery", name: "ООО «Канцмир»", description: "Канцелярские товары, Москва" },
+  { id: "U_96105", name: "ООО «Северо-Западная логистика»", description: "Грузоперевозки, Санкт-Петербург" },
+  { id: "U_22524", name: "ООО «Канцмир»", description: "Канцелярские товары, Москва" },
 ];

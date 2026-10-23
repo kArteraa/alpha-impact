@@ -3,6 +3,7 @@ import type { Company } from "../data/companies";
 
 export interface CompanyValue {
   company: Company;
+  companies: Company[];
   select: (companyId: string) => void;
 }
 

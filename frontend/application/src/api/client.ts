@@ -1,4 +1,4 @@
-import type { InterpretRequest, InterpretResponse } from "@alpha-impact/plugin";
+import type { ClientProfile, Feature, InterpretRequest, InterpretResponse } from "@alpha-impact/plugin";
 
 const API_BASE = "/api";
 
@@ -30,6 +30,12 @@ export const api = {
       body: JSON.stringify({ user_id: userId }),
     }),
   clients: () => request<string[]>("/clients", { method: "GET" }),
-  interpret: (body: InterpretRequest) =>
-    request<InterpretResponse>("/interpret", { method: "POST", body: JSON.stringify(body) }),
+  profile: (clientId: string) => request<ClientProfile>(`/profile/${clientId}`, { method: "GET" }),
+  patchFeature: (clientId: string, name: string, value: Feature["value"]) =>
+    request<ClientProfile>(`/profile/${clientId}/features/${name}`, {
+      method: "PATCH",
+      body: JSON.stringify({ value }),
+    }),
+  interpret: (body: InterpretRequest, signal?: AbortSignal) =>
+    request<InterpretResponse>("/interpret", { method: "POST", body: JSON.stringify(body), signal }),
 };

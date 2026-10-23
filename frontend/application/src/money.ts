@@ -17,6 +17,7 @@ const RUB_KOPECKS = new Intl.NumberFormat("ru-RU", {
 });
 
 export const RUB = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB" });
+export const NUMBER = new Intl.NumberFormat("ru-RU");
 export const RATE = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 export const RUB_WHOLE = new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 });
 

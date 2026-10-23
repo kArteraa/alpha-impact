@@ -1,7 +1,24 @@
-import { INTERPRET_DELAY_MS } from "@alpha-impact/plugin";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { INTERPRET_DELAY_MS, mockResponses } from "@alpha-impact/plugin";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { COUNTERPARTIES } from "../data/counterparties";
+import { TEST_CLIENT, TEST_USER, renderWithCompany, stubApi } from "../testing";
 import { PaymentPage } from "./PaymentPage";
+
+const [CARRIER, STATIONERY] = COUNTERPARTIES.map((counterparty) => counterparty.id);
+
+function stubInterpret() {
+  return stubApi({
+    "POST /api/interpret": (init) => {
+      const body = JSON.parse(String(init?.body));
+      return [200, body.action_context.beneficiary_id === CARRIER ? mockResponses.cards : mockResponses.silent];
+    },
+  });
+}
+
+function render(node = <PaymentPage />) {
+  return renderWithCompany(node, { path: "/payments/new" });
+}
 
 function amountField() {
   return screen.getByLabelText<HTMLInputElement>("Сумма, ₽");
@@ -21,9 +38,8 @@ function fill(beneficiaryId: string, amount: string) {
 }
 
 async function answer() {
-  act(() => vi.advanceTimersByTime(INTERPRET_DELAY_MS));
   await act(async () => {
-    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(INTERPRET_DELAY_MS);
   });
 }
 
@@ -32,41 +48,78 @@ function panelState() {
 }
 
 describe("PaymentPage", () => {
+  let fetchMock: ReturnType<typeof stubInterpret>;
+
   beforeEach(() => {
     vi.useFakeTimers();
+    fetchMock = stubInterpret();
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("shows a hint instead of the panel until the form is filled", () => {
-    render(<PaymentPage />);
+    render();
 
     expect(screen.getByText(/Выберите получателя и сумму/)).toBeTruthy();
     expect(panelState()).toBeUndefined();
   });
 
-  it("lists the seed counterparties as recipients", () => {
-    render(<PaymentPage />);
+  it("lists real counterparties of the wholesaler as recipients", () => {
+    render();
 
     const values = Array.from(screen.getByLabelText<HTMLSelectElement>("Получатель").options, (o) => o.value);
-    expect(values).toEqual(expect.arrayContaining(["cp_logistics_spb", "cp_stationery"]));
+    expect(values).toEqual(["", "U_96105", STATIONERY]);
+    expect(STATIONERY).toMatch(/^U_\d+$/);
+  });
+
+  it("asks /interpret for the signed-in user, company and role", async () => {
+    render();
+    fill(CARRIER, "1500000");
+    await answer();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/interpret");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      user_id: TEST_USER,
+      client_id: TEST_CLIENT,
+      role: "cfo",
+      action_context: { type: "payment", amount: 1500000, beneficiary_id: CARRIER },
+    });
+  });
+
+  it("shows the panel for the role of the user", async () => {
+    renderWithCompany(<PaymentPage />, { path: "/payments/new", role: "treasurer" });
+    fill(CARRIER, "1500000");
+
+    expect(document.querySelector(".insight-panel")?.getAttribute("data-role")).toBe("treasurer");
+  });
+
+  it("offers a retry when the request fails", async () => {
+    stubApi({});
+    render();
+    fill(CARRIER, "1500000");
+    await answer();
+
+    expect(panelState()).toBe("failed");
   });
 
   it("describes the chosen recipient for assistive technology", () => {
-    render(<PaymentPage />);
-    fill("cp_logistics_spb", "1500000");
+    render();
+    fill(CARRIER, "1500000");
 
     const describedBy = screen.getByLabelText("Получатель").getAttribute("aria-describedby");
     expect(describedBy).toBe(screen.getByText("Грузоперевозки, Санкт-Петербург").id);
   });
 
   it("checks first and shows the carrier insight after the delay", async () => {
-    render(<PaymentPage />);
-    fill("cp_logistics_spb", "1500000");
+    render();
+    fill(CARRIER, "1500000");
 
     expect(panelState()).toBe("checking");
     await answer();
@@ -76,16 +129,16 @@ describe("PaymentPage", () => {
   });
 
   it("stays silent for the stationery supplier", async () => {
-    render(<PaymentPage />);
-    fill("cp_stationery", "20000");
+    render();
+    fill(STATIONERY, "20000");
     await answer();
 
     expect(panelState()).toBe("silent");
   });
 
   it("keeps the panel while the amount is being typed", async () => {
-    render(<PaymentPage />);
-    fill("cp_logistics_spb", "1500");
+    render();
+    fill(CARRIER, "1500");
     await answer();
     const shown = document.querySelector(".insight-card");
 
@@ -96,12 +149,12 @@ describe("PaymentPage", () => {
   });
 
   it("follows the recipient while the amount is being typed", async () => {
-    render(<PaymentPage />);
-    fill("cp_logistics_spb", "1500");
+    render();
+    fill(CARRIER, "1500");
     await answer();
     setAmount("1500,");
 
-    setRecipient("cp_stationery");
+    setRecipient(STATIONERY);
     await answer();
     expect(panelState()).toBe("silent");
 
@@ -110,8 +163,8 @@ describe("PaymentPage", () => {
   });
 
   it("hides the panel when the amount is cleared", async () => {
-    render(<PaymentPage />);
-    fill("cp_logistics_spb", "1500");
+    render();
+    fill(CARRIER, "1500");
     await answer();
 
     setAmount("");
@@ -120,7 +173,7 @@ describe("PaymentPage", () => {
   });
 
   it("formats the amount in rubles when the field loses focus", () => {
-    render(<PaymentPage />);
+    render();
     setAmount("1500000");
 
     fireEvent.blur(amountField());
@@ -129,7 +182,7 @@ describe("PaymentPage", () => {
   });
 
   it.each(["1500.555", "0"])("explains an amount it cannot accept: %s", (amount) => {
-    render(<PaymentPage />);
+    render();
     setAmount(amount);
 
     expect(screen.getByText("Сумма — положительное число, не больше двух знаков после запятой")).toBeTruthy();
@@ -137,7 +190,7 @@ describe("PaymentPage", () => {
   });
 
   it("has a single primary action", () => {
-    render(<PaymentPage />);
+    render();
 
     expect(document.querySelectorAll(".button").length).toBe(1);
     expect(screen.getByRole("button", { name: "Отправить" }).className).toBe("button");
@@ -145,8 +198,8 @@ describe("PaymentPage", () => {
 
   it("hands the PaymentContext to the console on submit", () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
-    render(<PaymentPage />);
-    fill("cp_logistics_spb", "1500000");
+    render();
+    fill(CARRIER, "1500000");
     fireEvent.change(screen.getByLabelText("Назначение платежа"), { target: { value: "Оплата перевозки" } });
 
     fireEvent.click(screen.getByRole("button", { name: "Отправить" }));
@@ -154,7 +207,7 @@ describe("PaymentPage", () => {
     expect(info).toHaveBeenCalledWith("PaymentContext", {
       type: "payment",
       amount: 1500000,
-      beneficiary_id: "cp_logistics_spb",
+      beneficiary_id: CARRIER,
     });
   });
 });
