@@ -1,11 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
-import { CARD_TIMEOUT_MS, chooseOption, feedWidget, waitForFeed } from "../support/panel";
+import { CARD_TIMEOUT_MS, chooseOption, feedHeadlines, feedWidget } from "../support/panel";
 import { enter } from "../support/session";
-
-async function feedHeadlines(page: Page) {
-  await waitForFeed(page);
-  return feedWidget(page).getByRole("heading", { level: 3 }).allTextContents();
-}
 
 async function headlinesOf(page: Page, userId: string) {
   await enter(page, userId);
