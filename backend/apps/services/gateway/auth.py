@@ -1,8 +1,10 @@
 from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from apps.services.gateway.tokens import INTERPRET_SCOPE, SqlExtensionTokens
 from shared.db.models import UserRow
 from shared.di.container import Container
 from shared.di.dependency import get_container
@@ -11,6 +13,7 @@ SESSION_COOKIE = "alfa_session"
 
 ContainerDep = Annotated[Container, Depends(get_container)]
 SessionCookie = Annotated[str | None, Cookie(alias=SESSION_COOKIE)]
+BearerToken = Annotated[HTTPAuthorizationCredentials | None, Depends(HTTPBearer(auto_error=False))]
 
 
 async def current_user(container: ContainerDep, session_id: SessionCookie = None) -> str:
@@ -24,4 +27,21 @@ async def current_user(container: ContainerDep, session_id: SessionCookie = None
     return user.id
 
 
+async def interpret_user(
+    container: ContainerDep, bearer: BearerToken, session_id: SessionCookie = None
+) -> str:
+    if bearer is None:
+        return await current_user(container, session_id)
+    tokens = container.resolve(SqlExtensionTokens)
+    user_id = await tokens.user(bearer.credentials, INTERPRET_SCOPE)
+    if user_id is None:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user_id
+
+
 CurrentUser = Annotated[str, Depends(current_user)]
+InterpretUser = Annotated[str, Depends(interpret_user)]

@@ -14,9 +14,12 @@ def test_reads_every_variable_from_environment(settings_env: dict[str, str]) -> 
     assert settings.NEWS_RSS_URLS == ["https://a.example/rss", "https://b.example/rss"]
 
 
-@pytest.mark.parametrize("name", ["LLM_TIMEOUT_SECONDS", "LLM_INTERACTIVE_TIMEOUT_SECONDS"])
+@pytest.mark.parametrize(
+    "name",
+    ["LLM_TIMEOUT_SECONDS", "LLM_INTERACTIVE_TIMEOUT_SECONDS", "EXTENSION_TOKEN_TTL_SECONDS"],
+)
 @pytest.mark.parametrize("value", ["0", "-1"])
-def test_timeout_must_be_positive(
+def test_duration_must_be_positive(
     settings_env: dict[str, str], monkeypatch: pytest.MonkeyPatch, name: str, value: str
 ) -> None:
     monkeypatch.setenv(name, value)

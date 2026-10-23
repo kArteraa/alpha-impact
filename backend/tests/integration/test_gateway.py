@@ -361,17 +361,3 @@ def test_openapi_matches_contracts(app: FastAPI) -> None:
     assert clients["schema"]["items"]["type"] == "string"
     report = paths["/reports/{source_doc}"]["get"]["responses"]["200"]["content"]
     assert list(report) == ["application/pdf"]
-
-
-@pytest.mark.parametrize(
-    ("method", "path", "task"),
-    [
-        ("POST", "/auth/extension-token", "AH-37"),
-    ],
-)
-async def test_unimplemented_routes_name_their_task(
-    client: httpx.AsyncClient, method: str, path: str, task: str
-) -> None:
-    response = await client.request(method, path)
-    assert response.status_code == 501
-    assert task in response.json()["detail"]
