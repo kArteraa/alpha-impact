@@ -11,8 +11,6 @@ from shared.contracts.schemas import (
     SourceRef,
 )
 
-PAGE_TEXT_FIELDS = frozenset({"title", "text"})
-
 
 def current_claims(claims: list[HouseViewClaim], as_of: date) -> list[HouseViewClaim]:
     return [
@@ -68,7 +66,7 @@ def sources(
                         True,
                     )
                 )
-    items.extend(news_evidence(item, frozenset()) for item in news)
+    items.extend(news_evidence(item, with_text=True) for item in news)
     for claim in house_view:
         items.append(
             Evidence(
@@ -88,23 +86,23 @@ def sources(
     return {source_key(item.ref): item for item in items}
 
 
-def news_evidence(item: NewsItem, hidden: frozenset[str]) -> Evidence:
+def news_evidence(item: NewsItem, with_text: bool) -> Evidence:
     return Evidence(
         SourceRef(
             kind="news",
             id=item.id,
-            title=None if "title" in hidden else item.title,
+            title=item.title,
             url=item.url,
             published_at=item.published_at,
         ),
-        item.model_dump(mode="json", exclude=set(hidden)),
+        item.model_dump(mode="json", exclude=None if with_text else {"text"}),
         None,
         True,
     )
 
 
-def page_annotations(news: list[NewsItem]) -> dict[str, Evidence]:
-    items = [news_evidence(item, PAGE_TEXT_FIELDS) for item in news]
+def news_without_text(news: list[NewsItem]) -> dict[str, Evidence]:
+    items = [news_evidence(item, with_text=False) for item in news]
     return {source_key(item.ref): item for item in items}
 
 

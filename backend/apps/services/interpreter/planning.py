@@ -4,7 +4,7 @@ from typing import Literal, Self
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from apps.services.interpreter.context import Evidence, page_annotations, sources
+from apps.services.interpreter.context import Evidence, news_without_text, sources
 from shared.config.house_view_topics import HOUSE_VIEW_SUBJECTS
 from shared.contracts.errors import DomainError
 from shared.contracts.schemas import (
@@ -94,7 +94,7 @@ def plan_sources(
     house_view: list[HouseViewClaim],
 ) -> dict[str, Evidence]:
     if isinstance(request.action_context, PageContext):
-        return {**sources(profile, counterparty, [], house_view), **page_annotations(news)}
+        return {**sources(profile, counterparty, [], house_view), **news_without_text(news)}
     return sources(profile, counterparty, news, house_view)
 
 
