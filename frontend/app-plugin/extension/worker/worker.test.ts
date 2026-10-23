@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PageContext } from "../../src";
 import { mockResponses } from "../../src/mocks";
 import { CACHE_TTL_MS } from "../config";
+import type { DetectedPage } from "../messages";
 import { ApiError, type ExtensionApi, NetworkError } from "./api";
 import type { Store } from "./store";
 import { createWorker } from "./worker";
@@ -9,6 +10,7 @@ import { createWorker } from "./worker";
 const NOW = Date.parse("2026-10-23T12:00:00Z");
 const TOKEN_TTL_MS = 2 * CACHE_TTL_MS;
 const page: PageContext = { url: "https://news.test/rate", text: "ЦБ поднял ключевую ставку" };
+const article: DetectedPage = { pageType: "article", page };
 const allPages = { article: true, counterparty: true, tender: true, fx_rate: true };
 const signedOut = { signedIn: false };
 
@@ -278,5 +280,96 @@ describe("extension worker interpret", () => {
 
     expect(await worker({ type: "interpret", page })).toEqual({ ok: false, error: "signed_out" });
     expect(await worker({ type: "state" })).toEqual(signedOut);
+  });
+});
+
+describe("extension worker page report", () => {
+  it("does not offer the notice before login", async () => {
+    const { api, worker } = setup();
+
+    expect(await worker({ type: "page", detected: article })).toBe(false);
+    expect(api.interpret).not.toHaveBeenCalled();
+  });
+
+  it("does not offer the notice until a role is chosen", async () => {
+    const { api, worker } = await signedInAs(null);
+
+    expect(await worker({ type: "page", detected: article })).toBe(false);
+    expect(api.interpret).not.toHaveBeenCalled();
+  });
+
+  it("does not read a page whose type has auto-show off", async () => {
+    const { api, worker } = await signedInAs();
+    await worker({ type: "settings", patch: { autoshow: { article: false } } });
+
+    expect(await worker({ type: "page", detected: article })).toBe(false);
+    expect(await worker({ type: "page", detected: { pageType: "counterparty", page } })).toBe(true);
+    expect(api.interpret).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers the notice when the page has cards", async () => {
+    const { worker } = await signedInAs();
+
+    expect(await worker({ type: "page", detected: article })).toBe(true);
+  });
+
+  it.each([
+    ["silence", mockResponses.silent],
+    ["no cards", { silent: false, silent_reason: null, cards: [], cached: false }],
+  ])("does not offer the notice for %s", async (_name, response) => {
+    const { api, worker } = await signedInAs();
+    api.interpret.mockResolvedValueOnce(response);
+
+    expect(await worker({ type: "page", detected: article })).toBe(false);
+  });
+
+  it("does not offer the notice for cards that need review, which are not kept for the panel", async () => {
+    const { api, worker } = await signedInAs();
+    const card = { ...mockResponses.cards.cards[0], needs_review: true };
+    api.interpret.mockResolvedValueOnce({ ...mockResponses.cards, cards: [card] });
+
+    expect(await worker({ type: "page", detected: article })).toBe(false);
+  });
+
+  it("does not offer the notice when the request fails", async () => {
+    const { api, worker } = await signedInAs();
+    api.interpret.mockRejectedValueOnce(new NetworkError("offline"));
+
+    expect(await worker({ type: "page", detected: article })).toBe(false);
+  });
+
+  it("lets the panel show the same page from the cache", async () => {
+    const { api, worker } = await signedInAs();
+
+    expect(await worker({ type: "page", detected: article })).toBe(true);
+    expect(await worker({ type: "interpret", page })).toEqual({ ok: true, value: mockResponses.cards });
+    expect(api.interpret).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("extension worker shared requests", () => {
+  it("asks the API once when the notice and the panel read the same page together", async () => {
+    const { api, worker } = await signedInAs();
+    let answer: (response: typeof mockResponses.cards) => void = () => {};
+    api.interpret.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+    const notice = worker({ type: "page", detected: article });
+    const panel = worker({ type: "interpret", page });
+    await vi.waitFor(() => expect(api.interpret).toHaveBeenCalled());
+    answer(mockResponses.cards);
+
+    expect(await notice).toBe(true);
+    expect(await panel).toEqual({ ok: true, value: mockResponses.cards });
+    expect(api.interpret).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks the API again after a shared request fails", async () => {
+    const { api, worker } = await signedInAs();
+    api.interpret.mockRejectedValueOnce(new NetworkError("offline"));
+
+    await Promise.all([worker({ type: "interpret", page }), worker({ type: "interpret", page })]);
+    await worker({ type: "interpret", page });
+
+    expect(api.interpret).toHaveBeenCalledTimes(2);
   });
 });

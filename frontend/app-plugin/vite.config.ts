@@ -30,7 +30,6 @@ const extension = defineConfig({
         sidepanel: here("extension/sidepanel.html"),
         popup: here("extension/popup.html"),
         background: here("extension/background.ts"),
-        content: here("extension/content.ts"),
       },
       output: {
         entryFileNames: "[name].js",
@@ -41,4 +40,15 @@ const extension = defineConfig({
   },
 });
 
-export default defineConfig(({ mode }) => (mode === "extension" ? extension : library));
+const content = defineConfig({
+  publicDir: false,
+  build: {
+    outDir: here("dist-extension"),
+    emptyOutDir: false,
+    lib: { entry: here("extension/content.ts"), formats: ["iife"], name: "alphaImpactContent", fileName: () => "content.js" },
+  },
+});
+
+const modes: Record<string, typeof library> = { extension, content };
+
+export default defineConfig(({ mode }) => modes[mode] ?? library);

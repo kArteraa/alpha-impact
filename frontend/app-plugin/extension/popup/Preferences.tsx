@@ -55,7 +55,7 @@ export function Preferences({ state, send, onState }: PreferencesProps) {
         </select>
       </label>
       <fieldset className="popup-autoshow">
-        <legend>Показывать панель сразу</legend>
+        <legend>Подсказка на странице, если есть событие</legend>
         {PAGE_TYPES.map(([type, label]) => (
           <label key={type} className="popup-check">
             <input
