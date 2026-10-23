@@ -19,5 +19,6 @@
       "js": ["content.js"]
     }
   ],
-  "permissions": ["sidePanel", "storage", "activeTab"]
+  "permissions": ["sidePanel", "storage", "activeTab"],
+  "host_permissions": ["http://localhost:8000/*"]
 }
