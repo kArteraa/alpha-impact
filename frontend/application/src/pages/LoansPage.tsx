@@ -100,7 +100,7 @@ export function LoansPage() {
                     <td>{loan.rate}</td>
                     <td className="number">{DATE.format(new Date(loan.maturity))}</td>
                     <td className="number">
-                      <span className={daysBadge(days)}>{days < 0 ? untilText(days) : plural(days, DAYS)}</span>
+                      <span className={daysBadge(days)}>{days <= 0 ? untilText(days) : plural(days, DAYS)}</span>
                     </td>
                   </tr>
                 );

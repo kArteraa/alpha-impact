@@ -8,7 +8,7 @@ function roleKey(userId: string): string {
 }
 
 function isRole(value: string | null): value is Role {
-  return value !== null && value in ROLE_LABELS;
+  return value !== null && Object.hasOwn(ROLE_LABELS, value);
 }
 
 export function saveUser(userId: string) {
@@ -17,6 +17,10 @@ export function saveUser(userId: string) {
 
 export function loadUser(): string | null {
   return localStorage.getItem(USER_KEY);
+}
+
+export function forgetUser() {
+  localStorage.removeItem(USER_KEY);
 }
 
 export function saveRole(userId: string, role: Role) {

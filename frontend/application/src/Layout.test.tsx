@@ -116,5 +116,33 @@ describe("Layout", () => {
     renderApp();
 
     expect((await screen.findByRole("alert")).textContent).toBe("Не удалось загрузить компании");
+    expect(screen.getByRole("link", { name: "Войти заново" }).getAttribute("href")).toBe("/login");
+    expect(document.querySelector(".brand")?.textContent).toBe("Alpha Impact");
+  });
+
+  it("offers to log in again to a user without companies", async () => {
+    stubApi({ "GET /api/clients": [200, []] });
+
+    renderApp();
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Нет компаний, доступных этому пользователю");
+    expect(screen.getByRole("link", { name: "Войти заново" }).getAttribute("href")).toBe("/login");
+  });
+
+  it("keeps the brand on screen while the companies load", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+
+    renderApp();
+
+    expect(document.querySelector(".brand")?.textContent).toBe("Alpha Impact");
+  });
+
+  it("sends the user to the login screen when any request finds the session expired", async () => {
+    stubApi({ "GET /api/clients": [200, ["U_1941"]], "GET /api/profile/U_1941": [401, "no session"] });
+
+    renderApp("/profile");
+
+    expect(await screen.findByRole("heading", { name: "Вход" })).toBeTruthy();
+    expect(localStorage.getItem("alpha-impact.user")).toBeNull();
   });
 });

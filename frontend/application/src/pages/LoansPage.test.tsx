@@ -57,6 +57,13 @@ describe("LoansPage", () => {
     expect(badge?.className).toBe("badge badge-danger");
   });
 
+  it("says a repayment due today is today in the table too", () => {
+    vi.setSystemTime(new Date("2026-12-31T09:00:00+03:00"));
+    render(<LoansPage />);
+
+    expect(document.querySelector("tbody tr td:last-child")?.textContent).toBe("сегодня");
+  });
+
   it("orders the loans by maturity with the days left", () => {
     render(<LoansPage />);
 
