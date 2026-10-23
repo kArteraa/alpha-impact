@@ -38,7 +38,8 @@ bank_view — актуальная позиция банка. Шестой бл�
 Роль role задаёт ракурс why_for_you и actions — пиши их для её задач:
 """
     + "".join(f"{role.value} — {focus};\n" for role, focus in ROLE_FOCUS.items())
-    + """Ракурс роли не меняет what_happened, bank_view и источники.
+    + """Ракурс роли не меняет what_happened и его новость; в bank_view выбирай
+актуальные утверждения банка, важные для роли.
 """
     + f"В блоках кроме bank_view не больше {MAX_CLAIMS_PER_BLOCK} тезисов, "
     + """тезис — одно короткое предложение без повторов.

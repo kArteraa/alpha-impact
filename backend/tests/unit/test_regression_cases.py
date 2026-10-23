@@ -49,8 +49,9 @@ def test_catalog_compares_cfo_and_treasurer_cards() -> None:
     pairs = [item for item in cases.values() if item.differs_from is not None]
 
     assert len(pairs) >= 2
-    for item in pairs:
-        assert item.differs_from is not None
+    for item in cases.values():
+        if item.differs_from is None:
+            continue
         roles = {item.request.role.value, cases[item.differs_from].request.role.value}
         assert roles == {"cfo", "treasurer"}, item.id
 
@@ -324,47 +325,83 @@ def test_differs_from_is_not_allowed_on_followup() -> None:
         )
 
 
-def role_card(card_id: str, why: str, action: str) -> InsightCard:
+def role_card(card_id: str, why: list[str], actions: list[str]) -> InsightCard:
     return card(
         id=card_id,
-        why_for_you=[Claim(text=why, type=ClaimType.AI, source_ref=PROFILE)],
-        actions=[Claim(text=action, type=ClaimType.AI, source_ref=PROFILE)],
+        why_for_you=[Claim(text=text, type=ClaimType.AI, source_ref=PROFILE) for text in why],
+        actions=[Claim(text=text, type=ClaimType.AI, source_ref=PROFILE) for text in actions],
     )
 
 
-CFO_CARD = role_card("card-cfo", "Ставка дорожит долг", "Пересчитать план заимствований")
+def about(item: InsightCard, news: SourceRef) -> InsightCard:
+    return item.model_copy(update={"what_happened": [claim(news)], "basis": [news, PROFILE, RATE]})
+
+
+OTHER_NEWS = SourceRef(kind="news", id="n2", title="Другая", url="https://n.example/2")
+CFO_CARD = role_card(
+    "card-cfo", ["Ставка дорожит долг", "План долга"], ["Пересчитать план заимствований"]
+)
+TREASURER = role_card("card-t", ["Остатки выгоднее держать"], ["Сдвинуть платёжный календарь"])
 
 
 def test_role_pair_passes_when_why_and_actions_differ() -> None:
-    treasurer = role_card("card-t", "Остатки выгоднее держать", "Сдвинуть платёжный календарь")
-
-    assert check(case(differs_from="cfo"), answer(treasurer), CITED, CFO_CARD) == []
+    assert check(case(differs_from="cfo"), answer(TREASURER), CITED, (CFO_CARD,)) == []
 
 
-def test_role_pair_fails_when_why_repeats() -> None:
-    treasurer = role_card("card-t", "Ставка дорожит долг", "Сдвинуть платёжный календарь")
+def test_role_pair_fails_when_one_why_claim_repeats() -> None:
+    treasurer = role_card(
+        "card-t", ["Остатки выгоднее держать", "План долга"], ["Сдвинуть платёжный календарь"]
+    )
 
-    failures = check(case(differs_from="cfo"), answer(treasurer), CITED, CFO_CARD)
+    failures = check(case(differs_from="cfo"), answer(treasurer), CITED, (CFO_CARD,))
 
     assert len(failures) == 1
-    assert "why_for_you" in failures[0]
+    assert "why_for_you" in failures[0] and "План долга" in failures[0]
 
 
-def test_role_pair_fails_when_actions_repeat() -> None:
-    treasurer = role_card("card-t", "Остатки выгоднее держать", "Пересчитать план заимствований")
+def test_role_pair_fails_when_one_action_repeats() -> None:
+    treasurer = role_card(
+        "card-t",
+        ["Остатки выгоднее держать"],
+        ["Сдвинуть платёжный календарь", "Пересчитать план заимствований"],
+    )
 
-    failures = check(case(differs_from="cfo"), answer(treasurer), CITED, CFO_CARD)
+    failures = check(case(differs_from="cfo"), answer(treasurer), CITED, (CFO_CARD,))
 
     assert len(failures) == 1
     assert "actions" in failures[0]
 
 
-def test_role_pair_fails_without_peer_card() -> None:
-    assert check(case(differs_from="cfo"), answer(card()), CITED, None) != []
+def test_role_pair_fails_without_peer_cards() -> None:
+    failures = check(case(differs_from="cfo"), answer(TREASURER), CITED, ())
+
+    assert failures == ["case cfo gave no green card to compare roles"]
 
 
 def test_role_pair_fails_on_silence() -> None:
-    assert check(case(differs_from="cfo"), SILENT, CITED, CFO_CARD) != []
+    assert check(case(differs_from="cfo"), SILENT, CITED, (CFO_CARD,)) != []
+
+
+def test_role_pair_matches_cards_by_event_news_in_any_order() -> None:
+    peers = (about(CFO_CARD, OTHER_NEWS), CFO_CARD)
+    response = answer(TREASURER, about(TREASURER.model_copy(update={"id": "card-t2"}), OTHER_NEWS))
+
+    assert check(case(differs_from="cfo"), response, CITED, peers) == []
+
+
+def test_role_pair_passes_when_one_matched_pair_differs() -> None:
+    peers = (CFO_CARD, about(CFO_CARD.model_copy(update={"id": "card-cfo2"}), OTHER_NEWS))
+    same = about(CFO_CARD.model_copy(update={"id": "card-t2"}), OTHER_NEWS)
+
+    assert check(case(differs_from="cfo"), answer(same, TREASURER), CITED, peers) == []
+
+
+def test_role_pair_fails_when_no_card_is_about_the_same_event() -> None:
+    failures = check(
+        case(differs_from="cfo"), answer(about(TREASURER, OTHER_NEWS)), CITED, (CFO_CARD,)
+    )
+
+    assert failures == ["no card has the same what_happened news as a card of cfo"]
 
 
 def test_load_cases_rejects_followup_of_later_case(tmp_path: Path) -> None:
@@ -377,18 +414,6 @@ def test_load_cases_rejects_followup_of_later_case(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="child"):
         load_cases(tmp_path)
-
-
-def test_role_pair_fails_when_cards_cite_other_news() -> None:
-    other_news = SourceRef(kind="news", id="n2", title="Другая", url="https://n.example/2")
-    treasurer = role_card("card-t", "Остатки выгоднее держать", "Сдвинуть платёжный календарь")
-    elsewhere = treasurer.model_copy(
-        update={"what_happened": [claim(other_news)], "basis": [other_news, PROFILE, RATE]}
-    )
-
-    failures = check(case(differs_from="cfo"), answer(elsewhere), CITED, CFO_CARD)
-
-    assert failures == ["card card-t: no news shared with card card-cfo of cfo"]
 
 
 def test_role_blocks_are_card_blocks() -> None:
