@@ -40,6 +40,7 @@ describe("Popup", () => {
   it.each([
     [{ ok: false, error: "http", status: 501 }, "Вход не удался (501)"],
     [{ ok: false, error: "network" }, "Сервер недоступен"],
+    [{ ok: false, error: "failed" }, "Вход не удался"],
   ])("explains a failed login %j", async (reply, text) => {
     popupWith(signedOut, { login: reply });
 

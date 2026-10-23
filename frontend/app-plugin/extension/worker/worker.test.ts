@@ -231,6 +231,47 @@ describe("extension worker interpret", () => {
     expect(api.interpret).toHaveBeenCalledTimes(2);
   });
 
+  it("does not cache cards that need review", async () => {
+    const { api, worker } = await signedInAs();
+    const card = { ...mockResponses.cards.cards[0], needs_review: true };
+    api.interpret.mockResolvedValueOnce({ ...mockResponses.cards, cards: [card] });
+
+    await worker({ type: "interpret", page });
+    await worker({ type: "interpret", page });
+
+    expect(api.interpret).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not bring cached cards back after a logout during the request", async () => {
+    const { api, session, worker } = await signedInAs();
+    let answer: (response: typeof mockResponses.cards) => void = () => {};
+    api.interpret.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+
+    const pending = worker({ type: "interpret", page });
+    await worker({ type: "logout" });
+    answer(mockResponses.cards);
+    await pending;
+
+    expect(session.data.has("cache")).toBe(false);
+  });
+
+  it("answers an unexpected failure instead of leaving the caller waiting", async () => {
+    const { api, worker } = await signedInAs();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    api.interpret.mockRejectedValueOnce(new SyntaxError("Unexpected token <"));
+
+    expect(await worker({ type: "interpret", page })).toEqual({ ok: false, error: "failed" });
+  });
+
+  it("treats a token without a readable expiry as expired", async () => {
+    const { api, worker } = setup();
+    api.extensionToken.mockResolvedValueOnce({ token: "t-1", expires_at: "" });
+
+    await worker({ type: "login", userId: "user_cfo" });
+
+    expect(await worker({ type: "state" })).toEqual(signedOut);
+  });
+
   it("signs out when the API rejects the token", async () => {
     const { api, worker } = await signedInAs();
     api.interpret.mockRejectedValueOnce(new ApiError(401, "expired"));

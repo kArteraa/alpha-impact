@@ -1,4 +1,4 @@
-export const API_BASE = "http://localhost:8000";
+export const API_BASE = "http://127.0.0.1:8000";
 
 export const CACHE_TTL_MS = 60 * 60 * 1000;
 
