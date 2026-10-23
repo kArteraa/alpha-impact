@@ -182,6 +182,9 @@ async def test_house_view_is_requested_for_each_selected_topic(
     assert {call.kwargs["subject"] for call in house_view.claims.await_args_list} == {
         "trade_logistics",
         "key_rate",
+        "inflation",
+        "debt_market",
+        "corporate_credit",
     }
 
 
