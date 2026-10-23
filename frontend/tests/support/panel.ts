@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export const CARD_TIMEOUT_MS = 60_000;
 
@@ -24,4 +24,15 @@ export async function waitForFeed(page: Page) {
 
 export function feedWidget(page: Page) {
   return page.getByRole("region", { name: "Что изменилось вокруг ваших операций" });
+}
+
+export async function feedHeadlines(page: Page) {
+  await waitForFeed(page);
+  return feedWidget(page).getByRole("heading", { level: 3 }).allTextContents();
+}
+
+export async function waitForCard(panel: Locator) {
+  await expect(panel).toHaveAttribute("data-state", "cards", { timeout: CARD_TIMEOUT_MS });
+  await expect(panel).toHaveAttribute("aria-busy", "false", { timeout: CARD_TIMEOUT_MS });
+  await expect(panel.locator(".insight-sources li").first()).toBeVisible();
 }
