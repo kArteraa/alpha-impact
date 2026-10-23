@@ -28,12 +28,15 @@ class ScriptedInterpreter:
 
 
 class StoredHouseView:
-    def __init__(self, claims: dict[str, HouseViewClaim]) -> None:
+    def __init__(self, claims: dict[str, HouseViewClaim], *, broken: bool = False) -> None:
         self._claims = claims
+        self._broken = broken
         self.asked: list[str] = []
 
     async def chain(self, claim_id: str) -> list[HouseViewClaim]:
         self.asked.append(claim_id)
+        if self._broken:
+            raise RuntimeError("connection lost")
         if claim_id not in self._claims:
             raise NotFound(claim_id)
         return [self._claims[claim_id]]
@@ -160,3 +163,25 @@ async def test_unexpected_error_fails_case_and_run_continues() -> None:
 
     assert [r.passed for r in results] == [False, True]
     assert "RuntimeError" in results[0].failures[0]
+
+
+async def test_house_view_error_fails_case_and_run_continues() -> None:
+    cases = [dashboard_case("card", {"silent": False}), dashboard_case("quiet", {"silent": True})]
+    interpreter = ScriptedInterpreter(answer(card()), SILENT)
+
+    results = await run_cases(cases, interpreter, StoredHouseView(CITED, broken=True))
+
+    assert [r.passed for r in results] == [False, True]
+    assert "RuntimeError" in results[0].failures[0]
+
+
+async def test_followup_gets_parent_card_when_parent_check_failed() -> None:
+    interpreter = ScriptedInterpreter(answer(card()), answer(card(id="card-2")))
+    cases = [dashboard_case("parent", {"silent": True}), followup_case("child", "parent")]
+
+    results = await run_cases(cases, interpreter, StoredHouseView(CITED))
+
+    context = interpreter.requests[1].action_context
+    assert isinstance(context, FollowupContext)
+    assert context.card_id == "card-1"
+    assert [r.passed for r in results] == [False, True]
