@@ -173,12 +173,12 @@ def event_news(card: InsightCard) -> frozenset[str]:
     )
 
 
-def repeated_claims(card: InsightCard, peer: InsightCard, case: Case) -> list[str]:
+def repeated_claims(card: InsightCard, peer: InsightCard, peer_case: str) -> list[str]:
     failures = []
     for name in ROLE_BLOCKS:
         theirs = {item.text for item in getattr(peer, name)}
         failures += [
-            f"card {card.id}: {name} repeats «{item.text}» of card {peer.id} of {case.differs_from}"
+            f"card {card.id}: {name} repeats «{item.text}» of card {peer.id} of {peer_case}"
             for item in getattr(card, name)
             if item.text in theirs
         ]
@@ -186,20 +186,21 @@ def repeated_claims(card: InsightCard, peer: InsightCard, case: Case) -> list[st
 
 
 def role_failures(
-    case: Case, response: InterpretResponse, peers: Sequence[InsightCard]
+    peer_case: str, response: InterpretResponse, peers: Sequence[InsightCard]
 ) -> list[str]:
     if not peers:
-        return [f"case {case.differs_from} gave no green card to compare roles"]
+        return [f"case {peer_case} gave no green card to compare roles"]
     if not response.cards:
         return ["expected a card to compare roles, got none"]
     pairs = [
-        repeated_claims(card, peer, case)
+        repeated_claims(card, peer, peer_case)
         for card in response.cards
+        if (news := event_news(card))
         for peer in peers
-        if event_news(card) and event_news(card) == event_news(peer)
+        if news == event_news(peer)
     ]
     if not pairs:
-        return [f"no card has the same what_happened news as a card of {case.differs_from}"]
+        return [f"no card has the same what_happened news as a card of {peer_case}"]
     if any(not failures for failures in pairs):
         return []
     return [failure for failures in pairs for failure in failures]
@@ -213,7 +214,7 @@ def check(
 ) -> list[str]:
     failures = expectation_failures(case.expect, response, cited)
     if case.differs_from is not None:
-        failures += role_failures(case, response, peers)
+        failures += role_failures(case.differs_from, response, peers)
     for card in response.cards:
         failures += invariant_failures(card, cited)
     if response.cards:
