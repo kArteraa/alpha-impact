@@ -10,7 +10,7 @@ from main import build_container
 from scripts.regression_cases import CASES_DIR, Case, bank_claims, check, load_cases
 from shared.contracts.errors import NotFound
 from shared.contracts.ports import HouseViewService, Interpreter, LLMGateway
-from shared.contracts.schemas import HouseViewClaim, InterpretResponse
+from shared.contracts.schemas import HouseViewClaim, InsightCard, InterpretResponse
 
 REPORT_PATH = CASES_DIR.parent / "report.md"
 
@@ -56,23 +56,28 @@ async def run_case(
     case: Case,
     interpreter: Interpreter,
     house_view: ClaimChain,
-    cards: dict[str, str],
+    cards: dict[str, tuple[InsightCard, ...]],
+    green: set[str],
 ) -> CaseResult:
     request = case.request
     if case.followup_of is not None:
-        parent_card = cards.get(case.followup_of)
-        if parent_card is None:
+        parent_cards = cards.get(case.followup_of, ())
+        if not parent_cards:
             return CaseResult(
                 case.id, case.title, (f"parent case {case.followup_of} gave no card",), None
             )
-        request = case.with_parent_card(parent_card)
+        request = case.with_parent_card(parent_cards[0].id)
     first = None
     try:
         response = await interpreter.interpret(request)
         first = response.cards[0] if response.cards else None
-        if first is not None:
-            cards[case.id] = first.id
-        failures = check(case, response, await cited_claims(response, house_view))
+        cards[case.id] = tuple(response.cards)
+        cited = await cited_claims(response, house_view)
+        peer = case.differs_from
+        peers = cards.get(peer, ()) if peer is not None and peer in green else ()
+        failures = check(case, response, cited, peers)
+        if not failures:
+            green.add(case.id)
     except Exception as error:
         failures = [f"{type(error).__name__}: {error}"]
     return CaseResult(case.id, case.title, tuple(failures), first.trace_id if first else None)
@@ -81,8 +86,9 @@ async def run_case(
 async def run_cases(
     cases: Sequence[Case], interpreter: Interpreter, house_view: ClaimChain
 ) -> list[CaseResult]:
-    cards: dict[str, str] = {}
-    return [await run_case(case, interpreter, house_view, cards) for case in cases]
+    cards: dict[str, tuple[InsightCard, ...]] = {}
+    green: set[str] = set()
+    return [await run_case(case, interpreter, house_view, cards, green) for case in cases]
 
 
 def cell(text: str) -> str:
