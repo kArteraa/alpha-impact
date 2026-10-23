@@ -125,7 +125,7 @@ async def test_structured_call_is_recorded_in_usage(
         usage = (await session.scalars(select(LlmUsageRow))).one()
     assert (usage.task, usage.model, usage.tokens_in, usage.tokens_out) == (
         "interpret",
-        "z-ai/glm-5.3-flash",
+        fakes.ROUTES["interpret"],
         2000,
         400,
     )

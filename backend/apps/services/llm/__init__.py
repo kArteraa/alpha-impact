@@ -24,7 +24,12 @@ def build_gateway(container: Container) -> ModelGateway:
     http = build_http_client(settings)
     container.on_close(http.aclose)
     return ModelGateway(
-        catalog=build_catalog(settings, models.models, models.reasoning_off_tasks),
+        catalog=build_catalog(
+            settings,
+            allowed=models.models,
+            reasoning_off=models.reasoning_off_tasks,
+            interactive=models.interactive_tasks,
+        ),
         client=ModelClient(http),
         embedder=build_embedder(),
         store=SqlUsageStore(container.resolve(async_sessionmaker), settings.LLM_CACHE_TTL_SECONDS),

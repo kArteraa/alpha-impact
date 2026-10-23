@@ -64,7 +64,7 @@ docker compose --profile seed run --build --rm --no-deps -e LLM_TIMEOUT_SECONDS=
 Метрики качества (`GET /metrics?since=ГГГГ-ММ-ДД`, AH-29) считаются по трассам и отзывам за период: доля тезисов с источником, критик с первого раза, доля молчания, токены и рубли на карточку, доля кэша, полезность по отзывам. Seed-трафик для стенда — запросы `/interpret` seed-пользователей с настоящей моделью (тратит бюджет LLM; упавшие запросы — тоже трафик, их трассы сохраняются), выгрузка метрик в JSON для экрана метрик:
 
 ```
-cd backend && LLM_TIMEOUT_SECONDS=120 uv run --env-file ../.env python -m scripts.seed_traffic --per-client 3
+cd backend && LLM_TIMEOUT_SECONDS=120 LLM_INTERACTIVE_TIMEOUT_SECONDS=120 uv run --env-file ../.env python -m scripts.seed_traffic --per-client 3
 cd backend && uv run --env-file ../.env python -m scripts.export_metrics --since 2026-10-23 --out metrics.json
 ```
 
@@ -76,6 +76,7 @@ cd backend && uv run --env-file ../.env python -m scripts.export_metrics --since
 
 - после AH-16: `LLM_BUDGET_RESERVE_SHARE`, `LLM_TIMEOUT_SECONDS`, `LLM_CALL_RESERVE_RUB`, `LLM_CACHE_TTL_SECONDS`; `MODEL_*` — имена моделей с префиксом провайдера, как в `.env.example` (`google/gemma-4-26b-a4b-it`, `z-ai/glm-5.3-flash`, `qwen/qwen3.6-35b-a3b`);
 - после AH-54: `LLM_API_BASE` — адрес прокси кейса `https://changellenge.up.railway.app/v1` (старая строка в `.env` перекрывает его — замените или удалите), `LLM_API_KEY` — ключ кейса; `MODEL_EMBED` больше не используется;
+- после AH-70: `LLM_INTERACTIVE_TIMEOUT_SECONDS=12` — таймаут плана и черновика карточки (`interpret`, `followup`), остальные вызовы — `LLM_TIMEOUT_SECONDS`; `MODEL_INTERPRET` и `MODEL_FOLLOWUP` — `deepseek/deepseek-v4.1-flash`;
 - после AH-13: `NEWS_RSS_URLS` — рубрики Коммерсанта и Ведомостей и лента Интерфакса, как в `.env.example` (старая строка с общими лентами и РБК перекрывает его — замените или удалите).
 
 Проверка перед коммитом (ruff, mypy, import-linter, pytest, vitest, сборка) — раздел «Проверка» в [docs/PIPELINE.md](docs/PIPELINE.md).
@@ -108,24 +109,24 @@ uv run --env-file ../.env pytest tests/unit/interpreter tests/integration/test_i
 При смене промптов агента или критика (`backend/apps/services/interpreter/prompts.py`) запуск обязателен. Из `backend/`, БД засеяна (`scripts.seed`, `scripts.ingest_news`):
 
 ```bash
-LLM_TIMEOUT_SECONDS=30 uv run --env-file ../.env python -m scripts.regression
+LLM_TIMEOUT_SECONDS=30 LLM_INTERACTIVE_TIMEOUT_SECONDS=30 uv run --env-file ../.env python -m scripts.regression
 ```
 
 Отчёт печатается и пишется в `backend/tests/regression/report.md`; если хоть один кейс красный, код выхода 1. Повтор без смены промптов отвечает из кэша LLM-шлюза.
 
-Последний прогон (реальный seed: 116 профилей, 565 новостей за 14 дней; GLM-5.3 без рассуждений после AH-66 и AH-69; ответы модели — из кэша шлюза прогонов AH-69 с теми же промптами):
+Последний прогон (реальный seed: 116 профилей, 565 новостей за 14 дней; план и черновик — DeepSeek-V4.1-Flash, критик — GLM-5.3, без рассуждений, таймауты из `.env` — 12 с и 8 с, AH-70; ответы модели — из кэша шлюза живых прогонов AH-70 с теми же промптами):
 
-Дата: 2026-10-23 · коммит `9cbb892` · пройдено 10/10 · потрачено 0.0000 руб.
+Дата: 2026-10-23 · коммит `4a752c2` · пройдено 10/10 · потрачено 0.0000 руб.
 
 | Кейс | Что проверяет | Результат | Причины | trace_id |
 |---|---|---|---|---|
 | page_sport_silent | Спортивная новость оптовику — молчание | зелёный | — | — |
 | page_culture_silent | Премьера фильма для стройгруппы — молчание | зелёный | — | — |
-| page_key_rate_bank | Решение ЦБ по ставке оптовику — позиция банка по ставке от 11.09 | зелёный | — | 37dbec29-cce4-407b-a341-c50841a11631 |
-| page_key_rate_construction | Решение ЦБ по ставке стройгруппе — ставка и признаки клиента | зелёный | — | cc6515a0-3e89-4e24-8026-91c315b7dae0 |
-| page_inflation_key_rate | Новость об инфляции автодилеру — позиция банка по ставке (по инфляции — AH-71) | зелёный | — | 048fb95a-c3bb-43ee-b471-0a668c68cda0 |
-| page_fx_bank | Ослабление рубля автодилеру — позиция банка по курсу | зелёный | — | 10cb4ef7-0f3a-4d70-9ff8-88610aa99783 |
-| page_logistics | Рост тарифов грузоперевозок оптовику — карточка с признаками клиента | зелёный | — | f6c42c57-69a4-40ff-80f4-b17ae830dbc2 |
-| followup_key_rate_2027 | Вопрос к карточке о ставке — прогноз банка от 11.09 | зелёный | — | a2c78fcd-b1c8-47ad-97c1-363f114bfb66 |
-| payment_wholesale_logistics | Платёж оптовика логистическому контрагенту — при карточке агрегаты получателя | зелёный | — | 167122c6-6b41-4c3f-902d-2bea923d229e |
-| deposit_wholesale_90d | Депозит оптовика на 90 дней — при карточке позиция банка по ставке | зелёный | — | 8bfca876-3b1a-4790-b4e1-08728f137515 |
+| page_key_rate_bank | Решение ЦБ по ставке оптовику — позиция банка по ставке от 11.09 | зелёный | — | 12f8d4d9-cc11-4b41-b7b1-005aedaaf6ca |
+| page_key_rate_construction | Решение ЦБ по ставке стройгруппе — ставка и признаки клиента | зелёный | — | ed2eb468-f880-4478-9186-5edda31af5e7 |
+| page_inflation_key_rate | Новость об инфляции автодилеру — позиция банка по ставке (по инфляции — AH-71) | зелёный | — | 51c32130-acd4-42cd-8041-44c8bd6c6047 |
+| page_fx_bank | Ослабление рубля автодилеру — позиция банка по курсу | зелёный | — | 22b00501-9064-432d-a5a9-f0ed03ce5328 |
+| page_logistics | Рост тарифов грузоперевозок оптовику — карточка с признаками клиента | зелёный | — | bec64564-38fc-47c2-917c-3511e5943205 |
+| followup_key_rate_2027 | Вопрос к карточке о ставке — прогноз банка от 11.09 | зелёный | — | be473b26-fb74-421d-aeeb-5502665b24fe |
+| payment_wholesale_logistics | Платёж оптовика логистическому контрагенту — при карточке агрегаты получателя | зелёный | — | 507c53cf-98da-44b7-87d2-a5f1b53ed618 |
+| deposit_wholesale_90d | Депозит оптовика на 90 дней — при карточке позиция банка по ставке | зелёный | — | 2fd5418b-ff07-4f8c-ad95-2ab36254b877 |
