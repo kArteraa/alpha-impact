@@ -20,6 +20,15 @@ ROUTES = {
     for task in ("annotate", "extract", "interpret", "critic", "followup")
 }
 ALLOWED = frozenset(ROUTES.values())
+INTERACTIVE_TASKS = ("interpret", "followup")
+TIMEOUTS = {
+    task: float(
+        SETTINGS_ENV[
+            "LLM_INTERPRET_TIMEOUT_SECONDS" if task in INTERACTIVE_TASKS else "LLM_TIMEOUT_SECONDS"
+        ]
+    )
+    for task in ROUTES
+}
 SPEC = load_spec()
 VECTOR = [0.1] * EMBEDDING_DIMENSION
 
@@ -144,7 +153,7 @@ def make_gateway(
     reasoning_off: frozenset[str] = frozenset(),
 ) -> ModelGateway:
     return ModelGateway(
-        catalog=ModelCatalog(allowed, ROUTES, reasoning_off),
+        catalog=ModelCatalog(allowed, ROUTES, reasoning_off, TIMEOUTS),
         client=ModelClient(http),
         embedder=embedder or CountingEmbedder(),
         store=store,

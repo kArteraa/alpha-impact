@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from shared.config.settings import Settings
 
 MODELS_PATH = Path(__file__).with_name("models.yaml")
+INTERACTIVE_TASKS = frozenset({"interpret", "followup"})
 
 
 class UnknownTask(LookupError):
@@ -25,7 +26,11 @@ class ModelsFile(BaseModel):
 
 class ModelCatalog:
     def __init__(
-        self, allowed: frozenset[str], routes: dict[str, str], reasoning_off: frozenset[str]
+        self,
+        allowed: frozenset[str],
+        routes: dict[str, str],
+        reasoning_off: frozenset[str],
+        timeouts: dict[str, float],
     ) -> None:
         foreign = sorted(set(routes.values()) - allowed)
         if foreign:
@@ -33,8 +38,12 @@ class ModelCatalog:
         unknown = sorted(reasoning_off - set(routes))
         if unknown:
             raise UnknownTask(f"reasoning is switched off for unknown tasks: {unknown}")
+        untimed = sorted(set(routes) - set(timeouts))
+        if untimed:
+            raise UnknownTask(f"no timeout is set for tasks: {untimed}")
         self._routes = routes
         self._reasoning_off = reasoning_off
+        self._timeouts = timeouts
 
     def route(self, task: str) -> str:
         model = self._routes.get(task)
@@ -44,6 +53,10 @@ class ModelCatalog:
 
     def reasoning(self, task: str) -> bool:
         return task not in self._reasoning_off
+
+    def timeout(self, task: str) -> float:
+        self.route(task)
+        return self._timeouts[task]
 
 
 def load_models(path: Path) -> ModelsFile:
@@ -60,4 +73,10 @@ def build_catalog(
         "critic": settings.MODEL_CRITIC,
         "followup": settings.MODEL_FOLLOWUP,
     }
-    return ModelCatalog(allowed, routes, reasoning_off)
+    timeouts = {
+        task: settings.LLM_INTERPRET_TIMEOUT_SECONDS
+        if task in INTERACTIVE_TASKS
+        else settings.LLM_TIMEOUT_SECONDS
+        for task in routes
+    }
+    return ModelCatalog(allowed, routes, reasoning_off, timeouts)

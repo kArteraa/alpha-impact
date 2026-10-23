@@ -129,7 +129,7 @@ npm run build
 
 Если `git diff` что-то показал — сгенерированные типы разошлись со схемами: закоммитить их вместе с изменением контракта.
 
-Менялись промпты агента или критика (`backend/apps/services/interpreter/prompts.py`) — ещё регрессия на засеянной БД и живой модели, все кейсы зелёные: `cd backend && LLM_TIMEOUT_SECONDS=30 uv run --env-file ../.env python -m scripts.regression` (таймаут как у сбора новостей: регрессия проверяет содержание, а не задержку); таблицу из `backend/tests/regression/report.md` перенести в раздел «Регрессия» README.
+Менялись промпты агента или критика (`backend/apps/services/interpreter/prompts.py`) — ещё регрессия на засеянной БД и живой модели, все кейсы зелёные: `cd backend && LLM_TIMEOUT_SECONDS=30 LLM_INTERPRET_TIMEOUT_SECONDS=30 uv run --env-file ../.env python -m scripts.regression` (таймаут как у сбора новостей: регрессия проверяет содержание, а не задержку); таблицу из `backend/tests/regression/report.md` перенести в раздел «Регрессия» README.
 
 ## Чек-лист чистки (шаг 4)
 
