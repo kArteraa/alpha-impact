@@ -19,7 +19,7 @@ from apps.services.interpreter.followup import (
 )
 from apps.services.interpreter.journal import Journal, utc_now
 from apps.services.interpreter.planning import Plan, PlanConfig, Template
-from apps.services.interpreter.prefilter import Prefilter, PrefilterResult, news_claims
+from apps.services.interpreter.prefilter import Prefilter, news_claims
 from apps.services.interpreter.prompts import (
     DRAFT_SYSTEM,
     FOLLOWUP_DRAFT_SYSTEM,
@@ -55,12 +55,6 @@ from shared.contracts.schemas import (
     TraceStep,
     WhatIfResult,
 )
-
-
-def card_failure(error: BaseException) -> bool:
-    return isinstance(error, DomainError | ValidationError) and not isinstance(
-        error, BudgetExceeded
-    )
 
 
 class Agent:
@@ -199,44 +193,35 @@ class Agent:
             return InterpretResponse(
                 silent=True, silent_reason="Нет значимых событий для этого действия"
             )
-        if feed:
-            return await self._feed(journal, request, template, profile, selection, as_of)
         house_view = selection.house_view
         calculation = await self._calculation(journal, request.action_context, house_view, as_of)
         news = [candidate.news for candidate in selection.candidates]
-        card = await self._card(
-            journal, request, template, profile, counterparty, news, house_view, calculation, as_of
+        groups = [[item] for item in news[: self._config.feed_cards]] if feed else [news]
+        results = await gather(
+            *(
+                self._card(
+                    journal,
+                    request,
+                    template,
+                    profile,
+                    group,
+                    news_claims(group, house_view, template.house_view_subjects),
+                    as_of,
+                    counterparty=counterparty,
+                    calculation=calculation,
+                )
+                for group in groups
+            ),
+            return_exceptions=True,
         )
-        return InterpretResponse(silent=False, cards=[card])
-
-    async def _feed(
-        self,
-        journal: Journal,
-        request: InterpretRequest,
-        template: Template,
-        profile: ClientProfile,
-        selection: PrefilterResult,
-        as_of: date,
-    ) -> InterpretResponse:
-        subjects = template.house_view_subjects
-        drafts = (
-            self._card(
-                journal,
-                request,
-                template,
-                profile,
-                None,
-                [candidate.news],
-                news_claims(candidate.news, selection.house_view, subjects),
-                None,
-                as_of,
-            )
-            for candidate in selection.candidates[: self._config.feed_cards]
-        )
-        results = await gather(*drafts, return_exceptions=True)
         cards = [result for result in results if isinstance(result, InsightCard)]
         failures = [result for result in results if isinstance(result, BaseException)]
-        fatal = [error for error in failures if not card_failure(error)]
+        fatal = [
+            error
+            for error in failures
+            if isinstance(error, BudgetExceeded)
+            or not isinstance(error, DomainError | ValidationError)
+        ]
         if fatal or not cards:
             raise (fatal or failures)[0]
         return InterpretResponse(
@@ -249,11 +234,12 @@ class Agent:
         request: InterpretRequest,
         template: Template,
         profile: ClientProfile,
-        counterparty: CounterpartyContext | None,
         news: list[NewsItem],
         house_view: list[HouseViewClaim],
-        calculation: WhatIfResult | None,
         as_of: date,
+        *,
+        counterparty: CounterpartyContext | None,
+        calculation: WhatIfResult | None,
     ) -> InsightCard:
         evidence = {
             **sources(profile, counterparty, news, house_view),
@@ -275,7 +261,7 @@ class Agent:
             "context": prompt_context(request, profile, counterparty, evidence),
         }
         draft = await journal.generate(
-            "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+            "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft, journal.summary
         )
         card = await self._reviewed(journal, DRAFT_SYSTEM, payload, draft, evidence, current, news)
         return card.model_copy(update={"calculation": calculation})
@@ -320,7 +306,11 @@ class Agent:
             ),
         }
         draft = await journal.generate(
-            "draft", FOLLOWUP_DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+            "draft",
+            FOLLOWUP_DRAFT_SYSTEM,
+            json.dumps(payload, ensure_ascii=False),
+            Draft,
+            journal.summary,
         )
         answer = await self._reviewed(
             journal, FOLLOWUP_DRAFT_SYSTEM, payload, draft, evidence, current, trace_news(card)
@@ -334,7 +324,7 @@ class Agent:
         template: dict[str, object],
         context: dict[str, object],
     ) -> Plan:
-        plan = await journal.generate(
+        return await journal.generate(
             "plan",
             system,
             json.dumps(
@@ -347,11 +337,8 @@ class Agent:
                 ensure_ascii=False,
             ),
             Plan,
+            lambda plan: journal.summary({"template": template, **plan.model_dump()}),
         )
-        journal.trace.steps[-1].output_summary = journal.summary(
-            {"template": template, **plan.model_dump()}
-        )
-        return plan
 
     async def _card_trace(self, journal: Journal, request: InterpretRequest, card_id: str) -> Trace:
         return await journal.lookup(
@@ -472,6 +459,7 @@ class Agent:
                     ensure_ascii=False,
                 ),
                 Draft,
+                journal.summary,
             )
             card = build_card(redraft, evidence, card_id=card.id, trace_id=journal.trace.id)
             verdicts = await journal.review(round_number, self._critic, card, house_view, news)

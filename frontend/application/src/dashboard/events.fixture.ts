@@ -22,7 +22,7 @@ function event(id: string, headline: string, consequence: string, significance: 
   };
 }
 
-export const FEEDS: Record<string, InsightCard[]> = {
+const FEEDS: Record<string, InsightCard[]> = {
   U_1941: [
     event("ev-logistics", "Логистика в убытке", "Перевозчики могут поднять тарифы: им уходит 43% платежей", 0.8, ["fact", "bank", "ai"]),
     event("ev-rate", "Банк ждёт снижения ключевой ставки", "Платёж по кредитной линии с плавающей ставкой снизится", 0.7, ["bank", "ai"]),

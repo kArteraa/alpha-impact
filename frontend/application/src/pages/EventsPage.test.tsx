@@ -1,11 +1,11 @@
 import type { InterpretState } from "@alpha-impact/plugin";
 import { cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { SILENT_FEED, feedOf } from "../dashboard/events.fixture";
-import { TEST_CLIENT, renderWithCompany } from "../testing";
+import { SILENT_FEED } from "../dashboard/events.fixture";
+import { renderWithCompany } from "../testing";
 import { EventsPage } from "./EventsPage";
 
-function renderEvents(feed: Partial<InterpretState> = { response: feedOf(TEST_CLIENT) }) {
+function renderEvents(feed: Partial<InterpretState> = {}) {
   return renderWithCompany(<EventsPage />, { path: "/events", feed });
 }
 
@@ -46,7 +46,7 @@ describe("EventsPage", () => {
   });
 
   it("shows that it is still looking for events", () => {
-    renderEvents({});
+    renderEvents({ response: undefined });
 
     expect(screen.getByText("Смотрю новости и позицию банка за 14 дней")).toBeTruthy();
     expect(document.querySelector(".page-sub")?.textContent).toBe("ООО «Северный опт»");

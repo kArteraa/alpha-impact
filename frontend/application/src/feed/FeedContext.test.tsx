@@ -1,4 +1,4 @@
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TEST_CLIENT, TEST_USER, answer, answerFeed, renderWithCompany, stubApi } from "../testing";
 import { useFeed } from "./context";
@@ -45,6 +45,6 @@ describe("FeedProvider", () => {
   it("refuses to be read outside the provider", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    expect(() => renderWithCompany(<Headlines />)).toThrow("useFeed must be used inside FeedProvider");
+    expect(() => render(<Headlines />)).toThrow("useFeed must be used inside FeedProvider");
   });
 });
