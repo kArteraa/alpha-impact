@@ -10,17 +10,22 @@ import type {
   WorkerRequest,
 } from "../messages";
 import { ApiError, type ExtensionApi, NetworkError } from "./api";
-import { type CacheEntries, cacheKey, readCached, writeCached } from "./cache";
+import { CACHE_KEY, type CacheEntries, cacheKey, readCached, writeCached } from "./cache";
 import type { Store } from "./store";
 
 const SESSION_KEY = "session";
-const CACHE_KEY = "cache";
 
 interface Session {
   userId: string;
   token: string;
   expiresAt: string;
   clients: string[];
+}
+
+interface Context {
+  active: Session;
+  settings: Settings;
+  entries: CacheEntries;
 }
 
 interface WorkerDeps {
@@ -134,15 +139,23 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
     }
   }
 
-  async function interpret(page: PageContext): Promise<Result<InterpretResponse>> {
+  async function context(): Promise<Context | null> {
     const active = await current();
     if (active === null) {
-      return SIGNED_OUT_REPLY;
+      return null;
     }
-    const [{ clientId, role }, entries = {}] = await Promise.all([
+    const [settings, entries = {}] = await Promise.all([
       settingsOf(active),
       session.get<CacheEntries>(CACHE_KEY),
     ]);
+    return { active, settings, entries };
+  }
+
+  async function interpretIn(
+    { active, settings, entries }: Context,
+    page: PageContext,
+  ): Promise<Result<InterpretResponse>> {
+    const { clientId, role } = settings;
     if (clientId === null || role === null) {
       return { ok: false, error: "setup" };
     }
@@ -151,14 +164,19 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
     if (cached !== undefined) {
       return ok(cached);
     }
-    let response: InterpretResponse;
     try {
-      response = await shared(key, () =>
-        api.interpret(active.token, {
-          user_id: active.userId,
-          client_id: clientId,
-          role,
-          action_context: { ...page, type: "page" },
+      return ok(
+        await shared(key, async () => {
+          const response = await api.interpret(active.token, {
+            user_id: active.userId,
+            client_id: clientId,
+            role,
+            action_context: { ...page, type: "page" },
+          });
+          if (reviewed(response)) {
+            await remember(active, key, response);
+          }
+          return response;
         }),
       );
     } catch (error) {
@@ -168,24 +186,23 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
       }
       return failed(error);
     }
-    if (reviewed(response)) {
-      await remember(active, key, response);
-    }
-    return ok(response);
+  }
+
+  async function interpret(page: PageContext): Promise<Result<InterpretResponse>> {
+    const found = await context();
+    return found === null ? SIGNED_OUT_REPLY : interpretIn(found, page);
   }
 
   async function report(detected: DetectedPage): Promise<boolean> {
-    const active = await current();
-    if (active === null || !(await settingsOf(active)).autoshow[detected.pageType]) {
+    const found = await context();
+    if (found === null || !found.settings.autoshow[detected.pageType]) {
       return false;
     }
-    const reply = await interpret(detected.page);
+    const reply = await interpretIn(found, detected.page);
     return reply.ok && !reply.value.silent && (reply.value.cards ?? []).length > 0;
   }
 
-  function handle(
-    request: WorkerRequest,
-  ): Promise<ExtensionState | Result<ExtensionState | InterpretResponse> | boolean> {
+  function handle(request: WorkerRequest) {
     switch (request.type) {
       case "state":
         return state();

@@ -40,12 +40,15 @@ export type WorkerError = "signed_out" | "setup" | "http" | "network" | "failed"
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: WorkerError; status?: number };
 
-export type ReplyOf<R extends WorkerRequest> = R extends { type: "interpret" }
-  ? Result<InterpretResponse>
-  : R extends { type: "login" }
-    ? Result<ExtensionState>
-    : R extends { type: "page" }
-      ? boolean
-      : ExtensionState;
+export interface WorkerReplies {
+  state: ExtensionState;
+  login: Result<ExtensionState>;
+  logout: ExtensionState;
+  settings: ExtensionState;
+  interpret: Result<InterpretResponse>;
+  page: boolean;
+}
+
+export type ReplyOf<R extends WorkerRequest> = WorkerReplies[R["type"]];
 
 export type Send = <R extends WorkerRequest>(request: R) => Promise<ReplyOf<R>>;

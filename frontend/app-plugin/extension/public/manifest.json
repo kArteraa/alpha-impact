@@ -15,7 +15,32 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "*://*.kommersant.ru/*",
+        "*://*.vedomosti.ru/*",
+        "*://*.interfax.ru/*",
+        "*://*.rbc.ru/*",
+        "*://*.tass.ru/*",
+        "*://*.forbes.ru/*",
+        "*://*.frankmedia.ru/*",
+        "*://*.expert.ru/*",
+        "*://*.rusprofile.ru/*",
+        "*://*.checko.ru/*",
+        "*://*.list-org.com/*",
+        "*://*.focus.kontur.ru/*",
+        "*://*.zachestnyibiznes.ru/*",
+        "*://*.sbis.ru/*",
+        "*://*.zakupki.gov.ru/*",
+        "*://*.rts-tender.ru/*",
+        "*://*.sberbank-ast.ru/*",
+        "*://*.roseltorg.ru/*",
+        "*://*.b2b-center.ru/*",
+        "*://*.fabrikant.ru/*",
+        "*://*.cbr.ru/*",
+        "*://*.moex.com/*",
+        "*://*.investing.com/*",
+        "*://*.profinance.ru/*"
+      ],
       "js": ["content.js"]
     }
   ],

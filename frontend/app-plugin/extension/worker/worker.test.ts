@@ -10,6 +10,7 @@ import { createWorker } from "./worker";
 const NOW = Date.parse("2026-10-23T12:00:00Z");
 const TOKEN_TTL_MS = 2 * CACHE_TTL_MS;
 const page: PageContext = { url: "https://news.test/rate", text: "ЦБ поднял ключевую ставку" };
+const article: DetectedPage = { pageType: "article", page };
 const allPages = { article: true, counterparty: true, tender: true, fx_rate: true };
 const signedOut = { signedIn: false };
 
@@ -283,8 +284,6 @@ describe("extension worker interpret", () => {
 });
 
 describe("extension worker page report", () => {
-  const article: DetectedPage = { pageType: "article", page };
-
   it("does not offer the notice before login", async () => {
     const { api, worker } = setup();
 
@@ -346,7 +345,7 @@ describe("extension worker shared requests", () => {
     let answer: (response: typeof mockResponses.cards) => void = () => {};
     api.interpret.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
 
-    const notice = worker({ type: "page", detected: { pageType: "article", page } });
+    const notice = worker({ type: "page", detected: article });
     const panel = worker({ type: "interpret", page });
     await vi.waitFor(() => expect(api.interpret).toHaveBeenCalled());
     answer(mockResponses.cards);

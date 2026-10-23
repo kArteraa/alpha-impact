@@ -1,11 +1,8 @@
+import controls from "../../src/styles/controls.css?raw";
 import tokens from "../../src/styles/tokens.css?raw";
 import styles from "./notice.css?raw";
 
 const NOTICE_TEXT = "Alpha Impact: есть событие, важное для вашей компании";
-
-function lightTokens(css: string): string {
-  return css.slice(0, css.indexOf("}") + 1).replace(":root", ":host");
-}
 
 function button(document: Document, className: string, text: string, onClick: () => void): HTMLButtonElement {
   const element = document.createElement("button");
@@ -20,7 +17,7 @@ export function showNotice(document: Document, onOpen: () => void): void {
   const host = document.createElement("alpha-impact-notice");
   const root = host.attachShadow({ mode: "open" });
   const style = document.createElement("style");
-  style.textContent = lightTokens(tokens) + styles;
+  style.textContent = tokens + controls + styles;
   const notice = document.createElement("div");
   notice.className = "notice";
   notice.setAttribute("role", "status");
@@ -31,7 +28,7 @@ export function showNotice(document: Document, onOpen: () => void): void {
     host.remove();
     onOpen();
   });
-  const close = button(document, "notice-close", "×", () => host.remove());
+  const close = button(document, "icon-button", "×", () => host.remove());
   close.setAttribute("aria-label", "Закрыть");
   notice.append(text, open, close);
   root.append(style, notice);
