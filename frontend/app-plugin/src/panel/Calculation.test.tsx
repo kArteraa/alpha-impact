@@ -19,10 +19,6 @@ function withCalculation(calculation: WhatIfResult): InterpretResponse {
   return { ...mockResponses.rates, cards: [{ ...card, calculation }] };
 }
 
-function blockTitles() {
-  return Array.from(document.querySelectorAll(".insight-card h4"), (heading) => heading.textContent);
-}
-
 function calculation() {
   return screen.getByRole("region", { name: "Расчёт" });
 }
@@ -33,20 +29,6 @@ function spaced(text: string | null | undefined) {
 
 describe("InsightPanel calculation", () => {
   afterEach(cleanup);
-
-  it("places the calculation between the bank view and the evidence", () => {
-    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} />);
-
-    expect(blockTitles()).toEqual([
-      "Почему это важно для вас",
-      "Что произошло",
-      "Последствия",
-      "Что можно сделать",
-      "Как это оценивает банк",
-      "Расчёт",
-      "На чём основан вывод",
-    ]);
-  });
 
   it("shows what was calculated, the signed sum, the formula and every assumption", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} />);

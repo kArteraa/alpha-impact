@@ -84,6 +84,20 @@ describe("InsightPanel card", () => {
     ]);
   });
 
+  it("places the calculation between the bank view and the evidence", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} />);
+
+    expect(blockTitles()).toEqual([
+      "Почему это важно для вас",
+      "Что произошло",
+      "Последствия",
+      "Что можно сделать",
+      "Как это оценивает банк",
+      "Расчёт",
+      "На чём основан вывод",
+    ]);
+  });
+
   it("shows significance as dots, not a number", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
 

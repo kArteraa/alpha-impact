@@ -1,18 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { Loan } from "../data/loans";
+import { LOANS } from "../data/loans";
 import { loanContextOf } from "./loanContext";
 
-const LINE: Loan = {
-  id: "loan-line",
-  product: "Кредитная линия",
-  kind: "loan",
-  rateType: "floating",
-  amount: 120_000_000,
-  rate: "ключевая + 2,5%",
-  maturity: "2027-06-30",
-};
-
-const LEASING: Loan = { ...LINE, id: "loan-leasing", product: "Лизинг", kind: "leasing", rateType: "fixed" };
+const [LINE, LEASING] = LOANS;
 
 describe("loanContextOf", () => {
   it("asks about a tranche of the credit line at its floating rate", () => {

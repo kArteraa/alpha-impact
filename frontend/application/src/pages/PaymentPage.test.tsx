@@ -1,8 +1,18 @@
-import { INTERPRET_DELAY_MS, mockResponses } from "@alpha-impact/plugin";
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { mockResponses } from "@alpha-impact/plugin";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { COUNTERPARTIES } from "../data/counterparties";
-import { TEST_CLIENT, TEST_USER, chooseOption, renderWithCompany, stubApi } from "../testing";
+import {
+  TEST_CLIENT,
+  TEST_USER,
+  answer,
+  chooseOption,
+  panelState,
+  placeholderSteps,
+  renderWithCompany,
+  setAmount,
+  stubApi,
+} from "../testing";
 import { PaymentPage } from "./PaymentPage";
 
 const [CARRIER, STATIONERY] = COUNTERPARTIES.map((counterparty) => counterparty.id);
@@ -24,10 +34,6 @@ function amountField() {
   return screen.getByLabelText<HTMLInputElement>("Сумма, ₽");
 }
 
-function setAmount(amount: string) {
-  fireEvent.change(amountField(), { target: { value: amount } });
-}
-
 function setRecipient(beneficiaryId: string) {
   const name = COUNTERPARTIES.find((counterparty) => counterparty.id === beneficiaryId)?.name ?? "";
   chooseOption("Получатель", new RegExp(name));
@@ -36,16 +42,6 @@ function setRecipient(beneficiaryId: string) {
 function fill(beneficiaryId: string, amount: string) {
   setRecipient(beneficiaryId);
   setAmount(amount);
-}
-
-async function answer() {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(INTERPRET_DELAY_MS);
-  });
-}
-
-function panelState() {
-  return document.querySelector(".insight-panel")?.getAttribute("data-state");
 }
 
 describe("PaymentPage", () => {
@@ -90,16 +86,14 @@ describe("PaymentPage", () => {
     setAmount("1000");
     setAmount("1000abc");
 
-    const steps = Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => step.getAttribute("data-done"));
-    expect(steps).toEqual(["false", "false"]);
+    expect(placeholderSteps()).toEqual(["false", "false"]);
   });
 
   it("marks the steps of the form done in the placeholder", () => {
     render();
     setRecipient(CARRIER);
 
-    const steps = Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => step.getAttribute("data-done"));
-    expect(steps).toEqual(["true", "false"]);
+    expect(placeholderSteps()).toEqual(["true", "false"]);
   });
 
   it("asks /interpret for the signed-in user, company and role", async () => {

@@ -1,7 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { askTranche, CARD_TIMEOUT_MS } from "../support/panel";
 import { logIn } from "../support/session";
-
-const CARD_TIMEOUT_MS = 60_000;
 
 async function expectRateCard(page: Page) {
   const panel = page.locator(".insight-panel");
@@ -20,9 +19,6 @@ test("deposit and a new tranche show the bank view on the rate with a calculatio
   await expectRateCard(page);
 
   await page.getByRole("link", { name: "Кредиты" }).click();
-  await page.getByRole("button", { name: "Новый транш" }).click();
-  await page.getByRole("combobox", { name: "Продукт" }).click();
-  await page.getByRole("option", { name: /Кредитная линия/ }).click();
-  await page.getByLabel("Сумма, ₽").fill("50000000");
+  await askTranche(page, /Кредитная линия/, "50000000");
   await expectRateCard(page);
 });
