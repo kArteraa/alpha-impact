@@ -184,6 +184,21 @@ async def test_wrong_bank_reference_after_rewrite_needs_review(harness: Harness)
     assert card.bank_view[0].text == harness.seed.house_view[0].claim
 
 
+async def test_short_match_with_another_claim_is_traced_without_rewrite(
+    harness: Harness,
+) -> None:
+    with_other_claim(harness)
+    harness.answers[1]["bank_view"] = [bank_claim("Другая")]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert card.bank_view[0].text == harness.seed.house_view[0].claim
+    trace = saved(harness)
+    assert trace.critic_verdicts == ["1: ok"]
+    build = next(step for step in trace.steps if step.name == "round 1 build")
+    assert "Другая" in build.output_summary
+    assert build.duration_ms >= 0
+    assert build.started_at <= trace.steps[-1].started_at
+
+
 async def test_bank_claim_unlike_any_claim_is_traced_without_rewrite(harness: Harness) -> None:
     with_other_claim(harness)
     harness.answers[1]["bank_view"] = [bank_claim("Банк обещает прибыль")]
@@ -227,9 +242,10 @@ async def test_block_of_only_the_bank_view_quote_keeps_it_for_review(harness: Ha
     assert card.needs_review
     verdicts = saved(harness).critic_verdicts
     assert [verdict.split(":")[:2] for verdict in verdicts] == [
-        ["1", " why_for_you"],
-        ["2", " why_for_you"],
+        ["1", " bank"],
+        ["2", " bank"],
     ]
+    assert all("why_for_you" in verdict for verdict in verdicts)
 
 
 async def test_build_notes_are_traced_when_critic_fails(harness: Harness) -> None:
@@ -239,7 +255,7 @@ async def test_build_notes_are_traced_when_critic_fails(harness: Harness) -> Non
     card = (await harness.agent.interpret(harness.request())).cards[0]
     assert card.needs_review
     verdicts = saved(harness).critic_verdicts
-    assert verdicts[0].startswith("1: why_for_you: ")
+    assert verdicts[0].startswith("1: bank: блок why_for_you")
     assert verdicts[1:] == ["1: error: BudgetExceeded"]
 
 

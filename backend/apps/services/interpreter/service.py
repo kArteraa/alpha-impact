@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from apps.services.interpreter.calculation import calculation_evidence, plan_calculation
 from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
-from apps.services.interpreter.drafting import Draft, build_card, with_quotes
+from apps.services.interpreter.drafting import BuildNotes, Draft, build_card, with_quotes
 from apps.services.interpreter.followup import (
     checked_followup,
     cited_house_view,
@@ -445,6 +445,20 @@ class Agent:
             self._news.annotate(first[:limit].rstrip(), body, request.action_context.url),
         )
 
+    def _build(
+        self,
+        journal: Journal,
+        round_number: int,
+        draft: Draft,
+        evidence: dict[str, Evidence],
+        card_id: str,
+    ) -> tuple[InsightCard, BuildNotes]:
+        trace_id = journal.trace.id
+        limit = self._config.min_quote_words
+        return journal.build(
+            round_number, lambda: build_card(draft, evidence, card_id, trace_id, limit)
+        )
+
     async def _reviewed(
         self,
         journal: Journal,
@@ -455,7 +469,7 @@ class Agent:
         house_view: list[HouseViewClaim],
         news: list[NewsItem],
     ) -> InsightCard:
-        card, notes = build_card(draft, evidence, card_id=str(uuid4()), trace_id=journal.trace.id)
+        card, notes = self._build(journal, 1, draft, evidence, str(uuid4()))
         round_number = 1
         try:
             verdicts = await journal.review(
@@ -475,7 +489,7 @@ class Agent:
                 Draft,
                 journal.summary,
             )
-            card, notes = build_card(redraft, evidence, card_id=card.id, trace_id=journal.trace.id)
+            card, notes = self._build(journal, round_number, redraft, evidence, card.id)
             verdicts = await journal.review(
                 round_number, self._critic, card, house_view, news, notes
             )

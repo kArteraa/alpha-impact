@@ -1,5 +1,5 @@
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -43,15 +43,18 @@ def starts_like(text: str, quote: str) -> bool:
     return bool(said) and said == words(quote)[: len(said)]
 
 
-@dataclass
+@dataclass(frozen=True)
 class BuildNotes:
-    rewrite: list[str] = field(default_factory=list)
-    remarks: list[str] = field(default_factory=list)
+    rewrite: tuple[str, ...] = ()
+    remarks: tuple[str, ...] = ()
+
+    def __add__(self, other: "BuildNotes") -> "BuildNotes":
+        return BuildNotes(self.rewrite + other.rewrite, self.remarks + other.remarks)
 
 
-def check_quote(claim: DraftClaim, quotes: dict[str, str], notes: BuildNotes) -> None:
+def check_quote(claim: DraftClaim, quotes: dict[str, str], min_words: int) -> BuildNotes:
     if starts_like(claim.text, quotes[claim.source]):
-        return
+        return BuildNotes()
     other = next(
         (
             key
@@ -60,26 +63,38 @@ def check_quote(claim: DraftClaim, quotes: dict[str, str], notes: BuildNotes) ->
         ),
         None,
     )
-    if other is None:
-        notes.remarks.append(
-            f"bank: тезис со ссылкой на {claim.source} — трактовка модели «{claim.text}», "
-            "в карточке цитата утверждения по ссылке"
+    if other is None or len(words(claim.text)) < min_words:
+        return BuildNotes(
+            remarks=(
+                f"bank: тезис со ссылкой на {claim.source} — трактовка модели «{claim.text}», "
+                "в карточке цитата утверждения по ссылке",
+            )
         )
-        return
-    notes.rewrite.append(
-        f"bank: тезис со ссылкой на {claim.source} начинается как утверждение {other}: "
-        f"«{claim.text}»"
+    return BuildNotes(
+        rewrite=(
+            f"bank: тезис со ссылкой на {claim.source} начинается как утверждение {other}: "
+            f"«{claim.text}»",
+        )
     )
 
 
+def quote_notes(draft: Draft, quotes: dict[str, str], min_words: int) -> BuildNotes:
+    bank = [
+        claim
+        for name in CLAIM_BLOCKS
+        for claim in getattr(draft, name)
+        if claim.type == ClaimType.BANK
+    ]
+    return sum((check_quote(claim, quotes, min_words) for claim in bank), BuildNotes())
+
+
 def without_quoted(
-    name: str, block: list[Claim], quoted: list[Claim], notes: BuildNotes
-) -> list[Claim]:
+    name: str, block: list[Claim], quoted: list[Claim]
+) -> tuple[list[Claim], BuildNotes]:
     rest = [claim for claim in block if claim not in quoted]
     if rest:
-        return rest
-    notes.rewrite.append(f"{name}: состоит только из цитаты позиции банка")
-    return block
+        return rest, BuildNotes()
+    return block, BuildNotes(rewrite=(f"bank: блок {name} состоит только из цитаты позиции банка",))
 
 
 def with_quotes(draft: Draft, evidence: dict[str, Evidence]) -> Draft:
@@ -95,10 +110,13 @@ def with_quotes(draft: Draft, evidence: dict[str, Evidence]) -> Draft:
 
 
 def build_card(
-    draft: Draft, evidence: dict[str, Evidence], card_id: str, trace_id: str
+    draft: Draft,
+    evidence: dict[str, Evidence],
+    card_id: str,
+    trace_id: str,
+    min_quote_words: int,
 ) -> tuple[InsightCard, BuildNotes]:
     basis: dict[str, SourceRef] = {}
-    notes = BuildNotes()
     quotes = {key: item.bank_text for key, item in evidence.items() if item.bank_text is not None}
 
     def resolve(claims: list[DraftClaim], bank_only: bool) -> list[Claim]:
@@ -117,7 +135,6 @@ def build_card(
                 if item.bank_text is None:
                     raise DomainError("Bank claim must quote an approved house view claim")
                 text = item.bank_text
-                check_quote(claim, quotes, notes)
             if claim.type == ClaimType.FACT and not item.factual:
                 raise DomainError("An inferred feature or forecast cannot be cited as a fact")
             basis[claim.source] = item.ref
@@ -128,9 +145,9 @@ def build_card(
 
     blocks = {name: resolve(getattr(draft, name), name == "bank_view") for name in CLAIM_BLOCKS}
     bank_view = blocks["bank_view"]
-    required = {
-        name: without_quoted(name, blocks[name], bank_view, notes) for name in REQUIRED_BLOCKS
-    }
+    split = {name: without_quoted(name, blocks[name], bank_view) for name in REQUIRED_BLOCKS}
+    required = {name: block for name, (block, _) in split.items()}
+    notes = sum((found for _, found in split.values()), quote_notes(draft, quotes, min_quote_words))
     card = InsightCard(
         id=card_id,
         trace_id=trace_id,
