@@ -400,7 +400,7 @@ def test_role_pair_fails_when_no_card_is_about_the_same_event() -> None:
         case(differs_from="cfo"), answer(about(TREASURER, OTHER_NEWS)), CITED, (CFO_CARD,)
     )
 
-    assert failures == ["no card has the same what_happened news as a card of cfo"]
+    assert failures == ["no card shares what_happened news with a card of cfo"]
 
 
 def test_load_cases_rejects_followup_of_later_case(tmp_path: Path) -> None:
@@ -417,3 +417,14 @@ def test_load_cases_rejects_followup_of_later_case(tmp_path: Path) -> None:
 
 def test_role_blocks_are_card_blocks() -> None:
     assert set(ROLE_BLOCKS) <= set(CLAIM_BLOCKS)
+
+
+def test_role_pair_matches_cards_sharing_one_event_news() -> None:
+    wider = TREASURER.model_copy(
+        update={
+            "what_happened": [claim(NEWS), claim(OTHER_NEWS)],
+            "basis": [NEWS, OTHER_NEWS, PROFILE, RATE],
+        }
+    )
+
+    assert check(case(differs_from="cfo"), answer(wider), CITED, (CFO_CARD,)) == []

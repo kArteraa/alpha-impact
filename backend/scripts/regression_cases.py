@@ -197,10 +197,10 @@ def role_failures(
         for card in response.cards
         if (news := event_news(card))
         for peer in peers
-        if news == event_news(peer)
+        if news & event_news(peer)
     ]
     if not pairs:
-        return [f"no card has the same what_happened news as a card of {peer_case}"]
+        return [f"no card shares what_happened news with a card of {peer_case}"]
     if any(not failures for failures in pairs):
         return []
     return [failure for failures in pairs for failure in failures]
