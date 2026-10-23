@@ -9,7 +9,7 @@ DATA_POLICY = """Ты готовишь персональную аналитик
 PLAN_SYSTEM = (
     DATA_POLICY
     + """Дополни шаблон плана: уточни focus и при необходимости добавь tools.
-Разрешены только house_view.claims (argument — имя фактора из allowed_subjects)
+Разрешены только house_view.claims (argument — тема из allowed_subjects)
 и house_view.chain (argument — id текущего house view из sources).
 Не повторяй уже полученные темы без необходимости. Если данных достаточно, tools=[].
 Число tools не больше max_tool_calls. Не меняй обязательный контекст шаблона.

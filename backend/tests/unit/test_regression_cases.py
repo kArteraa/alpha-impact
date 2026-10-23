@@ -37,10 +37,10 @@ def case(expect: Mapping[str, object] | None = None, **fields: object) -> Case:
     return Case.model_validate(payload)
 
 
-def test_catalog_has_ten_valid_cases() -> None:
+def test_catalog_has_eleven_valid_cases() -> None:
     cases = load_cases(CASES_DIR)
 
-    assert len(cases) == 10
+    assert len(cases) == 11
 
 
 def test_every_catalog_case_expects_something() -> None:

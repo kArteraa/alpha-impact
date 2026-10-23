@@ -243,3 +243,20 @@ async def test_rank_skips_required_subjects_without_candidates(seed: MockSeed) -
     )
     assert result.house_view == []
     house_view.claims.assert_not_awaited()
+
+
+async def test_inflation_news_reaches_inflation_house_view(seed: MockSeed) -> None:
+    news = AsyncMock(spec=NewsService)
+    house_view = AsyncMock(spec=HouseViewService)
+    inflation = seed.house_view[0].model_copy(
+        update={"id": "inflation-7.5", "subject": "inflation"}
+    )
+    house_view.claims.side_effect = lambda subject, as_of: (
+        [inflation] if subject == "inflation" else []
+    )
+    signal = Factor(name="key_rate", direction="down", strength=0.8, horizon="quarter")
+    item = seed.news[0].model_copy(update={"entities": ["product:settlement"], "factors": [signal]})
+    result = await Prefilter(news, house_view, threshold=1.0).rank(
+        [item], seed.profile, DashboardContext(), None, as_of=seed.as_of, subjects=[]
+    )
+    assert [claim.subject for claim in result.house_view] == ["inflation"]
