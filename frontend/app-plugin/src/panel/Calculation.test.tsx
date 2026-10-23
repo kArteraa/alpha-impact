@@ -1,0 +1,96 @@
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
+import { mockResponses } from "../mocks";
+import type { InterpretResponse, WhatIfResult } from "../types";
+import { InsightPanel } from "./InsightPanel";
+
+const context = { type: "deposit", amount: 50_000_000, term_days: 90 } as const;
+
+const RATE_BURDEN: WhatIfResult = {
+  kind: "rate_burden",
+  value: -290_000,
+  unit: "RUB",
+  formula: "50 000 000 ₽ × (13,42% − 14%) × 12/12 мес. = −290 000 ₽",
+  assumptions: ["ставка меняется сразу и держится весь срок"],
+};
+
+function withCalculation(calculation: WhatIfResult): InterpretResponse {
+  const card = mockResponses.rates.cards[0];
+  return { ...mockResponses.rates, cards: [{ ...card, calculation }] };
+}
+
+function blockTitles() {
+  return Array.from(document.querySelectorAll(".insight-card h4"), (heading) => heading.textContent);
+}
+
+function calculation() {
+  return screen.getByRole("region", { name: "Расчёт" });
+}
+
+function spaced(text: string | null | undefined) {
+  return text?.replace(/\s/g, " ");
+}
+
+describe("InsightPanel calculation", () => {
+  afterEach(cleanup);
+
+  it("places the calculation between the bank view and the evidence", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} />);
+
+    expect(blockTitles()).toEqual([
+      "Почему это важно для вас",
+      "Что произошло",
+      "Последствия",
+      "Что можно сделать",
+      "Как это оценивает банк",
+      "Расчёт",
+      "На чём основан вывод",
+    ]);
+  });
+
+  it("shows what was calculated, the signed sum, the formula and every assumption", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} />);
+
+    const block = calculation();
+    const result = mockResponses.rates.cards[0].calculation;
+    expect(within(block).getByText("Выгода фиксации ставки против помесячного переразмещения")).toBeTruthy();
+    expect(spaced(block.querySelector(".calc-value")?.textContent)).toBe("+61 643,84 ₽");
+    expect(within(block).getByText(result?.formula ?? "")).toBeTruthy();
+    const assumptions = within(block).getByRole("list", { name: "Допущения" });
+    expect(Array.from(assumptions.querySelectorAll("li"), (item) => item.textContent)).toEqual(result?.assumptions);
+  });
+
+  it("shows a whole saving on the rate without kopecks", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={withCalculation(RATE_BURDEN)} />);
+
+    const block = calculation();
+    expect(within(block).getByText("Изменение процентных расходов при плавающей ставке")).toBeTruthy();
+    expect(spaced(block.querySelector(".calc-value")?.textContent)).toMatch(/^[−-]290 000 ₽$/);
+  });
+
+  it("shows no caption for a calculation it does not know", () => {
+    render(
+      <InsightPanel actionContext={context} role="cfo" response={withCalculation({ ...RATE_BURDEN, kind: "fx_exposure" })} />,
+    );
+
+    expect(calculation().querySelector(".calc-title")).toBeNull();
+  });
+
+  it("has no calculation block when the card carries none", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
+
+    expect(screen.queryByRole("region", { name: "Расчёт" })).toBeNull();
+  });
+
+  it("folds the calculation behind its heading when compact", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} compact />);
+
+    const toggle = screen.getByRole("button", { name: "Расчёт" });
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.querySelector(".calc-value")).toBeNull();
+
+    fireEvent.click(toggle);
+
+    expect(spaced(document.querySelector(".calc-value")?.textContent)).toBe("+61 643,84 ₽");
+  });
+});

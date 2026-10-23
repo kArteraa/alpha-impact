@@ -1,7 +1,36 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { INTERPRET_DELAY_MS, mockResponses } from "@alpha-impact/plugin";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RUB_WHOLE } from "../money";
+import { TEST_CLIENT, TEST_USER, chooseOption, renderWithCompany, stubApi } from "../testing";
 import { LoansPage } from "./LoansPage";
+
+function render() {
+  return renderWithCompany(<LoansPage />, { path: "/loans" });
+}
+
+function trancheButton() {
+  return screen.getByRole("button", { name: "Новый транш" });
+}
+
+function openTranche() {
+  render();
+  fireEvent.click(trancheButton());
+}
+
+function setAmount(amount: string) {
+  fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: amount } });
+}
+
+async function answer() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(INTERPRET_DELAY_MS);
+  });
+}
+
+function stepsDone() {
+  return Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => step.getAttribute("data-done"));
+}
 
 describe("LoansPage", () => {
   beforeEach(() => {
@@ -15,7 +44,7 @@ describe("LoansPage", () => {
   });
 
   it("shows the portfolio as a table with a new tranche action", () => {
-    render(<LoansPage />);
+    render();
 
     const table = screen.getByRole("table", { name: "Кредитный портфель" });
     expect(table.querySelectorAll("tbody tr").length).toBe(3);
@@ -24,7 +53,7 @@ describe("LoansPage", () => {
   });
 
   it("sums up the portfolio above the table", () => {
-    render(<LoansPage />);
+    render();
 
     const stat = (label: string) => screen.getByText(label).closest(".stat")?.textContent;
     expect(stat("Общая сумма")).toContain(RUB_WHOLE.format(173_400_000));
@@ -34,7 +63,7 @@ describe("LoansPage", () => {
   });
 
   it("shows the structure of the portfolio by product", () => {
-    render(<LoansPage />);
+    render();
 
     const legend = screen.getByRole("list", { name: "Структура портфеля" });
     const items = Array.from(legend.querySelectorAll("li"), (item) => item.textContent?.replace(/\s/g, " "));
@@ -47,7 +76,7 @@ describe("LoansPage", () => {
 
   it("says a passed repayment is overdue", () => {
     vi.setSystemTime(new Date("2027-01-21T09:00:00+03:00"));
-    render(<LoansPage />);
+    render();
 
     expect(screen.getByText("Ближайшее погашение").closest(".stat")?.textContent).toContain(
       "Овердрафт · просрочено на 21 день",
@@ -59,13 +88,13 @@ describe("LoansPage", () => {
 
   it("says a repayment due today is today in the table too", () => {
     vi.setSystemTime(new Date("2026-12-31T09:00:00+03:00"));
-    render(<LoansPage />);
+    render();
 
     expect(document.querySelector("tbody tr td:last-child")?.textContent).toBe("сегодня");
   });
 
   it("orders the loans by maturity with the days left", () => {
-    render(<LoansPage />);
+    render();
 
     const rows = Array.from(document.querySelectorAll("tbody tr"), (row) => [
       row.querySelector("td")?.textContent,
@@ -76,5 +105,110 @@ describe("LoansPage", () => {
       ["Кредитная линия", "251 день"],
       ["Лизинг транспорта", "526 дней"],
     ]);
+  });
+});
+
+describe("LoansPage new tranche", () => {
+  let fetchMock: ReturnType<typeof stubApi>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-22T09:00:00+03:00"));
+    fetchMock = stubApi({ "POST /api/interpret": [200, mockResponses.rates] });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("marks the portfolio as demo data", () => {
+    render();
+
+    const head = screen.getByRole("heading", { name: "Кредитный портфель" }).closest(".table-head");
+    expect(within(head as HTMLElement).getByText("демо-данные")).toBeTruthy();
+  });
+
+  it("opens the tranche form under the portfolio and moves focus to it", () => {
+    render();
+    expect(trancheButton().getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("heading", { name: "Новый транш" })).toBeNull();
+
+    fireEvent.click(trancheButton());
+
+    expect(trancheButton().getAttribute("aria-expanded")).toBe("true");
+    const heading = screen.getByRole("heading", { name: "Новый транш" });
+    expect(document.activeElement).toBe(heading);
+    expect(trancheButton().getAttribute("aria-controls")).toBe(heading.closest("section")?.id);
+    const table = screen.getByRole("table", { name: "Кредитный портфель" });
+    expect(table.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("closes the tranche form on a second click", () => {
+    openTranche();
+
+    fireEvent.click(trancheButton());
+
+    expect(trancheButton().getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("heading", { name: "Новый транш" })).toBeNull();
+  });
+
+  it("offers the products of the portfolio with their rates", () => {
+    openTranche();
+    expect(screen.getByRole("combobox", { name: "Продукт" }).textContent).toContain("Выберите продукт");
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Продукт" }));
+
+    const options = screen.getAllByRole("option").map((option) => option.textContent?.replace(/\s/g, " "));
+    expect(options).toEqual([
+      "Кредитная линияключевая + 2,5% · 120 000 000 ₽",
+      "Лизинг транспорта17,9% фикс. · 38 400 000 ₽",
+      "Овердрафтключевая + 3% · 15 000 000 ₽",
+    ]);
+  });
+
+  it("shows a hint instead of the panel until the product and the amount are chosen", () => {
+    openTranche();
+
+    expect(screen.getByRole("heading", { name: "Проверка транша" })).toBeTruthy();
+    expect(stepsDone()).toEqual(["false", "false"]);
+
+    chooseOption("Продукт", /Кредитная линия/);
+
+    expect(stepsDone()).toEqual(["true", "false"]);
+    expect(document.querySelector(".insight-panel")).toBeNull();
+  });
+
+  it("asks /interpret about a tranche of the credit line at a floating rate", async () => {
+    openTranche();
+    chooseOption("Продукт", /Кредитная линия/);
+    setAmount("50000000");
+    await answer();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      user_id: TEST_USER,
+      client_id: TEST_CLIENT,
+      role: "cfo",
+      action_context: { type: "loan", product: "loan", amount: 50000000, rate_type: "floating" },
+    });
+    expect(document.querySelector(".insight-panel")?.getAttribute("data-action-type")).toBe("loan");
+    expect(screen.getAllByLabelText(/^Банк — источник: /).length).toBeGreaterThan(0);
+    expect(screen.getByRole("region", { name: "Расчёт" })).toBeTruthy();
+  });
+
+  it("asks about leasing at its fixed rate", async () => {
+    openTranche();
+    chooseOption("Продукт", /Лизинг транспорта/);
+    setAmount("10000000");
+    await answer();
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).action_context).toEqual({
+      type: "loan",
+      product: "leasing",
+      amount: 10000000,
+      rate_type: "fixed",
+    });
   });
 });

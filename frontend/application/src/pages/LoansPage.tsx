@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { LOANS, LOANS_TOTAL } from "../data/loans";
 import { daysUntil } from "../loans/maturity";
+import { NewTranche } from "../loans/NewTranche";
 import { PERCENT, RUB_WHOLE } from "../money";
 import { ShareBar } from "../ui/charts/ShareBar";
 import type { Tone } from "../ui/charts/tone";
@@ -32,7 +33,9 @@ function daysBadge(days: number): string {
 
 export function LoansPage() {
   const titleId = useId();
+  const trancheId = useId();
   const [today] = useState(() => new Date());
+  const [trancheOpen, setTrancheOpen] = useState(false);
   const nearestDays = daysUntil(NEAREST.maturity, today);
   return (
     <section>
@@ -67,8 +70,17 @@ export function LoansPage() {
       </div>
       <div className="card">
         <div className="table-head">
-          <h2 id={titleId}>Кредитный портфель</h2>
-          <button type="button" className="button-primary button-sm">
+          <div className="table-title">
+            <h2 id={titleId}>Кредитный портфель</h2>
+            <span className="badge badge-warning">демо-данные</span>
+          </div>
+          <button
+            type="button"
+            className="button-primary button-sm"
+            aria-expanded={trancheOpen}
+            aria-controls={trancheId}
+            onClick={() => setTrancheOpen((open) => !open)}
+          >
             <Icon name="plus" />
             Новый транш
           </button>
@@ -109,6 +121,7 @@ export function LoansPage() {
           </table>
         </div>
       </div>
+      {trancheOpen && <NewTranche id={trancheId} />}
     </section>
   );
 }

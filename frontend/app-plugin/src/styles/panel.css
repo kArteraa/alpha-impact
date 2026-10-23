@@ -250,6 +250,42 @@
   line-height: var(--lh-20);
 }
 
+.insight-block-calc {
+  padding: var(--s-4);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+}
+
+.calc-title {
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
+}
+
+.calc-value {
+  font-size: var(--fs-30);
+  line-height: var(--lh-36);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.calc-formula,
+.calc-assumptions {
+  color: var(--text-secondary);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
+}
+
+.calc-formula {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.calc-assumptions {
+  display: grid;
+  gap: var(--s-1);
+  padding-left: var(--s-5);
+}
+
 .insight-sources {
   display: grid;
   gap: var(--s-1);

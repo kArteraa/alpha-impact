@@ -14,9 +14,15 @@ export const SOURCE_KINDS: Record<SourceRef["kind"], { label: string; icon: stri
   calc: { label: "расчёт", icon: "∑", trait: false },
 };
 
+export const CALCULATION_TITLES: Record<string, string> = {
+  deposit_terms: "Выгода фиксации ставки против помесячного переразмещения",
+  rate_burden: "Изменение процентных расходов при плавающей ставке",
+};
+
 export const SIGNIFICANCE_LEVELS = 3;
 
 const DATE = new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC" });
+const KOPECK_DIGITS = 2;
 
 export function significanceLevel(significance: number): number {
   return Math.min(SIGNIFICANCE_LEVELS, Math.max(1, Math.ceil(significance * SIGNIFICANCE_LEVELS)));
@@ -24,6 +30,17 @@ export function significanceLevel(significance: number): number {
 
 export function sourceTitle(source: SourceRef): string {
   return source.title ?? source.id;
+}
+
+export function formatMoney(value: number, currency: string): string {
+  const digits = Number.isInteger(value) ? 0 : KOPECK_DIGITS;
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency,
+    signDisplay: "exceptZero",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
 }
 
 export function formatDate(iso: string): string | null {

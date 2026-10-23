@@ -91,6 +91,75 @@ const updatedCard: InsightCard = {
   significance: 0.95,
 };
 
+const rateDecision: SourceRef = {
+  kind: "house_view",
+  id: "59ec63fc7ca7374b6a9f5c192e824432",
+  title: "ALFA-Macro_Insights-Policy_Rate_11Sep.pdf, стр. 1",
+  url: null,
+  published_at: null,
+};
+
+const rateView: SourceRef = { ...rateDecision, id: "cf9b804b08c3e68a9700d4817c1554e9" };
+
+const rateForecast: SourceRef = {
+  ...rateDecision,
+  id: "c05308c76bb5c18c057c5bc2edb8b4f1",
+  title: "ALFA-Macro_Insights-Policy_Rate_11Sep.pdf, стр. 2",
+};
+
+const depositCalc: SourceRef = {
+  kind: "calc",
+  id: "deposit_terms",
+  title: "Расчёт: фиксация ставки против помесячного переразмещения",
+  url: null,
+  published_at: null,
+};
+
+const depositCard: InsightCard = {
+  id: "card-mock-3",
+  headline: "Ставка 14% до конца года: срок депозита",
+  why_for_you: [
+    { text: "Доход по депозиту зависит от того, куда пойдёт ключевая ставка", type: "ai", source_ref: depositCalc },
+  ],
+  what_happened: [
+    { text: "11 сентября 2026 г. ЦБ сохранил ключевую ставку на уровне 14,0%", type: "fact", source_ref: rateDecision },
+  ],
+  consequences: [
+    {
+      text: "Банк ждёт снижения ставки к концу 2027 года: переразмещение каждый месяц принесёт меньше, чем фиксация сейчас",
+      type: "ai",
+      source_ref: rateForecast,
+    },
+  ],
+  actions: [{ text: "Зафиксировать ставку на весь срок размещения", type: "ai", source_ref: depositCalc }],
+  bank_view: [
+    {
+      text: "Альфа-Банк ожидает сохранения ключевой ставки на уровне 14,0% до конца 2026 года",
+      type: "bank",
+      source_ref: rateView,
+    },
+  ],
+  basis: [rateDecision, rateView, rateForecast, depositCalc],
+  calculation: {
+    kind: "deposit_terms",
+    value: 61_643.84,
+    unit: "RUB",
+    formula:
+      "фиксация: 50 000 000 ₽ × 14% × 90/365 = 1 726 027,40 ₽; переразмещение: 50 000 000 ₽ × (14% × 30 + 13,5% × 30 + 13% × 30)/365 = 1 664 383,56 ₽; разница 61 643,84 ₽",
+    assumptions: [
+      "год 365 дней, месяц 30 дней",
+      "ставка фиксации равна первой точке пути ставок",
+      "переразмещение каждый месяц по ставке пути",
+      "без капитализации и налогов",
+      "ставка размещения следует ключевой ставке по позиции банка",
+      "между прогнозами банка ключевая ставка меняется линейно",
+    ],
+  },
+  significance: 0.6,
+  needs_review: false,
+  trace_id: "trace-mock-3",
+};
+
 export const mockResponses = {
   checking: undefined,
   silent: {
@@ -101,4 +170,5 @@ export const mockResponses = {
   } satisfies InterpretResponse,
   cards: { silent: false, silent_reason: null, cards: [card], cached: false } satisfies InterpretResponse,
   updated: { silent: false, silent_reason: null, cards: [updatedCard], cached: false } satisfies InterpretResponse,
+  rates: { silent: false, silent_reason: null, cards: [depositCard], cached: false } satisfies InterpretResponse,
 };

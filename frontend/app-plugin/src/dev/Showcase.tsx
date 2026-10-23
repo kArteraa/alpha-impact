@@ -6,6 +6,8 @@ import type { ActionContext, ClaimType } from "../types";
 import "./showcase.css";
 
 const CONTEXT: ActionContext = { type: "payment", amount: 1_500_000, beneficiary_id: "cp_logistics_spb" };
+const DEPOSIT: ActionContext = { type: "deposit", amount: 50_000_000, term_days: 90 };
+const PANEL_WIDTH = 400;
 const CLAIM_TYPES: ClaimType[] = ["fact", "bank", "ai"];
 const WIDTHS = [
   { width: 400, compact: false },
@@ -73,6 +75,13 @@ export function Showcase() {
               </Frame>
             </div>
           ))}
+        </div>
+      </Section>
+      <Section title="Карточка с расчётом">
+        <div className="showcase-width" style={{ width: PANEL_WIDTH }}>
+          <Frame label={`${PANEL_WIDTH} px · депозит`}>
+            <InsightPanel actionContext={DEPOSIT} role="cfo" response={mockResponses.rates} />
+          </Frame>
         </div>
       </Section>
     </main>

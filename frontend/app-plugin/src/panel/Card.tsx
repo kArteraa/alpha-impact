@@ -1,5 +1,6 @@
 import type { InsightCard } from "../types";
 import { Block } from "./Block";
+import { Calculation } from "./Calculation";
 import { CardFooter } from "./CardFooter";
 import { ClaimList } from "./ClaimList";
 import { formatDate, sourceTitle } from "./labels";
@@ -52,6 +53,7 @@ export function Card({ card, compact, onFollowup }: CardProps) {
           <ClaimList claims={card.bank_view} />
           <BankReport card={card} />
         </Block>
+        {card.calculation && <Calculation result={card.calculation} compact={compact} />}
         <Block title="На чём основан вывод" collapsible={compact}>
           <SourceList sources={card.basis} />
         </Block>
