@@ -129,12 +129,10 @@ async def test_other_model_revision_misses_the_cache() -> None:
     assert newer.calls == ["steel prices"]
 
 
-def test_http_client_uses_shared_key_base_and_timeout(settings_env: dict[str, str]) -> None:
+def test_http_client_uses_shared_key_and_base(settings_env: dict[str, str]) -> None:
     client = build_http_client(Settings(_env_file=None))
     assert str(client.base_url) == "https://llm.example/v1/"
     assert client.headers["Authorization"] == "Bearer test-key"
-    assert client.timeout.read == 8
-    assert client.timeout.connect == 8
 
 
 @pytest.mark.parametrize("task", ["extract", "followup", "interpret", "critic"])

@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from apps.services.llm.catalog import INTERACTIVE_TASKS, ModelCatalog
+from apps.services.llm.catalog import ModelCatalog
 from apps.services.llm.client import ModelClient
 from apps.services.llm.embedder import EmbedderSpec, TextEmbedder, load_spec
 from apps.services.llm.service import ModelGateway
@@ -20,14 +20,7 @@ ROUTES = {
     for task in ("annotate", "extract", "interpret", "critic", "followup")
 }
 ALLOWED = frozenset(ROUTES.values())
-TIMEOUTS = {
-    task: float(
-        SETTINGS_ENV[
-            "LLM_INTERPRET_TIMEOUT_SECONDS" if task in INTERACTIVE_TASKS else "LLM_TIMEOUT_SECONDS"
-        ]
-    )
-    for task in ROUTES
-}
+TIMEOUTS = {"annotate": 8.0, "extract": 8.0, "interpret": 12.0, "critic": 8.0, "followup": 12.0}
 SPEC = load_spec()
 VECTOR = [0.1] * EMBEDDING_DIMENSION
 

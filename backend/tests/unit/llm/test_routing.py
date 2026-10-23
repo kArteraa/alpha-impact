@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 
 from apps.services.llm.catalog import (
-    INTERACTIVE_TASKS,
     MODELS_PATH,
     ModelCatalog,
     ModelNotAllowed,
@@ -26,7 +25,12 @@ CASE_ALLOW_LIST = {
 
 def catalog_from_file() -> ModelCatalog:
     models = load_models(MODELS_PATH)
-    return build_catalog(Settings(_env_file=None), models.models, models.reasoning_off_tasks)
+    return build_catalog(
+        Settings(_env_file=None),
+        models.models,
+        models.reasoning_off_tasks,
+        models.interactive_tasks,
+    )
 
 
 @pytest.mark.parametrize(("task", "model"), ROUTES.items())
@@ -60,7 +64,9 @@ def test_models_file_lists_exactly_the_case_allow_list() -> None:
 
 def test_empty_models_file_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "models.yaml"
-    path.write_text("models: []\nreasoning_off_tasks: []\n", encoding="utf-8")
+    path.write_text(
+        "models: []\nreasoning_off_tasks: []\ninteractive_tasks: []\n", encoding="utf-8"
+    )
     with pytest.raises(ValueError, match="models"):
         load_models(path)
 
@@ -79,15 +85,26 @@ def test_reasoning_switch_for_unknown_task_is_rejected() -> None:
         ModelCatalog(ALLOWED, ROUTES, frozenset({"summarize"}), TIMEOUTS)
 
 
-@pytest.mark.parametrize("task", ROUTES)
-def test_interactive_tasks_get_their_own_timeout(settings_env: dict[str, str], task: str) -> None:
-    settings = Settings(_env_file=None)
-    expected = (
-        settings.LLM_INTERPRET_TIMEOUT_SECONDS
-        if task in INTERACTIVE_TASKS
-        else settings.LLM_TIMEOUT_SECONDS
-    )
-    assert catalog_from_file().timeout(task) == expected
+@pytest.mark.parametrize(
+    ("task", "seconds"),
+    [("interpret", 12), ("followup", 12), ("annotate", 8), ("extract", 8), ("critic", 8)],
+)
+def test_interactive_tasks_get_their_own_timeout(
+    settings_env: dict[str, str], task: str, seconds: float
+) -> None:
+    assert catalog_from_file().timeout(task) == seconds
+
+
+def test_models_file_marks_plan_draft_and_followup_interactive() -> None:
+    assert load_models(MODELS_PATH).interactive_tasks == {"interpret", "followup"}
+
+
+def test_interactive_switch_for_unknown_task_is_rejected(settings_env: dict[str, str]) -> None:
+    models = load_models(MODELS_PATH)
+    with pytest.raises(UnknownTask, match="interpert"):
+        build_catalog(
+            Settings(_env_file=None), models.models, frozenset(), frozenset({"interpert"})
+        )
 
 
 def test_timeout_of_unknown_task_is_rejected() -> None:

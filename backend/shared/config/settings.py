@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
@@ -13,8 +14,8 @@ class Settings(BaseSettings):
     LLM_API_KEY: str
     LLM_DAILY_BUDGET_RUB: float = 500
     LLM_BUDGET_RESERVE_SHARE: float
-    LLM_TIMEOUT_SECONDS: float
-    LLM_INTERPRET_TIMEOUT_SECONDS: float
+    LLM_TIMEOUT_SECONDS: float = Field(gt=0)
+    LLM_INTERACTIVE_TIMEOUT_SECONDS: float = Field(gt=0)
     LLM_CALL_RESERVE_RUB: float
     LLM_CACHE_TTL_SECONDS: int
     MODEL_ANNOTATE: str
