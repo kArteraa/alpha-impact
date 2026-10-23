@@ -1,9 +1,16 @@
 import { type FormEvent, useState } from "react";
-import type { ExtensionState, Send } from "../messages";
+import type { ExtensionState, Result, Send } from "../messages";
 
 interface LoginProps {
   send: Send;
   onState: (state: ExtensionState) => void;
+}
+
+function failureText(reply: Extract<Result<ExtensionState>, { ok: false }>): string {
+  if (reply.error === "http") {
+    return `Вход не удался (${reply.status})`;
+  }
+  return reply.error === "network" ? "Сервер недоступен" : "Вход не удался";
 }
 
 export function Login({ send, onState }: LoginProps) {
@@ -20,7 +27,7 @@ export function Login({ send, onState }: LoginProps) {
     if (reply.ok) {
       onState(reply.value);
     } else {
-      setError(reply.error === "http" ? `Вход не удался (${reply.status})` : "Сервер недоступен");
+      setError(failureText(reply));
     }
   }
 

@@ -26,7 +26,7 @@ export type WorkerRequest =
   | { type: "settings"; patch: SettingsPatch }
   | { type: "interpret"; page: PageContext };
 
-export type WorkerError = "signed_out" | "setup" | "http" | "network";
+export type WorkerError = "signed_out" | "setup" | "http" | "network" | "failed";
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: WorkerError; status?: number };
 

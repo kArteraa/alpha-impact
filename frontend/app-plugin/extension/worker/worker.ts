@@ -36,7 +36,12 @@ function failed(error: unknown): Result<never> {
   if (error instanceof NetworkError) {
     return { ok: false, error: "network" };
   }
-  throw error;
+  console.error(error);
+  return { ok: false, error: "failed" };
+}
+
+function reviewed(response: InterpretResponse): boolean {
+  return !response.cards?.some((card) => card.needs_review);
 }
 
 function settingsKey(userId: string): string {
@@ -64,7 +69,7 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
 
   async function current(): Promise<Session | null> {
     const stored = await session.get<Session>(SESSION_KEY);
-    if (stored !== undefined && Date.parse(stored.expiresAt) <= now()) {
+    if (stored !== undefined && !(Date.parse(stored.expiresAt) > now())) {
       await endSession();
       return null;
     }
@@ -100,6 +105,19 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
     return signedIn(active, settings);
   }
 
+  async function remember(active: Session, key: string, response: InterpretResponse): Promise<void> {
+    try {
+      const latest = await session.get<Session>(SESSION_KEY);
+      if (latest?.token !== active.token) {
+        return;
+      }
+      const entries = (await session.get<CacheEntries>(CACHE_KEY)) ?? {};
+      await session.set(CACHE_KEY, writeCached(entries, key, response, now()));
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   async function interpret(page: PageContext): Promise<Result<InterpretResponse>> {
     const active = await current();
     if (active === null) {
@@ -117,15 +135,14 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
     if (cached !== undefined) {
       return ok(cached);
     }
+    let response: InterpretResponse;
     try {
-      const response = await api.interpret(active.token, {
+      response = await api.interpret(active.token, {
         user_id: active.userId,
         client_id: clientId,
         role,
         action_context: { ...page, type: "page" },
       });
-      await session.set(CACHE_KEY, writeCached(entries, key, response, now()));
-      return ok(response);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         await endSession();
@@ -133,6 +150,10 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
       }
       return failed(error);
     }
+    if (reviewed(response)) {
+      await remember(active, key, response);
+    }
+    return ok(response);
   }
 
   function handle(request: WorkerRequest): Promise<ExtensionState | Result<ExtensionState | InterpretResponse>> {
