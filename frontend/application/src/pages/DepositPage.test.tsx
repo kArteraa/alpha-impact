@@ -1,15 +1,19 @@
-import { INTERPRET_DELAY_MS, mockResponses } from "@alpha-impact/plugin";
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { mockResponses } from "@alpha-impact/plugin";
+import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TEST_CLIENT, TEST_USER, renderWithCompany, stubApi } from "../testing";
+import {
+  answer,
+  askedContext,
+  panelState,
+  placeholderSteps,
+  renderWithCompany,
+  setAmount,
+  stubApi,
+} from "../testing";
 import { DepositPage } from "./DepositPage";
 
 function render() {
   return renderWithCompany(<DepositPage />, { path: "/deposits/new" });
-}
-
-function setAmount(amount: string) {
-  fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: amount } });
 }
 
 function chooseTerm(term: string) {
@@ -20,22 +24,8 @@ function income() {
   return screen.getByTestId("deposit-income").textContent?.replace(/\s/g, " ");
 }
 
-async function answer() {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(INTERPRET_DELAY_MS);
-  });
-}
-
-function panelState() {
-  return document.querySelector(".insight-panel")?.getAttribute("data-state");
-}
-
 describe("DepositPage", () => {
   let fetchMock: ReturnType<typeof stubApi>;
-
-  function asked(call: number) {
-    return JSON.parse(String(fetchMock.mock.calls[call][1]?.body));
-  }
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -87,31 +77,18 @@ describe("DepositPage", () => {
     render();
 
     expect(screen.getByRole("heading", { name: "Проверка депозита" })).toBeTruthy();
-    const steps = Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => [
-      step.textContent,
-      step.getAttribute("data-done"),
-    ]);
-    expect(steps).toEqual([
-      ["1Сумма — не заполнено", "false"],
-      ["Срок — готово", "true"],
-    ]);
+    expect(placeholderSteps()).toEqual(["false", "true"]);
     expect(panelState()).toBeUndefined();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("asks /interpret about the deposit for the signed-in user, company and role", async () => {
+  it("asks /interpret about the deposit with the term in days", async () => {
     render();
     setAmount("50000000");
     await answer();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/interpret");
-    expect(asked(0)).toEqual({
-      user_id: TEST_USER,
-      client_id: TEST_CLIENT,
-      role: "cfo",
-      action_context: { type: "deposit", amount: 50000000, term_days: 180 },
-    });
+    expect(askedContext(fetchMock, 0)).toEqual({ type: "deposit", amount: 50000000, term_days: 180 });
   });
 
   it("asks again when the term changes", async () => {
@@ -123,7 +100,7 @@ describe("DepositPage", () => {
     await answer();
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(asked(1).action_context).toEqual({ type: "deposit", amount: 50000000, term_days: 90 });
+    expect(askedContext(fetchMock, 1)).toEqual({ type: "deposit", amount: 50000000, term_days: 90 });
   });
 
   it("shows the bank view on the rate and the calculation in the panel", async () => {

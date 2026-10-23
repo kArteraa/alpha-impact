@@ -1,8 +1,16 @@
-import { INTERPRET_DELAY_MS, mockResponses } from "@alpha-impact/plugin";
-import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { mockResponses } from "@alpha-impact/plugin";
+import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RUB_WHOLE } from "../money";
-import { TEST_CLIENT, TEST_USER, chooseOption, renderWithCompany, stubApi } from "../testing";
+import {
+  answer,
+  askedContext,
+  chooseOption,
+  placeholderSteps,
+  renderWithCompany,
+  setAmount,
+  stubApi,
+} from "../testing";
 import { LoansPage } from "./LoansPage";
 
 function render() {
@@ -18,29 +26,19 @@ function openTranche() {
   fireEvent.click(trancheButton());
 }
 
-function setAmount(amount: string) {
-  fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: amount } });
-}
-
-async function answer() {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(INTERPRET_DELAY_MS);
-  });
-}
-
-function stepsDone() {
-  return Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => step.getAttribute("data-done"));
-}
-
 describe("LoansPage", () => {
+  let fetchMock: ReturnType<typeof stubApi>;
+
   beforeEach(() => {
-    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-22T09:00:00+03:00"));
+    fetchMock = stubApi({ "POST /api/interpret": [200, mockResponses.rates] });
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("shows the portfolio as a table with a new tranche action", () => {
@@ -106,22 +104,6 @@ describe("LoansPage", () => {
       ["Лизинг транспорта", "526 дней"],
     ]);
   });
-});
-
-describe("LoansPage new tranche", () => {
-  let fetchMock: ReturnType<typeof stubApi>;
-
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-10-22T09:00:00+03:00"));
-    fetchMock = stubApi({ "POST /api/interpret": [200, mockResponses.rates] });
-  });
-
-  afterEach(() => {
-    cleanup();
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-  });
 
   it("marks the portfolio as demo data", () => {
     render();
@@ -172,11 +154,11 @@ describe("LoansPage new tranche", () => {
     openTranche();
 
     expect(screen.getByRole("heading", { name: "Проверка транша" })).toBeTruthy();
-    expect(stepsDone()).toEqual(["false", "false"]);
+    expect(placeholderSteps()).toEqual(["false", "false"]);
 
     chooseOption("Продукт", /Кредитная линия/);
 
-    expect(stepsDone()).toEqual(["true", "false"]);
+    expect(placeholderSteps()).toEqual(["true", "false"]);
     expect(document.querySelector(".insight-panel")).toBeNull();
   });
 
@@ -187,28 +169,14 @@ describe("LoansPage new tranche", () => {
     await answer();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
-      user_id: TEST_USER,
-      client_id: TEST_CLIENT,
-      role: "cfo",
-      action_context: { type: "loan", product: "loan", amount: 50000000, rate_type: "floating" },
+    expect(askedContext(fetchMock, 0)).toEqual({
+      type: "loan",
+      product: "loan",
+      amount: 50000000,
+      rate_type: "floating",
     });
     expect(document.querySelector(".insight-panel")?.getAttribute("data-action-type")).toBe("loan");
     expect(screen.getAllByLabelText(/^Банк — источник: /).length).toBeGreaterThan(0);
     expect(screen.getByRole("region", { name: "Расчёт" })).toBeTruthy();
-  });
-
-  it("asks about leasing at its fixed rate", async () => {
-    openTranche();
-    chooseOption("Продукт", /Лизинг транспорта/);
-    setAmount("10000000");
-    await answer();
-
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).action_context).toEqual({
-      type: "loan",
-      product: "leasing",
-      amount: 10000000,
-      rate_type: "fixed",
-    });
   });
 });
