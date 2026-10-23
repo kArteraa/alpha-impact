@@ -4,7 +4,7 @@ from fastapi import Cookie, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from apps.services.gateway.tokens import INTERPRET_SCOPE, SqlExtensionTokens
+from apps.services.gateway.tokens import SqlExtensionTokens
 from shared.db.models import UserRow
 from shared.di.container import Container
 from shared.di.dependency import get_container
@@ -33,7 +33,7 @@ async def interpret_user(
     if bearer is None:
         return await current_user(container, session_id)
     tokens = container.resolve(SqlExtensionTokens)
-    user_id = await tokens.user(bearer.credentials, INTERPRET_SCOPE)
+    user_id = await tokens.user(bearer.credentials)
     if user_id is None:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,

@@ -37,7 +37,7 @@ def bearer(token: str) -> dict[str, str]:
 
 async def db_now(sessions: async_sessionmaker[AsyncSession]) -> datetime:
     async with sessions() as session:
-        now: datetime = await session.scalar(select(func.now()))
+        now: datetime = (await session.execute(select(func.now()))).scalar_one()
     return now
 
 
