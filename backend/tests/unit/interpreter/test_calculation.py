@@ -99,7 +99,7 @@ async def test_deposit_compares_fixing_with_rolling_on_bank_path() -> None:
     result = await calculation.run(Calculator())
     assert result.kind == "deposit_terms"
     assert result.formula.startswith("фиксация: 10 000 000 ₽ × 14% × 90/365")
-    assert "ставка депозита следует ключевой ставке по позиции банка" in result.assumptions
+    assert "ставка размещения следует ключевой ставке по позиции банка" in result.assumptions
     assert "без капитализации и налогов" in result.assumptions
 
 

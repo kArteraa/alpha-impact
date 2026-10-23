@@ -22,7 +22,7 @@ CALCULATION = s.WhatIfResult(
     value=12_500.0,
     unit="RUB",
     formula="фиксация: 10 000 000 ₽ × 14% × 90/365 = 345 205,48 ₽",
-    assumptions=["ставка депозита следует ключевой ставке"],
+    assumptions=["ставка размещения следует ключевой ставке"],
 )
 CARD = s.InsightCard(
     id="card-1",
