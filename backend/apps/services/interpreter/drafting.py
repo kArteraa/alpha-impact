@@ -50,7 +50,9 @@ def build_card(
             if claim.type == ClaimType.FACT and not item.factual:
                 raise DomainError("An inferred feature or forecast cannot be cited as a fact")
             basis[claim.source] = item.ref
-            result.append(Claim(text=text, type=claim.type, source_ref=item.ref))
+            resolved = Claim(text=text, type=claim.type, source_ref=item.ref)
+            if resolved not in result:
+                result.append(resolved)
         return result
 
     blocks = {name: resolve(getattr(draft, name), name == "bank_view") for name in CLAIM_BLOCKS}

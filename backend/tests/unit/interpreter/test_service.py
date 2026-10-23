@@ -145,6 +145,17 @@ async def test_retold_bank_claim_is_replaced_by_quoted_house_view(
     assert claim.source_ref.id == "logistics-approved"
 
 
+async def test_retellings_of_one_bank_claim_give_one_quote(harness: Harness) -> None:
+    harness.answers[1]["bank_view"] = [
+        {"text": text, "type": "bank", "source": "house_view:logistics-approved"}
+        for text in ("Банк ждёт рост тарифов", "Тарифы вырастут")
+    ]
+    response = await harness.agent.interpret(harness.request())
+    assert [claim.text for claim in response.cards[0].bank_view] == [
+        harness.seed.house_view[0].claim
+    ]
+
+
 @pytest.mark.parametrize(
     "change",
     [
