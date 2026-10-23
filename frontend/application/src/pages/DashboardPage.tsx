@@ -36,7 +36,13 @@ export function DashboardPage() {
         <section className="card feed-widget" aria-labelledby={headingId}>
           <div className="feed-head">
             <h2 id={headingId}>Что изменилось вокруг ваших операций</h2>
-            <Link to="/events">Все события</Link>
+            <div className="feed-actions">
+              <Link to="/news/new" className="button-primary button-xs">
+                <Icon name="plus" />
+                Вставить новость
+              </Link>
+              <Link to="/events">Все события</Link>
+            </div>
           </div>
           <FeedStatus
             empty={

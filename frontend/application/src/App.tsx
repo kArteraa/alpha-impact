@@ -7,6 +7,7 @@ import { EventPage } from "./pages/EventPage";
 import { EventsPage } from "./pages/EventsPage";
 import { LoansPage } from "./pages/LoansPage";
 import { LoginPage } from "./pages/LoginPage";
+import { NewsPage } from "./pages/NewsPage";
 import { PaymentPage } from "./pages/PaymentPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RolePage } from "./pages/RolePage";
@@ -27,6 +28,7 @@ export function App() {
           <Route path="/payments/new" element={<PaymentPage />} />
           <Route path="/deposits/new" element={<DepositPage />} />
           <Route path="/loans" element={<LoansPage />} />
+          <Route path="/news/new" element={<NewsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/trace/:id" element={<TracePage />} />
         </Route>
