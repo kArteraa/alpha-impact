@@ -138,7 +138,29 @@
 }
 
 .trace-step dd {
+  min-width: 0;
   margin: 0;
+}
+
+.trace-raw {
+  max-height: 240px;
+  margin: 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.check-mark-issue {
+  background: var(--bg-warning);
+  color: var(--warning-text);
+}
+
+.trace-result {
+  display: grid;
+  gap: var(--s-3);
 }
 
 @media (max-width: 960px) {

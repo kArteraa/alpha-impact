@@ -11,6 +11,7 @@ interface TraceSummary {
   durationMs: number;
   tokensIn: number;
   tokensOut: number;
+  costRub: number;
   models: string[];
   parts: TracePart[];
 }
@@ -18,7 +19,7 @@ interface TraceSummary {
 const KINDS: readonly StepKind[] = ["model", "tool", "service"];
 
 function kindOf(step: TraceStep): StepKind {
-  if (step.model) {
+  if (step.model || (step.tokens_in ?? 0) > 0) {
     return "model";
   }
   return step.step === "tool" ? "tool" : "service";
@@ -31,6 +32,7 @@ export function traceSummary(steps: readonly TraceStep[]): TraceSummary {
   let end = -Infinity;
   let tokensIn = 0;
   let tokensOut = 0;
+  let costRub = 0;
   for (const step of steps) {
     const duration = step.duration_ms ?? 0;
     const kind = kindOf(step);
@@ -40,6 +42,7 @@ export function traceSummary(steps: readonly TraceStep[]): TraceSummary {
     end = Math.max(end, startedAt + duration);
     tokensIn += step.tokens_in ?? 0;
     tokensOut += step.tokens_out ?? 0;
+    costRub += step.cost_rub ?? 0;
     if (step.model) {
       models.add(step.model);
     }
@@ -48,6 +51,7 @@ export function traceSummary(steps: readonly TraceStep[]): TraceSummary {
     durationMs: steps.length === 0 ? 0 : end - start,
     tokensIn,
     tokensOut,
+    costRub,
     models: [...models],
     parts: KINDS.filter((kind) => byKind.has(kind)).map((kind) => ({ kind, durationMs: byKind.get(kind) ?? 0 })),
   };

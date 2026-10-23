@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from apps.services.gateway.cache import SqlInterpretCache
 from apps.services.gateway.calls import SqlCallJournal
+from apps.services.gateway.reports import REPORTS_DIR, ReportFiles
 from apps.services.gateway.router import router
 from apps.services.gateway.service import InterpretGateway
 from shared.config.settings import Settings
@@ -14,6 +15,7 @@ __all__ = ["register"]
 
 def register(container: Container) -> None:
     container.register(APIRouter, lambda _: router)
+    container.register(ReportFiles, lambda _: ReportFiles(REPORTS_DIR))
     container.register(
         InterpretGateway,
         lambda c: InterpretGateway(

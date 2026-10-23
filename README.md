@@ -43,6 +43,8 @@ docker compose up -d --build --wait && cd frontend && npm run e2e               
 docker compose --profile seed run --build --rm -e LLM_TIMEOUT_SECONDS=30 seed python -m scripts.ingest_news   # RSS из NEWS_RSS_URLS → разметка → news
 ```
 
+Ссылка на страницу отчёта банка в карточке (AH-33) открывает PDF кейса из `backend/data/raw`: положите туда отчёты (те же, что для `scripts.ingest_reports`); api монтирует папку только для чтения. Без файла ссылка отвечает 404.
+
 После смены промпта разметки или справочника регионов и стран (`backend/shared/config/regions.yaml`, `countries.yaml`) индекс переразмечается целиком; повторный запуск берёт уже размеченное из кэша шлюза и платит только за то, что в прошлый раз не разметилось:
 
 ```

@@ -70,6 +70,7 @@ export function Showcase() {
                   response={mockResponses.cards}
                   compact={compact}
                   onFollowup={() => undefined}
+                  onFeedback={async () => undefined}
                 />
               </Frame>
             </div>

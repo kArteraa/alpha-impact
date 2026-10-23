@@ -2,7 +2,13 @@ import type { ClaimType, InsightCard, InterpretResponse, SourceRef } from "@alph
 
 const SOURCES: Record<ClaimType, SourceRef> = {
   fact: { kind: "news", id: "news-feed", title: "Лента новостей", url: null, published_at: null },
-  bank: { kind: "house_view", id: "hv-feed", title: "Обзор Альфа-Банка", url: null, published_at: null },
+  bank: {
+    kind: "house_view",
+    id: "hv-feed",
+    title: "ALFA-7M26.pdf, стр. 1",
+    url: "/reports/ALFA-7M26.pdf#page=1",
+    published_at: null,
+  },
   ai: { kind: "calc", id: "calc-feed", title: "Расчёт Alpha Impact", url: null, published_at: null },
 };
 

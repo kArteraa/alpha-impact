@@ -1,11 +1,13 @@
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from apps.services.gateway.auth import SESSION_COOKIE, ContainerDep, CurrentUser, current_user
 from apps.services.gateway.errors import DomainErrorRoute
+from apps.services.gateway.reports import ReportFiles
 from apps.services.gateway.service import InterpretGateway
 from shared.contracts.errors import AccessDenied, NotFound
 from shared.contracts.ports import ProfileService, TraceStore
@@ -18,6 +20,7 @@ from shared.contracts.schemas import (
 from shared.db.models import UserRow
 
 router = APIRouter(route_class=DomainErrorRoute)
+PDF = "application/pdf"
 
 
 class MockLogin(BaseModel):
@@ -101,6 +104,16 @@ async def trace(trace_id: str, user_id: CurrentUser, container: ContainerDep) ->
     if found.request.user_id != user_id:
         raise AccessDenied(f"Trace {trace_id} belongs to another user")
     return found
+
+
+@router.get(
+    "/reports/{source_doc}",
+    response_class=FileResponse,
+    responses={status.HTTP_200_OK: {"content": {PDF: {}}}},
+    dependencies=[Depends(current_user)],
+)
+async def report(source_doc: str, container: ContainerDep) -> FileResponse:
+    return FileResponse(container.resolve(ReportFiles).path(source_doc), media_type=PDF)
 
 
 @router.get("/metrics", dependencies=[Depends(current_user)])

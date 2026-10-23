@@ -1,5 +1,6 @@
 import { InsightPanel } from "@alpha-impact/plugin";
 import { Link, useParams } from "react-router";
+import { API_BASE, api } from "../api/client";
 import { useCompany } from "../company/context";
 import { FeedStatus } from "../dashboard/FeedStatus";
 import { DASHBOARD } from "../feed/context";
@@ -27,7 +28,15 @@ export function EventPage() {
               </div>
             );
           }
-          return <InsightPanel actionContext={DASHBOARD} role={role} response={{ silent: false, cards: [card] }} />;
+          return (
+            <InsightPanel
+              actionContext={DASHBOARD}
+              role={role}
+              response={{ silent: false, cards: [card] }}
+              apiBase={API_BASE}
+              onFeedback={api.feedback}
+            />
+          );
         }}
       </FeedStatus>
     </section>

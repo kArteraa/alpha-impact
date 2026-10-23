@@ -1,5 +1,6 @@
 import { type ActionContext, InsightPanel, useInterpret } from "@alpha-impact/plugin";
 import type { ReactNode } from "react";
+import { API_BASE, api } from "../api/client";
 import { useSession } from "../session/context";
 import { useInterpretFetcher } from "./useInterpretFetcher";
 
@@ -22,6 +23,8 @@ export function ActionPanel({ context, placeholder }: ActionPanelProps) {
       pending={insight.pending}
       failed={insight.failed}
       onRetry={insight.retry}
+      apiBase={API_BASE}
+      onFeedback={api.feedback}
     />
   );
 }
