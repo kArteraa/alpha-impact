@@ -1,11 +1,10 @@
 import type { InterpretState } from "@alpha-impact/plugin";
 import { cleanup, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-import { feedOf } from "../dashboard/events.fixture";
-import { TEST_CLIENT, panelState, renderWithCompany } from "../testing";
+import { panelState, renderWithCompany } from "../testing";
 import { EventPage } from "./EventPage";
 
-function renderEvent(id: string, feed: Partial<InterpretState> = { response: feedOf(TEST_CLIENT) }) {
+function renderEvent(id: string, feed: Partial<InterpretState> = {}) {
   return renderWithCompany(<EventPage />, { path: "/events/:id", entry: `/events/${id}`, feed });
 }
 
@@ -32,7 +31,7 @@ describe("EventPage", () => {
   });
 
   it("shows that it is still looking for events", () => {
-    renderEvent("ev-rate", {});
+    renderEvent("ev-rate", { response: undefined });
 
     expect(screen.getByText("Смотрю новости и позицию банка за 14 дней")).toBeTruthy();
   });

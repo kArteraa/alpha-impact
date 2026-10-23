@@ -1,16 +1,16 @@
 import type { InterpretState } from "@alpha-impact/plugin";
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SILENT_FEED, feedOf } from "../dashboard/events.fixture";
+import { SILENT_FEED } from "../dashboard/events.fixture";
 import { RUB_WHOLE } from "../money";
-import { TEST_CLIENT, renderWithCompany } from "../testing";
+import { renderWithCompany } from "../testing";
 import { DashboardPage } from "./DashboardPage";
 
 function widget() {
   return screen.getByRole("region", { name: "Что изменилось вокруг ваших операций" });
 }
 
-function renderDashboard(feed: Partial<InterpretState> = { response: feedOf(TEST_CLIENT) }) {
+function renderDashboard(feed: Partial<InterpretState> = {}) {
   return renderWithCompany(<DashboardPage />, { feed });
 }
 
@@ -48,7 +48,7 @@ describe("DashboardPage", () => {
   });
 
   it("shows that it is still looking for events", () => {
-    renderDashboard({});
+    renderDashboard({ response: undefined });
 
     expect(within(widget()).getByText("Смотрю новости и позицию банка за 14 дней")).toBeTruthy();
     expect(within(widget()).queryAllByRole("heading", { level: 3 })).toHaveLength(0);

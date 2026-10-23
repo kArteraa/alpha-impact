@@ -76,23 +76,17 @@ interface PageOptions {
 
 export function renderWithCompany(node: ReactNode, { path = "/", entry = path, role = "cfo", routes, feed }: PageOptions = {}) {
   const company = companyOf(TEST_CLIENT);
-  const pages = (
-    <Routes>
-      <Route path={path} element={node} />
-      {routes}
-    </Routes>
-  );
+  const value = { response: feedOf(TEST_CLIENT), pending: false, failed: false, retry: () => {}, ...feed };
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <SessionContext.Provider value={{ userId: TEST_USER, role }}>
         <CompanyContext.Provider value={{ company, companies: [company], select: () => {} }}>
-          {feed ? (
-            <FeedContext.Provider value={{ pending: false, failed: false, retry: () => {}, ...feed }}>
-              {pages}
-            </FeedContext.Provider>
-          ) : (
-            pages
-          )}
+          <FeedContext.Provider value={value}>
+            <Routes>
+              <Route path={path} element={node} />
+              {routes}
+            </Routes>
+          </FeedContext.Provider>
         </CompanyContext.Provider>
       </SessionContext.Provider>
     </MemoryRouter>,

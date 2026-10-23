@@ -2,7 +2,8 @@ import { useId } from "react";
 import { Link } from "react-router";
 import { AccountTile } from "../dashboard/AccountTile";
 import { CashflowCard } from "../dashboard/CashflowCard";
-import { EventList } from "../dashboard/EventList";
+import { EventSummary } from "../dashboard/EventSummary";
+import { FeedStatus } from "../dashboard/FeedStatus";
 import { DEPOSIT_RATES } from "../data/depositRates";
 import { LOANS, LOANS_TOTAL } from "../data/loans";
 import { RATE, RUB_WHOLE } from "../money";
@@ -37,14 +38,21 @@ export function DashboardPage() {
             <h2 id={headingId}>Что изменилось вокруг ваших операций</h2>
             <Link to="/events">Все события</Link>
           </div>
-          <EventList
-            limit={WIDGET_EVENTS}
+          <FeedStatus
             empty={
-              <>
+              <p className="empty">
                 Пока ничего важного для вашего бизнеса. <Link to="/profile">Проверить профиль компании</Link>
-              </>
+              </p>
             }
-          />
+          >
+            {(events) => (
+              <ul className="events appear">
+                {events.slice(0, WIDGET_EVENTS).map((event) => (
+                  <EventSummary key={event.id} event={event} />
+                ))}
+              </ul>
+            )}
+          </FeedStatus>
         </section>
         <AccountTile />
         <CashflowCard />

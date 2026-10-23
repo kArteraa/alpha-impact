@@ -81,9 +81,9 @@ def news_topics(news: Sequence[NewsItem], subjects: Sequence[str]) -> set[str]:
 
 
 def news_claims(
-    item: NewsItem, claims: list[HouseViewClaim], subjects: Sequence[str]
+    news: Sequence[NewsItem], claims: list[HouseViewClaim], subjects: Sequence[str]
 ) -> list[HouseViewClaim]:
-    topics = news_topics([item], subjects)
+    topics = news_topics(news, subjects)
     return [claim for claim in claims if claim.subject in topics]
 
 

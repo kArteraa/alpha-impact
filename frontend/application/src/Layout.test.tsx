@@ -17,9 +17,11 @@ async function renderShell() {
 }
 
 describe("Layout", () => {
+  let fetchMock: ReturnType<typeof stubApi>;
+
   beforeEach(() => {
     signIn();
-    stubApi({ "GET /api/clients": [200, ["U_1941", "U_9250"]], "POST /api/interpret": answerFeed });
+    fetchMock = stubApi({ "GET /api/clients": [200, ["U_1941", "U_9250"]], "POST /api/interpret": answerFeed });
   });
 
   afterEach(() => {
@@ -77,7 +79,6 @@ describe("Layout", () => {
   });
 
   it("switches the company and shows its own feed on the same screen", async () => {
-    const fetchMock = stubApi({ "GET /api/clients": [200, ["U_1941", "U_9250"]], "POST /api/interpret": answerFeed });
     await renderShell();
     expect(await screen.findByText("Логистика в убытке")).toBeTruthy();
 

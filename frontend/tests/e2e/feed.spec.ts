@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { CARD_TIMEOUT_MS, chooseOption } from "../support/panel";
+import { CARD_TIMEOUT_MS, chooseOption, waitForFeed } from "../support/panel";
 import { logIn } from "../support/session";
 
 function widget(page: Page) {
@@ -7,9 +7,8 @@ function widget(page: Page) {
 }
 
 async function feedHeadlines(page: Page) {
-  const events = widget(page).getByRole("heading", { level: 3 });
-  await expect(events.first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
-  return events.allTextContents();
+  await waitForFeed(page);
+  return widget(page).getByRole("heading", { level: 3 }).allTextContents();
 }
 
 async function enter(page: Page, userId: string) {
