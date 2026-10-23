@@ -2,7 +2,6 @@ from pathlib import Path
 
 from shared.contracts.errors import NotFound
 
-REPORTS_DIR = Path(__file__).resolve().parents[3] / "data" / "raw"
 REPORT_SUFFIX = ".pdf"
 
 

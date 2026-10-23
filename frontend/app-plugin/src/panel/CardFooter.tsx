@@ -17,28 +17,25 @@ interface CardFooterProps {
 
 function Feedback({ cardId, onFeedback }: { cardId: string; onFeedback: FeedbackHandler }) {
   const [chosen, setChosen] = useState<boolean | null>(null);
-  const [sending, setSending] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [status, setStatus] = useState<"idle" | "sending" | "failed">("idle");
 
   async function send(useful: boolean) {
     if (useful === chosen) {
       return;
     }
-    setSending(true);
-    setFailed(false);
+    setStatus("sending");
     try {
       await onFeedback(cardId, useful);
       setChosen(useful);
+      setStatus("idle");
     } catch {
-      setFailed(true);
-    } finally {
-      setSending(false);
+      setStatus("failed");
     }
   }
 
   return (
     <span className="insight-feedback">
-      {failed && (
+      {status === "failed" && (
         <span className="feedback-note" role="status">
           Отзыв не отправлен
         </span>
@@ -50,7 +47,7 @@ function Feedback({ cardId, onFeedback }: { cardId: string; onFeedback: Feedback
           className="icon-button"
           aria-label={label}
           aria-pressed={chosen === useful}
-          disabled={sending}
+          disabled={status === "sending"}
           onClick={() => void send(useful)}
         >
           <Icon />

@@ -19,7 +19,7 @@ interface TraceSummary {
 const KINDS: readonly StepKind[] = ["model", "tool", "service"];
 
 function kindOf(step: TraceStep): StepKind {
-  if (step.model || (step.tokens_in ?? 0) > 0) {
+  if (step.model) {
     return "model";
   }
   return step.step === "tool" ? "tool" : "service";

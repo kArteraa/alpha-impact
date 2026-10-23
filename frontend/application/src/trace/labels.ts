@@ -1,7 +1,7 @@
 import type { ActionContext, InterpretRequest, LoanContext, TraceStep } from "@alpha-impact/plugin";
 import { NUMBER, RUB_WHOLE } from "../money";
 import { ROLE_LABELS } from "../session/roles";
-import { plural } from "../ui/plural";
+import { DAYS, plural } from "../ui/plural";
 
 const STEP_NAMES: Record<string, string> = {
   "profile.get_profile": "Профиль компании",
@@ -32,6 +32,7 @@ export function stepLabel(step: TraceStep): string {
 }
 
 const VERDICT = /^(\d+): (.*)$/s;
+const CODED = /^(\w+): (.*)$/s;
 const VERDICT_PASSED = "ok";
 const VERDICT_CODES: Record<string, string> = {
   source: "Источник",
@@ -40,7 +41,6 @@ const VERDICT_CODES: Record<string, string> = {
   retelling: "Пересказ",
   error: "Сбой",
 };
-const CODE_SEPARATOR = ": ";
 
 export function verdictLabel(verdict: string): { text: string; ok: boolean } {
   const match = VERDICT.exec(verdict);
@@ -51,12 +51,11 @@ export function verdictLabel(verdict: string): { text: string; ok: boolean } {
   if (body === VERDICT_PASSED) {
     return { text: `Круг ${round}: замечаний нет`, ok: true };
   }
-  const separator = body.indexOf(CODE_SEPARATOR);
-  const code = body.slice(0, separator);
-  if (separator < 0 || !Object.hasOwn(VERDICT_CODES, code)) {
+  const coded = CODED.exec(body);
+  if (!coded || !Object.hasOwn(VERDICT_CODES, coded[1])) {
     return { text: `Круг ${round}: ${body}`, ok: false };
   }
-  return { text: `Круг ${round}: ${VERDICT_CODES[code]} — ${body.slice(separator + CODE_SEPARATOR.length)}`, ok: false };
+  return { text: `Круг ${round}: ${VERDICT_CODES[coded[1]]} — ${coded[2]}`, ok: false };
 }
 
 const LOAN_PRODUCTS: Record<LoanContext["product"], string> = {
@@ -69,8 +68,6 @@ const RATE_TYPES: Record<NonNullable<LoanContext["rate_type"]>, string> = {
   floating: "плавающая ставка",
   fixed: "фиксированная ставка",
 };
-
-const DAYS = { one: "день", few: "дня", many: "дней" };
 
 function actionLabel(action: ActionContext): string {
   switch (action.type) {

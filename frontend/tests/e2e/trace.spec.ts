@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { CARD_TIMEOUT_MS, chooseOption } from "../support/panel";
+import { CARD_TIMEOUT_MS, pay } from "../support/panel";
 import { logIn } from "../support/session";
 
 test("carrier card: feedback, trace from top to bottom, sources lead to the article and the report page", async ({
@@ -9,8 +9,7 @@ test("carrier card: feedback, trace from top to bottom, sources lead to the arti
   await logIn(page);
 
   await page.goto("/payments/new");
-  await chooseOption(page, "Получатель", /Северо-Западная логистика/);
-  await page.getByLabel("Сумма, ₽").fill("1500000");
+  await pay(page, /Северо-Западная логистика/, "1500000");
   const panel = page.locator(".insight-panel");
   await expect(panel).toHaveAttribute("data-state", "cards", { timeout: CARD_TIMEOUT_MS });
 
@@ -33,7 +32,7 @@ test("carrier card: feedback, trace from top to bottom, sources lead to the arti
   const report = result.locator('.insight-sources a[href^="/api/reports/"]').first();
   const href = await report.getAttribute("href");
   expect(href).toMatch(/\.pdf(#page=\d+)?$/);
-  const pdf = await page.request.get(href ?? "");
-  expect(pdf.status()).toBe(200);
+  const pdf = await page.request.get(href ?? "", { headers: { Range: "bytes=0-0" } });
+  expect(pdf.status()).toBe(206);
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
 });

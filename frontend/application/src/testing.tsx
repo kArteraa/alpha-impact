@@ -15,7 +15,7 @@ export const TEST_USER = "user_cfo_wholesale";
 export const TEST_CLIENT = "U_1941";
 const NO_CONTENT = 204;
 
-type Reply = readonly [status: number, body: unknown];
+export type Reply = readonly [status: number, body: unknown];
 
 export function stubApi(routes: Record<string, Reply | ((init?: RequestInit) => Reply)>) {
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {

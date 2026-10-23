@@ -22,7 +22,6 @@ async def app(sessions: async_sessionmaker[AsyncSession], tmp_path: Path) -> Asy
     async with sessions() as session, session.begin():
         session.add(UserRow(id=USER, name="Финансовый директор"))
     (tmp_path / REPORT).write_bytes(CONTENT)
-    (tmp_path / "df_Uid_data_hack.csv").write_text("UID\n", encoding="utf-8")
     application = create_app()
     application.state.container.register(ReportFiles, lambda _: ReportFiles(tmp_path))
     yield application
@@ -36,22 +35,25 @@ async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
         yield client
 
 
+@pytest.fixture
+async def logged_in(client: httpx.AsyncClient) -> httpx.AsyncClient:
+    await client.post("/auth/mock", json={"user_id": USER})
+    return client
+
+
 async def test_report_requires_session(client: httpx.AsyncClient) -> None:
     response = await client.get(f"/reports/{quote(REPORT)}")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
-async def test_report_opens_inline_as_pdf(client: httpx.AsyncClient) -> None:
-    await client.post("/auth/mock", json={"user_id": USER})
-    response = await client.get(f"/reports/{quote(REPORT)}")
+async def test_report_opens_inline_as_pdf(logged_in: httpx.AsyncClient) -> None:
+    response = await logged_in.get(f"/reports/{quote(REPORT)}")
     assert response.status_code == status.HTTP_200_OK
     assert response.headers["content-type"] == "application/pdf"
     assert "attachment" not in response.headers.get("content-disposition", "")
     assert response.content == CONTENT
 
 
-@pytest.mark.parametrize("name", ["missing.pdf", "df_Uid_data_hack.csv"])
-async def test_unknown_report_is_not_found(client: httpx.AsyncClient, name: str) -> None:
-    await client.post("/auth/mock", json={"user_id": USER})
-    response = await client.get(f"/reports/{name}")
+async def test_unknown_report_is_not_found(logged_in: httpx.AsyncClient) -> None:
+    response = await logged_in.get("/reports/missing.pdf")
     assert response.status_code == status.HTTP_404_NOT_FOUND

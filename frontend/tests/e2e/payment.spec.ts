@@ -1,11 +1,6 @@
-import { expect, type Page, test } from "@playwright/test";
-import { CARD_TIMEOUT_MS, chooseOption } from "../support/panel";
+import { expect, test } from "@playwright/test";
+import { CARD_TIMEOUT_MS, pay } from "../support/panel";
 import { logIn } from "../support/session";
-
-async function pay(page: Page, recipient: string, amount: string) {
-  await chooseOption(page, "Получатель", recipient);
-  await page.getByLabel("Сумма, ₽").fill(amount);
-}
 
 test("login, profile, carrier card with sources, silent stationery payment", async ({ page }) => {
   test.setTimeout(3 * CARD_TIMEOUT_MS);
