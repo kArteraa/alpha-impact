@@ -67,6 +67,39 @@ describe("api client", () => {
     expect(JSON.parse(init.body)).toEqual(body);
   });
 
+  it("reads a trace by its id", async () => {
+    const fetchMock = respond(200, { id: "trace/1" });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const trace = await api.trace("trace/1");
+
+    expect(trace.id).toBe("trace/1");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/trace/trace%2F1");
+    expect(init.method).toBe("GET");
+    expect(init.credentials).toBe("include");
+  });
+
+  it("sends feedback on a card and expects no body back", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(api.feedback("card-1", false)).resolves.toBeUndefined();
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/feedback");
+    expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body)).toEqual({ card_id: "card-1", useful: false });
+  });
+
+  it("raises ApiError when feedback is refused", async () => {
+    vi.stubGlobal("fetch", respond(403, "foreign card"));
+
+    const failure = await api.feedback("card-x", true).catch((error: unknown) => error);
+
+    expect((failure as ApiError).status).toBe(403);
+  });
+
   it("tells the subscriber when the session is gone", async () => {
     vi.stubGlobal("fetch", respond(401, "no session"));
     const expired = vi.fn();

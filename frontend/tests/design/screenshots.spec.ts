@@ -76,8 +76,12 @@ test("login", async ({ page }) => {
 });
 
 test("trace", async ({ page }) => {
-  await page.goto("/trace/trace-mock-1");
-  await page.getByText("План", { exact: true }).click();
+  await page.goto("/payments/new");
+  await chooseOption(page, "Получатель", /Северо-Западная логистика/);
+  await page.getByLabel("Сумма, ₽").fill("1500000");
+  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
+  await page.getByRole("link", { name: "Как получен вывод" }).first().click();
+  await page.getByText("План агента", { exact: true }).first().click();
   await page.screenshot({ path: path.join(OUTPUT, "trace.png"), fullPage: true, animations: "disabled" });
 });
 
