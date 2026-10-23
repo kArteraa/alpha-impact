@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -24,13 +25,16 @@ class DraftClaim(BaseModel):
     source: str = Field(min_length=1)
 
 
+ClaimBlock = Annotated[list[DraftClaim], Field(min_length=1, max_length=MAX_CLAIMS_PER_BLOCK)]
+
+
 class Draft(BaseModel):
     model_config = ConfigDict(extra="forbid")
     headline: str = Field(min_length=1)
-    what_happened: list[DraftClaim] = Field(min_length=1, max_length=MAX_CLAIMS_PER_BLOCK)
-    why_for_you: list[DraftClaim] = Field(min_length=1, max_length=MAX_CLAIMS_PER_BLOCK)
-    consequences: list[DraftClaim] = Field(min_length=1, max_length=MAX_CLAIMS_PER_BLOCK)
-    actions: list[DraftClaim] = Field(min_length=1, max_length=MAX_CLAIMS_PER_BLOCK)
+    what_happened: ClaimBlock
+    why_for_you: ClaimBlock
+    consequences: ClaimBlock
+    actions: ClaimBlock
     bank_view: list[DraftClaim]
     significance: float = Field(ge=0, le=1)
 

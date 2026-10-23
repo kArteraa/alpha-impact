@@ -64,7 +64,7 @@ docker compose --profile seed run --build --rm --no-deps -e LLM_TIMEOUT_SECONDS=
 Метрики качества (`GET /metrics?since=ГГГГ-ММ-ДД`, AH-29) считаются по трассам и отзывам за период: доля тезисов с источником, критик с первого раза, доля молчания, токены и рубли на карточку, доля кэша, полезность по отзывам. Seed-трафик для стенда — запросы `/interpret` seed-пользователей с настоящей моделью (тратит бюджет LLM; упавшие запросы — тоже трафик, их трассы сохраняются), выгрузка метрик в JSON для экрана метрик:
 
 ```
-cd backend && LLM_TIMEOUT_SECONDS=120 uv run --env-file ../.env python -m scripts.seed_traffic --per-client 3
+cd backend && LLM_TIMEOUT_SECONDS=120 LLM_INTERPRET_TIMEOUT_SECONDS=120 uv run --env-file ../.env python -m scripts.seed_traffic --per-client 3
 cd backend && uv run --env-file ../.env python -m scripts.export_metrics --since 2026-10-23 --out metrics.json
 ```
 
@@ -76,6 +76,7 @@ cd backend && uv run --env-file ../.env python -m scripts.export_metrics --since
 
 - после AH-16: `LLM_BUDGET_RESERVE_SHARE`, `LLM_TIMEOUT_SECONDS`, `LLM_CALL_RESERVE_RUB`, `LLM_CACHE_TTL_SECONDS`; `MODEL_*` — имена моделей с префиксом провайдера, как в `.env.example` (`google/gemma-4-26b-a4b-it`, `z-ai/glm-5.3-flash`, `qwen/qwen3.6-35b-a3b`);
 - после AH-54: `LLM_API_BASE` — адрес прокси кейса `https://changellenge.up.railway.app/v1` (старая строка в `.env` перекрывает его — замените или удалите), `LLM_API_KEY` — ключ кейса; `MODEL_EMBED` больше не используется;
+- после AH-70: `LLM_INTERPRET_TIMEOUT_SECONDS=12` — таймаут плана и черновика карточки (`interpret`, `followup`), остальные вызовы — `LLM_TIMEOUT_SECONDS`; `MODEL_INTERPRET` и `MODEL_FOLLOWUP` — `deepseek/deepseek-v4.1-flash`;
 - после AH-13: `NEWS_RSS_URLS` — рубрики Коммерсанта и Ведомостей и лента Интерфакса, как в `.env.example` (старая строка с общими лентами и РБК перекрывает его — замените или удалите).
 
 Проверка перед коммитом (ruff, mypy, import-linter, pytest, vitest, сборка) — раздел «Проверка» в [docs/PIPELINE.md](docs/PIPELINE.md).
@@ -108,7 +109,7 @@ uv run --env-file ../.env pytest tests/unit/interpreter tests/integration/test_i
 При смене промптов агента или критика (`backend/apps/services/interpreter/prompts.py`) запуск обязателен. Из `backend/`, БД засеяна (`scripts.seed`, `scripts.ingest_news`):
 
 ```bash
-LLM_TIMEOUT_SECONDS=30 uv run --env-file ../.env python -m scripts.regression
+LLM_TIMEOUT_SECONDS=30 LLM_INTERPRET_TIMEOUT_SECONDS=30 uv run --env-file ../.env python -m scripts.regression
 ```
 
 Отчёт печатается и пишется в `backend/tests/regression/report.md`; если хоть один кейс красный, код выхода 1. Повтор без смены промптов отвечает из кэша LLM-шлюза.

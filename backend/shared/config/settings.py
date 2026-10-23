@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     LLM_DAILY_BUDGET_RUB: float = 500
     LLM_BUDGET_RESERVE_SHARE: float
     LLM_TIMEOUT_SECONDS: float
+    LLM_INTERPRET_TIMEOUT_SECONDS: float
     LLM_CALL_RESERVE_RUB: float
     LLM_CACHE_TTL_SECONDS: int
     MODEL_ANNOTATE: str
