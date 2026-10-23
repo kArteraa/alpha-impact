@@ -1,0 +1,19 @@
+id: page_key_rate_treasurer
+title: Решение ЦБ по ставке казначею оптовика — другие «почему важно» и «действия», чем у финдиректора
+request:
+  user_id: user_cfo_wholesale
+  client_id: U_1941
+  role: treasurer
+  action_context:
+    type: page
+    url: https://regression.example/key-rate-decision
+    text: |
+      Банк России сохранил ключевую ставку на уровне 14% годовых
+      Совет директоров Банка России сохранил ключевую ставку 14% годовых. Регулятор указал, что инфляция замедляется медленнее ожиданий, а кредитование компаний остаётся высоким; стоимость заёмных средств для бизнеса сохранится.
+expect:
+  silent: false
+  bank_subject: key_rate
+  bank_date: 2026-09-11
+  basis_kinds: [news, house_view]
+  needs_review: false
+differs_from: page_key_rate_bank

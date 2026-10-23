@@ -1,0 +1,16 @@
+id: page_car_demand
+title: Падение продаж автомобилей автодилеру — позиция банка по потребительскому спросу
+request:
+  user_id: user_cfo_autodealer
+  client_id: U_44245
+  role: cfo
+  action_context:
+    type: page
+    url: https://regression.example/car-sales
+    text: |
+      Продажи новых автомобилей в России упали на 18% за месяц
+      Спрос на новые автомобили снижается: дорогие автокредиты и рост цен отпугивают покупателей. Дилеры наращивают складские запасы и расширяют скидки, потребители откладывают крупные покупки.
+expect:
+  silent: false
+  bank_subject: consumer_demand
+  basis_kinds: [news, house_view]
