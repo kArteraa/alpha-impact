@@ -225,7 +225,7 @@ class Trace(BaseModel):
     created_at: datetime
 ```
 
-`InsightCard.calculation` — расчёт `WhatIfService` для действия карточки, который UI показывает отдельным блоком: число, формула, допущения. Interpreter заполняет его для `DepositContext` (`deposit_terms`) и для `LoanContext` с `rate_type: "floating"` (`rate_burden`), если в актуальной позиции банка по `key_rate` есть разборчивый факт и прогноз на весь срок; в остальных случаях, в ответе на followup и у старых карточек — `None`. Тот же расчёт доступен черновику источником `calc:<kind>`: тезис, который на него ссылается, получает `SourceRef(kind="calc", id=<kind>)` и попадает в `basis`.
+`InsightCard.calculation` — расчёт `WhatIfService` для действия карточки, который UI показывает отдельным блоком: число, формула, допущения. Interpreter заполняет его для `DepositContext` (`deposit_terms`) и для `LoanContext` с `product: "loan"` и `rate_type: "floating"` (`rate_burden`), если в актуальной позиции банка по `key_rate` есть разборчивый факт и прогноз на весь срок; в остальных случаях, в ответе на followup и у старых карточек — `None`. Тот же расчёт доступен черновику источником `calc:<kind>`: тезис, который на него ссылается, получает `SourceRef(kind="calc", id=<kind>)` и попадает в `basis`. Followup к такой карточке получает тот же источник из `calculation` исходной карточки, но сам расчёт заново не делает.
 
 ## Порты
 

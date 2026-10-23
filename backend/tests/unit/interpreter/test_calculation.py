@@ -30,7 +30,15 @@ SEED_RATES = [
 
 
 @pytest.mark.parametrize(
-    ("value", "expected"), [("14,0%", 14.0), ("14%", 14.0), ("13,75%", 13.75), (" 12,5% ", 12.5)]
+    ("value", "expected"),
+    [
+        ("14,0%", 14.0),
+        ("14%", 14.0),
+        ("13,75%", 13.75),
+        (" 12,5% ", 12.5),
+        ("13.5%", 13.5),
+        ("13 %", 13.0),
+    ],
 )
 def test_rate_value_is_parsed_from_house_view(value: str, expected: float) -> None:
     assert parse_rate(value) == expected
@@ -111,7 +119,19 @@ async def test_floating_loan_uses_average_bank_rate_over_horizon() -> None:
     assert result.kind == "rate_burden"
     assert result.formula == "50 000 000 ₽ × (13,42% − 14%) × 12/12 мес. = −290 000 ₽"
     assert result.value == -290_000.0
-    assert "спред к ключевой ставке не меняется" in result.assumptions
+    assert result.assumptions[-2:] == [
+        "спред к ключевой ставке не меняется",
+        "ожидаемая ставка — средняя ключевая за 12 мес. по позиции банка, линейной между "
+        "прогнозами; с ней итог тот же, что при помесячном пути",
+    ]
+
+
+@pytest.mark.parametrize("product", ["leasing", "guarantee"])
+def test_only_floating_loan_gets_rate_burden(product: str) -> None:
+    action = LoanContext.model_validate(
+        {"product": product, "amount": 1e6, "rate_type": "floating"}
+    )
+    assert plan_calculation(action, SEED_RATES, AS_OF, 12) is None
 
 
 @pytest.mark.parametrize("rate_type", ["fixed", None])
