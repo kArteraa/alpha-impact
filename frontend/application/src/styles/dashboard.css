@@ -74,6 +74,19 @@
   margin: 0;
 }
 
+.event h3 a {
+  color: inherit;
+}
+
+.feed-status {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.feed-status .button-secondary {
+  justify-self: start;
+}
+
 .event-badges {
   display: flex;
   flex-wrap: wrap;

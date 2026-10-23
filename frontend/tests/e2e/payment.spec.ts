@@ -13,7 +13,7 @@ test("login, profile, carrier card with sources, silent stationery payment", asy
 
   await expect(page.getByRole("listitem", { name: "Отрасль" })).toBeVisible();
   await page.getByRole("button", { name: "Всё верно" }).click();
-  await expect(page.getByRole("heading", { name: "Что важно для вашего бизнеса" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Что изменилось вокруг ваших операций" })).toBeVisible();
 
   await page.getByRole("link", { name: "Платежи" }).click();
   await pay(page, "ООО «Северо-Западная логистика»", "1500000");
