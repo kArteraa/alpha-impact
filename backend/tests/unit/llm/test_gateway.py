@@ -136,7 +136,7 @@ def test_http_client_uses_shared_key_base_and_timeout(settings_env: dict[str, st
     assert client.timeout.connect == 8
 
 
-@pytest.mark.parametrize("task", ["extract", "followup"])
+@pytest.mark.parametrize("task", ["extract", "followup", "interpret", "critic"])
 async def test_task_without_reasoning_asks_model_not_to_reason(task: str) -> None:
     server = ModelServer(content='{"ok": true, "reason": "r"}')
     gateway = make_gateway(
@@ -146,7 +146,7 @@ async def test_task_without_reasoning_asks_model_not_to_reason(task: str) -> Non
     )
 
     result = await gateway.complete(task, "sys", "usr", Verdict)
-    await gateway.complete("critic", "sys", "usr", Verdict)
+    await gateway.complete("annotate", "sys", "usr", Verdict)
 
     assert result == (Verdict(ok=True, reason="r"), 1000, 500, 0.25)
     assert server.body(0)["model"] == ROUTES[task]
@@ -154,7 +154,7 @@ async def test_task_without_reasoning_asks_model_not_to_reason(task: str) -> Non
     assert "reasoning" not in server.body(1)
 
 
-@pytest.mark.parametrize("task", ["extract", "followup"])
+@pytest.mark.parametrize("task", ["extract", "followup", "interpret", "critic"])
 async def test_reasoning_switch_is_part_of_cache_key(task: str) -> None:
     server = ModelServer(content='{"ok": true, "reason": "r"}')
     store = MemoryStore()
