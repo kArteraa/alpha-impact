@@ -6,7 +6,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from apps.services.interpreter.planning import PLANS_PATH, load_config
+from apps.services.interpreter.planning import PLANS_PATH, Plan, ToolCall, load_config
 from shared.contracts.errors import DomainError
 from shared.contracts.schemas import HouseViewClaim
 from tests.unit.interpreter.support import Harness
@@ -127,3 +127,14 @@ def test_missing_template_is_a_configuration_error(tmp_path: Path, action: str) 
     path.write_text(yaml.safe_dump(data), encoding="utf-8")
     with pytest.raises(ValidationError, match="all business actions"):
         load_config(path)
+
+
+def test_plan_may_ask_house_view_topic_outside_factors() -> None:
+    config = load_config(PLANS_PATH)
+    Plan(
+        focus="Инфляция", tools=[ToolCall(tool="house_view.claims", argument="inflation")]
+    ).validate_tools(config, [])
+    with pytest.raises(DomainError):
+        Plan(
+            focus="Космос", tools=[ToolCall(tool="house_view.claims", argument="space")]
+        ).validate_tools(config, [])

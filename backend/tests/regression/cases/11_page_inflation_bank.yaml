@@ -1,0 +1,16 @@
+id: page_inflation_bank
+title: Новость об инфляции автодилеру — позиция банка по инфляции
+request:
+  user_id: user_cfo_autodealer
+  client_id: U_44245
+  role: cfo
+  action_context:
+    type: page
+    url: https://regression.example/inflation-bank
+    text: |
+      Инфляция в России замедлилась до 7,8% годовых
+      Росстат сообщил, что годовая инфляция в октябре замедлилась до 7,8%. Аналитики ждут дальнейшего снижения инфляции к концу года, цены на автомобили растут быстрее среднего.
+expect:
+  silent: false
+  bank_subject: inflation
+  basis_kinds: [news, house_view]

@@ -4,7 +4,7 @@ from typing import Literal, Self
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from shared.config.factors import FACTORS
+from shared.config.house_view_topics import HOUSE_VIEW_SUBJECTS
 from shared.contracts.errors import DomainError
 from shared.contracts.schemas import HouseViewClaim
 
@@ -20,7 +20,7 @@ class Template(BaseModel):
 
     @model_validator(mode="after")
     def known_subjects(self) -> Self:
-        unknown = set(self.house_view_subjects) - set(FACTORS)
+        unknown = set(self.house_view_subjects) - set(HOUSE_VIEW_SUBJECTS)
         if unknown:
             raise ValueError(f"Unknown house view subjects: {sorted(unknown)}")
         return self
@@ -72,7 +72,7 @@ class Plan(BaseModel):
         known_claims = {claim.id for claim in claims}
         seen: set[tuple[str, str]] = set()
         for call in self.tools:
-            allowed = FACTORS if call.tool == "house_view.claims" else known_claims
+            allowed = HOUSE_VIEW_SUBJECTS if call.tool == "house_view.claims" else known_claims
             if call.argument not in allowed or (call.tool, call.argument) in seen:
                 raise DomainError("Plan contains an unknown or duplicate tool argument")
             seen.add((call.tool, call.argument))

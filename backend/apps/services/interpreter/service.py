@@ -26,7 +26,7 @@ from apps.services.interpreter.prompts import (
     FOLLOWUP_PLAN_SYSTEM,
     PLAN_SYSTEM,
 )
-from shared.config.factors import FACTORS
+from shared.config.house_view_topics import HOUSE_VIEW_SUBJECTS
 from shared.contracts.errors import BudgetExceeded, DomainError, NotFound
 from shared.contracts.ports import (
     CounterpartyService,
@@ -342,7 +342,7 @@ class Agent:
                 {
                     "template": template,
                     **context,
-                    "allowed_subjects": sorted(FACTORS),
+                    "allowed_subjects": sorted(HOUSE_VIEW_SUBJECTS),
                     "max_tool_calls": self._config.max_tool_calls,
                 },
                 ensure_ascii=False,
