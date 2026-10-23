@@ -356,7 +356,7 @@ UI для вопроса пока нет — проверка через API. Ш
 
 | Проверка | Чего ждёт |
 |---|---|
-| e2e демо `cd frontend && npm run e2e` | AH-42 — сценарий демо (e2e «платёж» на живой модели зелёный с AH-65) |
+| e2e демо в CI | данных кейса (`backend/data/raw`) и ключа LLM в CI нет: `demo.spec.ts` (AH-42) идёт локально против compose с seed и прогревом |
 | Скриншоты `docs/design` (`npx playwright test -c playwright.design.config.ts`) | `payment.png` переснят в AH-65 на живой модели; остальные — AH-68 |
 | Followup в UI | вопроса к карточке в интерфейсе нет — MC-13 только через API |
 
