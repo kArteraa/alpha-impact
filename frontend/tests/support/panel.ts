@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 export const CARD_TIMEOUT_MS = 60_000;
 
@@ -11,4 +11,8 @@ export async function askTranche(page: Page, product: RegExp, amount: string) {
   await page.getByRole("button", { name: "Новый транш" }).click();
   await chooseOption(page, "Продукт", product);
   await page.getByLabel("Сумма, ₽").fill(amount);
+}
+
+export async function waitForFeed(page: Page) {
+  await expect(page.locator(".event").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
 }

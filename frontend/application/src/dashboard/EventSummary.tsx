@@ -1,14 +1,18 @@
 import { ClaimTypeBadge, type InsightCard, Significance } from "@alpha-impact/plugin";
+import { Link } from "react-router";
 
 export function EventSummary({ event }: { event: InsightCard }) {
-  const types = [...new Set(event.why_for_you.map((claim) => claim.type))];
+  const consequence = event.consequences[0];
+  const types = [...new Set(event.consequences.map((claim) => claim.type))];
   return (
     <li className="event">
       <div className="event-head">
-        <h3>{event.headline}</h3>
+        <h3>
+          <Link to={`/events/${event.id}`}>{event.headline}</Link>
+        </h3>
         <Significance value={event.significance} />
       </div>
-      <p className="muted">{event.why_for_you[0]?.text}</p>
+      {consequence && <p className="muted">{consequence.text}</p>}
       <div className="event-badges">
         {types.map((type) => (
           <ClaimTypeBadge key={type} type={type} />

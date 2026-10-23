@@ -1,4 +1,5 @@
 import json
+from asyncio import gather
 from datetime import date, timedelta
 from time import perf_counter
 from uuid import uuid4
@@ -17,8 +18,8 @@ from apps.services.interpreter.followup import (
     trace_news,
 )
 from apps.services.interpreter.journal import Journal, utc_now
-from apps.services.interpreter.planning import Plan, PlanConfig
-from apps.services.interpreter.prefilter import Prefilter
+from apps.services.interpreter.planning import Plan, PlanConfig, Template
+from apps.services.interpreter.prefilter import Prefilter, PrefilterResult, news_claims
 from apps.services.interpreter.prompts import (
     DRAFT_SYSTEM,
     FOLLOWUP_DRAFT_SYSTEM,
@@ -26,7 +27,7 @@ from apps.services.interpreter.prompts import (
     PLAN_SYSTEM,
 )
 from shared.config.factors import FACTORS
-from shared.contracts.errors import DomainError, NotFound
+from shared.contracts.errors import BudgetExceeded, DomainError, NotFound
 from shared.contracts.ports import (
     CounterpartyService,
     Critic,
@@ -39,7 +40,9 @@ from shared.contracts.ports import (
 )
 from shared.contracts.schemas import (
     ActionContext,
+    ClientProfile,
     CounterpartyContext,
+    DashboardContext,
     FollowupContext,
     HouseViewClaim,
     InsightCard,
@@ -52,6 +55,12 @@ from shared.contracts.schemas import (
     TraceStep,
     WhatIfResult,
 )
+
+
+def card_failure(error: BaseException) -> bool:
+    return isinstance(error, DomainError | ValidationError) and not isinstance(
+        error, BudgetExceeded
+    )
 
 
 class Agent:
@@ -148,15 +157,17 @@ class Agent:
         pasted = await self._pasted_news(request, journal)
         prefilter_started_at = utc_now()
         start = perf_counter()
+        feed = isinstance(request.action_context, DashboardContext)
         if pasted is None:
-            scope = f"limit={self._config.search_limit}"
+            limit = self._config.feed_search_limit if feed else self._config.search_limit
+            scope = f"limit={limit}"
             selection = await self._prefilter.select(
                 profile,
                 request.action_context,
                 counterparty,
                 since=as_of - timedelta(days=self._config.lookback_days),
                 as_of=as_of,
-                limit=self._config.search_limit,
+                limit=limit,
                 subjects=template.house_view_subjects,
             )
         else:
@@ -188,9 +199,62 @@ class Agent:
             return InterpretResponse(
                 silent=True, silent_reason="Нет значимых событий для этого действия"
             )
-        news = [candidate.news for candidate in selection.candidates]
+        if feed:
+            return await self._feed(journal, request, template, profile, selection, as_of)
         house_view = selection.house_view
         calculation = await self._calculation(journal, request.action_context, house_view, as_of)
+        news = [candidate.news for candidate in selection.candidates]
+        card = await self._card(
+            journal, request, template, profile, counterparty, news, house_view, calculation, as_of
+        )
+        return InterpretResponse(silent=False, cards=[card])
+
+    async def _feed(
+        self,
+        journal: Journal,
+        request: InterpretRequest,
+        template: Template,
+        profile: ClientProfile,
+        selection: PrefilterResult,
+        as_of: date,
+    ) -> InterpretResponse:
+        subjects = template.house_view_subjects
+        drafts = (
+            self._card(
+                journal,
+                request,
+                template,
+                profile,
+                None,
+                [candidate.news],
+                news_claims(candidate.news, selection.house_view, subjects),
+                None,
+                as_of,
+            )
+            for candidate in selection.candidates[: self._config.feed_cards]
+        )
+        results = await gather(*drafts, return_exceptions=True)
+        cards = [result for result in results if isinstance(result, InsightCard)]
+        failures = [result for result in results if isinstance(result, BaseException)]
+        fatal = [error for error in failures if not card_failure(error)]
+        if fatal or not cards:
+            raise (fatal or failures)[0]
+        return InterpretResponse(
+            silent=False, cards=sorted(cards, key=lambda card: -card.significance)
+        )
+
+    async def _card(
+        self,
+        journal: Journal,
+        request: InterpretRequest,
+        template: Template,
+        profile: ClientProfile,
+        counterparty: CounterpartyContext | None,
+        news: list[NewsItem],
+        house_view: list[HouseViewClaim],
+        calculation: WhatIfResult | None,
+        as_of: date,
+    ) -> InsightCard:
         evidence = {
             **sources(profile, counterparty, news, house_view),
             **calculation_evidence(calculation),
@@ -214,9 +278,7 @@ class Agent:
             "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
         )
         card = await self._reviewed(journal, DRAFT_SYSTEM, payload, draft, evidence, current, news)
-        return InterpretResponse(
-            silent=False, cards=[card.model_copy(update={"calculation": calculation})]
-        )
+        return card.model_copy(update={"calculation": calculation})
 
     async def _followup(
         self, request: InterpretRequest, action: FollowupContext, journal: Journal

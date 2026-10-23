@@ -30,6 +30,8 @@ class PlanConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     lookback_days: int = Field(gt=0)
     search_limit: int = Field(gt=0)
+    feed_cards: int = Field(gt=0)
+    feed_search_limit: int = Field(gt=0)
     max_tool_calls: int = Field(gt=0)
     max_title_chars: int = Field(gt=0)
     trace_summary_chars: int = Field(gt=0)
