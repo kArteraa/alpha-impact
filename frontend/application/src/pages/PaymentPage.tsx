@@ -1,14 +1,12 @@
-import { InsightPanel, type InterpretFetcher, useInterpret } from "@alpha-impact/plugin";
-import { type FormEvent, useCallback, useId, useState } from "react";
-import { api } from "../api/client";
-import { useCompany } from "../company/context";
+import { type FormEvent, useId, useState } from "react";
 import { COUNTERPARTIES } from "../data/counterparties";
+import { ActionPanel } from "../insight/ActionPanel";
+import { PanelPlaceholder } from "../insight/PanelPlaceholder";
 import { parseAmount } from "../money";
-import { PanelPlaceholder } from "../payment/PanelPlaceholder";
 import { type PaymentForm, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
-import { useSession } from "../session/context";
 import { AmountField } from "../ui/AmountField";
 import { Select } from "../ui/Select";
+import { useHeldAmount } from "../ui/useHeldAmount";
 
 const AMOUNT_HINT = "Сумма — положительное число, не больше двух знаков после запятой";
 
@@ -21,31 +19,16 @@ const RECIPIENTS = COUNTERPARTIES.map((counterparty) => ({
 const EMPTY_FORM: PaymentForm = { beneficiaryId: "", amount: "", purpose: "" };
 
 export function PaymentPage() {
-  const { company } = useCompany();
-  const { userId, role } = useSession();
   const recipientHintId = useId();
   const [form, setForm] = useState<PaymentForm>(EMPTY_FORM);
-  const [heldAmount, setHeldAmount] = useState<number | null>(null);
+  const heldAmount = useHeldAmount(form.amount);
   const paymentContext = toPaymentContext(form);
-  const panelContext = paymentContextOf(form.beneficiaryId, heldAmount);
-  const interpret = useCallback<InterpretFetcher>(
-    (context, signal) => api.interpret({ user_id: userId, client_id: company.id, role, action_context: context }, signal),
-    [userId, company.id, role],
-  );
-  const insight = useInterpret(panelContext, interpret);
   const recipient = COUNTERPARTIES.find((counterparty) => counterparty.id === form.beneficiaryId);
-  const amountInvalid = form.amount.trim() !== "" && parseAmount(form.amount) === null;
+  const amount = parseAmount(form.amount);
+  const amountInvalid = form.amount.trim() !== "" && amount === null;
 
   function update(field: keyof PaymentForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
-  }
-
-  function updateAmount(value: string) {
-    update("amount", value);
-    const amount = parseAmount(value);
-    if (value.trim() === "" || amount !== null) {
-      setHeldAmount(amount);
-    }
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -80,7 +63,7 @@ export function PaymentPage() {
             label="Сумма"
             value={form.amount}
             error={amountInvalid ? AMOUNT_HINT : null}
-            onChange={updateAmount}
+            onChange={(value) => update("amount", value)}
           />
           <label className="field field-static">
             <span className="muted">Назначение платежа</span>
@@ -93,18 +76,19 @@ export function PaymentPage() {
           </div>
         </form>
         <aside>
-          {panelContext ? (
-            <InsightPanel
-              actionContext={panelContext}
-              role={role}
-              response={insight.response}
-              pending={insight.pending}
-              failed={insight.failed}
-              onRetry={insight.retry}
-            />
-          ) : (
-            <PanelPlaceholder recipient={recipient !== undefined} amount={parseAmount(form.amount) !== null} />
-          )}
+          <ActionPanel
+            context={paymentContextOf(form.beneficiaryId, heldAmount)}
+            placeholder={
+              <PanelPlaceholder
+                title="Проверка платежа"
+                text="Выберите получателя и сумму — Alpha Impact покажет новости и позицию банка, которые касаются этого платежа"
+                steps={[
+                  ["Получатель", recipient !== undefined],
+                  ["Сумма", amount !== null],
+                ]}
+              />
+            }
+          />
         </aside>
       </div>
     </section>

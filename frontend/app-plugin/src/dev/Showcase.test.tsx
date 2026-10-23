@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { Showcase } from "./Showcase";
 
@@ -22,6 +22,14 @@ describe("Showcase", () => {
       "◆Банк",
       "✦AI",
     ]);
+  });
+
+  it("shows a card with a calculation", () => {
+    render(<Showcase />);
+
+    const section = screen.getByRole("region", { name: "Карточка с расчётом" });
+    expect(within(section).getByRole("region", { name: "Расчёт" })).toBeTruthy();
+    expect(section.querySelector("[data-width]")).toBeNull();
   });
 
   it("shows the panel in both container widths", () => {

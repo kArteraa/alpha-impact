@@ -53,12 +53,19 @@ test("deposit", async ({ page }) => {
   await page.goto("/deposits/new");
   await page.getByLabel("Сумма, ₽").fill("10000000");
   await page.getByRole("heading", { name: "Разместить средства" }).click();
+  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: 60_000 });
   await page.screenshot({ path: path.join(OUTPUT, "deposit.png"), fullPage: true, animations: "disabled" });
 });
 
 test("loans", async ({ page }) => {
   await page.goto("/loans");
   await expect(page.getByRole("table", { name: "Кредитный портфель" })).toBeVisible();
+  await page.getByRole("button", { name: "Новый транш" }).click();
+  await page.getByRole("combobox", { name: "Продукт" }).click();
+  await page.getByRole("option", { name: /Кредитная линия/ }).click();
+  await page.getByLabel("Сумма, ₽").fill("50000000");
+  await page.getByRole("heading", { name: "Новый транш" }).click();
+  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: 60_000 });
   await page.screenshot({ path: path.join(OUTPUT, "loans.png"), fullPage: true, animations: "disabled" });
 });
 
