@@ -23,7 +23,7 @@ interface FeatureRowProps {
 }
 
 function draftOf(options: Record<string, string>, value: Feature["value"]): string {
-  return typeof value === "string" && value in options ? value : Object.keys(options)[0];
+  return typeof value === "string" && Object.hasOwn(options, value) ? value : Object.keys(options)[0];
 }
 
 function FeatureRow({ name, feature, onSave }: FeatureRowProps) {

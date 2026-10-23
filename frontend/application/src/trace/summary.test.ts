@@ -23,6 +23,17 @@ describe("traceSummary", () => {
     ]);
   });
 
+  it("measures the response time from the first start to the last finish", () => {
+    const steps = TRACES["trace-mock-1"].steps;
+    const overlapping = [
+      { ...steps[0], started_at: "2026-10-20T10:15:00.000Z", duration_ms: 500 },
+      { ...steps[1], started_at: "2026-10-20T10:15:00.100Z", duration_ms: 500 },
+      { ...steps[2], started_at: "2026-10-20T10:15:01.100Z", duration_ms: 200 },
+    ];
+
+    expect(traceSummary(overlapping).durationMs).toBe(1_300);
+  });
+
   it("is empty without steps", () => {
     expect(traceSummary([])).toEqual({ durationMs: 0, tokensIn: 0, tokensOut: 0, models: [], parts: [] });
   });

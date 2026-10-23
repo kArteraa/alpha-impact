@@ -29,6 +29,15 @@ describe("DepositPage", () => {
     expect(screen.getByText(/14,5% годовых/)).toBeTruthy();
   });
 
+  it("announces the income without reading the chart aloud", () => {
+    render(<DepositPage />);
+    fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "1000000" } });
+
+    const live = document.querySelector("[aria-live]");
+    expect(live?.contains(screen.getByTestId("deposit-income"))).toBe(true);
+    expect(live?.querySelector("table, svg")).toBeNull();
+  });
+
   it("asks for an amount before calculating", () => {
     render(<DepositPage />);
 

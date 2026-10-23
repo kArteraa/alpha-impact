@@ -126,6 +126,17 @@ describe("Select", () => {
     expect(combobox.getAttribute("aria-activedescendant")).toBe(screen.getByRole("option", { name: /Канцмир/ }).id);
   });
 
+  it("leaves the value alone when Tab moves on after the mouse passed over an option", () => {
+    const { combobox, onChange } = setup();
+    fireEvent.click(combobox);
+    fireEvent.mouseEnter(screen.getByRole("option", { name: /Канцмир/ }));
+
+    key(combobox, "Tab");
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.queryByRole("listbox")).toBeNull();
+  });
+
   it("closes when the focus leaves", () => {
     const { combobox } = setup();
     fireEvent.click(combobox);

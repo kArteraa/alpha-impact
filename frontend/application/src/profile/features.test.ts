@@ -1,6 +1,6 @@
 import type { Feature } from "@alpha-impact/plugin";
 import { describe, expect, it } from "vitest";
-import { featureText, formatFeatureValue, groupFeatures, isEditable } from "./features";
+import { featureText, groupFeatures, isEditable } from "./features";
 
 const bankFact: Feature = { value: "Оптовая торговля", source: "bank", confidence: 1, updated_at: "2026-10-01T00:00:00Z" };
 const derived: Feature = { value: true, source: "inferred", confidence: 0.7, updated_at: "2026-10-01T00:00:00Z" };
@@ -22,7 +22,7 @@ describe("profile features", () => {
     [null, "—"],
     ["крупный", "крупный"],
   ] as const)("shows %j as %s", (value, text) => {
-    expect(formatFeatureValue(value as Feature["value"]).replace(/\s/g, " ")).toBe(text);
+    expect(featureText("unknown_feature", value as Feature["value"]).replace(/\s/g, " ")).toBe(text);
   });
 });
 
@@ -38,6 +38,7 @@ describe("featureText", () => {
     ["region", "Москва", "Москва"],
     ["revenue_rub", 24_107_304_489, "24 107 304 489 ₽"],
     ["workers", "Более 251", "Более 251"],
+    ["industry_class", "toString", "toString"],
   ] as const)("shows %s %j as %s", (name, value, text) => {
     expect(featureText(name, value as Feature["value"]).replace(/\s/g, " ")).toBe(text);
   });

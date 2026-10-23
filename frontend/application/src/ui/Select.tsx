@@ -119,10 +119,10 @@ export function Select({
     if (key === "Escape") {
       event.preventDefault();
       setOpen(false);
+    } else if (key === "Tab") {
+      setOpen(false);
     } else if (key === "Enter" || key === " " || (key === "ArrowUp" && event.altKey)) {
       event.preventDefault();
-      choose(active);
-    } else if (key === "Tab") {
       choose(active);
     } else {
       const next = moveIndex(key, active, options.length);

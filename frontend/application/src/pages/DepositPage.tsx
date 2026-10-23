@@ -44,16 +44,18 @@ export function DepositPage() {
             </div>
           </div>
         </form>
-        <aside className="card deposit-result" aria-live="polite">
-          <span className="muted">Доход за {term} мес.</span>
-          {amount === null ? (
-            <p className="empty">Введите сумму — посчитаю доход за выбранный срок</p>
-          ) : (
-            <Amount className="amount-lg" testId="deposit-income" value={depositIncome(amount, term, rate)} />
-          )}
-          <div className="deposit-meta">
-            <span className="badge">{RATE.format(rate)}% годовых</span>
-            <span className="badge badge-warning">демо-ставки</span>
+        <aside className="card deposit-result">
+          <div className="deposit-now" aria-live="polite">
+            <span className="muted">Доход за {term} мес.</span>
+            {amount === null ? (
+              <p className="empty">Введите сумму — посчитаю доход за выбранный срок</p>
+            ) : (
+              <Amount className="amount-lg" testId="deposit-income" value={depositIncome(amount, term, rate)} />
+            )}
+            <div className="deposit-meta">
+              <span className="badge">{RATE.format(rate)}% годовых</span>
+              <span className="badge badge-warning">демо-ставки</span>
+            </div>
           </div>
           <div className="deposit-terms">
             <span className="muted">{amount === null ? "Ставка по сроку" : "Доход по сроку"}</span>
