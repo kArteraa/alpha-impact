@@ -93,10 +93,9 @@ def plan_sources(
     news: list[NewsItem],
     house_view: list[HouseViewClaim],
 ) -> dict[str, Evidence]:
-    evidence = sources(profile, counterparty, news, house_view)
     if isinstance(request.action_context, PageContext):
-        evidence.update(page_annotations(news))
-    return evidence
+        return {**sources(profile, counterparty, [], house_view), **page_annotations(news)}
+    return sources(profile, counterparty, news, house_view)
 
 
 def load_config(path: Path) -> PlanConfig:

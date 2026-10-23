@@ -15,7 +15,7 @@ from apps.services.gateway.auth import (
 from apps.services.gateway.errors import DomainErrorRoute
 from apps.services.gateway.reports import ReportFiles
 from apps.services.gateway.service import InterpretGateway
-from apps.services.gateway.tokens import INTERPRET_SCOPE, SqlExtensionTokens
+from apps.services.gateway.tokens import SqlExtensionTokens
 from shared.contracts.errors import AccessDenied, NotFound
 from shared.contracts.ports import ProfileService, TraceStore
 from shared.contracts.schemas import (
@@ -131,5 +131,5 @@ async def metrics(since: date, container: ContainerDep) -> dict[str, float]:
 
 @router.post("/auth/extension-token")
 async def extension_token(user_id: CurrentUser, container: ContainerDep) -> ExtensionToken:
-    token, expires_at = await container.resolve(SqlExtensionTokens).issue(user_id, INTERPRET_SCOPE)
+    token, expires_at = await container.resolve(SqlExtensionTokens).issue(user_id)
     return ExtensionToken(token=token, expires_at=expires_at)

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from shared.db.models import ExtensionTokenRow
 
 INTERPRET_SCOPE = "interpret:read"
+TOKEN_BYTES = 32
 
 
 def token_hash(token: str) -> str:
@@ -19,14 +20,14 @@ class SqlExtensionTokens:
         self._sessions = sessions
         self._ttl = timedelta(seconds=ttl_seconds)
 
-    async def issue(self, user_id: str, scope: str) -> tuple[str, datetime]:
-        token = secrets.token_urlsafe(32)
+    async def issue(self, user_id: str) -> tuple[str, datetime]:
+        token = secrets.token_urlsafe(TOKEN_BYTES)
         statement = (
             insert(ExtensionTokenRow)
             .values(
                 token_hash=token_hash(token),
                 user_id=user_id,
-                scope=scope,
+                scope=INTERPRET_SCOPE,
                 expires_at=func.now() + self._ttl,
             )
             .returning(ExtensionTokenRow.expires_at)
@@ -38,10 +39,10 @@ class SqlExtensionTokens:
             expires_at = (await session.execute(statement)).scalar_one()
         return token, expires_at
 
-    async def user(self, token: str, scope: str) -> str | None:
+    async def user(self, token: str) -> str | None:
         statement = select(ExtensionTokenRow.user_id).where(
             ExtensionTokenRow.token_hash == token_hash(token),
-            ExtensionTokenRow.scope == scope,
+            ExtensionTokenRow.scope == INTERPRET_SCOPE,
             ExtensionTokenRow.expires_at > func.now(),
         )
         async with self._sessions() as session:
