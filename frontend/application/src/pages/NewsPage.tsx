@@ -1,25 +1,35 @@
-import type { PageContext, PanelNotes } from "@alpha-impact/plugin";
-import { type FormEvent, useState } from "react";
-import { ActionPanel } from "../insight/ActionPanel";
+import { type PageContext, type PanelNotes, useInterpret } from "@alpha-impact/plugin";
+import { type FormEvent, useId, useState } from "react";
+import { Panel } from "../insight/Panel";
 import { PanelPlaceholder } from "../insight/PanelPlaceholder";
+import { useInterpretFetcher } from "../insight/useInterpretFetcher";
+import { useSession } from "../session/context";
 
 const NEWS_ROWS = 8;
 
 const NEWS_NOTES: PanelNotes = {
   pending: "Размечаю новость и смотрю, что она значит для компании",
-  failed: "Не успел разобрать новость — модель не ответила вовремя или недоступна",
+  failed: "Не успел разобрать новость",
   silent: "Ничего важного для компании в этой новости",
 };
 
 export function NewsPage() {
+  const { role } = useSession();
+  const urlId = useId();
+  const urlHintId = useId();
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [context, setContext] = useState<PageContext | null>(null);
+  const insight = useInterpret(context, useInterpretFetcher());
   const news = text.trim();
   const source = url.trim();
 
   function analyse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (context?.text === news && context.url === source) {
+      insight.retry();
+      return;
+    }
     setContext({ type: "page", url: source, text: news });
   }
 
@@ -38,31 +48,50 @@ export function NewsPage() {
               onChange={(event) => setText(event.target.value)}
             />
           </label>
-          <label className="field field-static">
-            <span className="muted">Ссылка на источник</span>
-            <input type="url" value={url} placeholder="https://" onChange={(event) => setUrl(event.target.value)} />
-          </label>
+          <div className="field field-static">
+            <label className="muted" htmlFor={urlId}>
+              Ссылка на источник
+            </label>
+            <input
+              id={urlId}
+              type="text"
+              inputMode="url"
+              autoComplete="url"
+              value={url}
+              placeholder="https://"
+              aria-describedby={urlHintId}
+              onChange={(event) => setUrl(event.target.value)}
+            />
+            <small id={urlHintId} className="field-hint">
+              Необязательно: если новость по этой ссылке уже есть в ленте, возьму её разметку
+            </small>
+          </div>
           <div className="form-actions">
-            <button className="button" type="submit" disabled={news === ""}>
+            <button className="button" type="submit" disabled={news === "" || insight.pending}>
               Разобрать новость
             </button>
           </div>
         </form>
         <aside>
-          <ActionPanel
-            context={context}
-            notes={NEWS_NOTES}
-            placeholder={
-              <PanelPlaceholder
-                title="Разбор новости"
-                text="Вставьте новость — Alpha Impact разметит её и покажет, что она значит для компании, со ссылкой на то, как получен вывод"
-                steps={[
-                  ["Текст новости", news !== ""],
-                  ["Ссылка — по желанию", source !== ""],
-                ]}
-              />
-            }
-          />
+          {context === null ? (
+            <PanelPlaceholder
+              title="Разбор новости"
+              text="Вставьте новость — Alpha Impact разметит её и покажет, что она значит для компании, со ссылкой на то, как получен вывод"
+              steps={[
+                ["Текст новости", news !== ""],
+                ["Ссылка — по желанию", source !== ""],
+              ]}
+            />
+          ) : (
+            <Panel
+              actionContext={context}
+              role={role}
+              response={insight.pending ? undefined : insight.response}
+              failed={insight.failed}
+              notes={NEWS_NOTES}
+              onRetry={insight.retry}
+            />
+          )}
         </aside>
       </div>
     </section>

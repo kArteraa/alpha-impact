@@ -130,6 +130,10 @@
   padding-top: var(--s-4);
 }
 
+.field-static > input {
+  padding-block: 0;
+}
+
 .segmented {
   display: inline-flex;
   justify-self: start;

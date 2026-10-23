@@ -99,11 +99,46 @@ describe("NewsPage", () => {
     await answer();
 
     expect(panelState()).toBe("failed");
-    expect(screen.getByText("Не успел разобрать новость — модель не ответила вовремя или недоступна")).toBeTruthy();
+    expect(screen.getByText("Не успел разобрать новость")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Попробовать ещё раз" }));
     await answer();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("analyses the same news again when the button is pressed after a failure", async () => {
+    fetchMock = stubApi({ "POST /api/interpret": [503, { detail: "unavailable" }] });
+    render();
+    paste(NEWS);
+    analyse();
+    await answer();
+    expect(panelState()).toBe("failed");
+
+    analyse();
+    await answer();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the button disabled while the news is analysed", () => {
+    render();
+    paste(NEWS);
+    analyse();
+
+    expect(analyseButton().disabled).toBe(true);
+  });
+
+  it("does not show the previous card while another news item is analysed", async () => {
+    render();
+    paste(NEWS);
+    analyse();
+    await answer();
+    expect(panelState()).toBe("cards");
+
+    paste("Минфин разместил ОФЗ\nСпрос превысил предложение вдвое.");
+    analyse();
+
+    expect(panelState()).toBe("checking");
+    expect(screen.getByText("Размечаю новость и смотрю, что она значит для компании")).toBeTruthy();
   });
 
   it("says calmly that the news does not matter for the company", async () => {
