@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,6 +11,7 @@ from shared.contracts.schemas import Claim, ClaimType, InsightCard, SourceRef
 CLAIM_BLOCKS = ("what_happened", "why_for_you", "consequences", "actions", "bank_view")
 REQUIRED_BLOCKS = CLAIM_BLOCKS[:-1]
 SOURCE_KEY_CHARS = 64
+MAX_CLAIMS_PER_BLOCK = 2
 
 
 def card_claims(card: InsightCard) -> list[Claim]:
@@ -23,13 +25,16 @@ class DraftClaim(BaseModel):
     source: str = Field(min_length=1)
 
 
+ClaimBlock = Annotated[list[DraftClaim], Field(min_length=1, max_length=MAX_CLAIMS_PER_BLOCK)]
+
+
 class Draft(BaseModel):
     model_config = ConfigDict(extra="forbid")
     headline: str = Field(min_length=1)
-    what_happened: list[DraftClaim] = Field(min_length=1)
-    why_for_you: list[DraftClaim] = Field(min_length=1)
-    consequences: list[DraftClaim] = Field(min_length=1)
-    actions: list[DraftClaim] = Field(min_length=1)
+    what_happened: ClaimBlock
+    why_for_you: ClaimBlock
+    consequences: ClaimBlock
+    actions: ClaimBlock
     bank_view: list[DraftClaim]
     significance: float = Field(ge=0, le=1)
 

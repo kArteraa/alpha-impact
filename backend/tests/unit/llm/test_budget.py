@@ -3,6 +3,7 @@ from datetime import timedelta
 import pytest
 
 from shared.contracts.errors import BudgetExceeded
+from tests.unit.conftest import SETTINGS_ENV
 from tests.unit.llm.fakes import TODAY, VECTOR, MemoryStore, ModelServer, Usage, make_gateway
 
 
@@ -29,7 +30,7 @@ async def test_call_is_charged_by_the_cost_in_the_answer() -> None:
     gateway = make_gateway(ModelServer(cost_rub=0.25).http_client(), store)
     await gateway.complete("interpret", "system", "user")
     assert store.usages[0].cost_rub == pytest.approx(0.25)
-    assert store.usages[0].model == "z-ai/glm-5.3-flash"
+    assert store.usages[0].model == SETTINGS_ENV["MODEL_INTERPRET"]
     assert store.usages[0].task == "interpret"
     assert store.usages[0].day == TODAY
     assert await gateway.budget_left_rub() == pytest.approx(449.75)

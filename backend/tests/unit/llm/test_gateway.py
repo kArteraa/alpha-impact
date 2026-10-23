@@ -10,6 +10,7 @@ from shared.config.settings import Settings
 from tests.unit.llm.fakes import (
     ROUTES,
     SPEC,
+    TIMEOUTS,
     CountingEmbedder,
     MemoryStore,
     ModelServer,
@@ -128,12 +129,10 @@ async def test_other_model_revision_misses_the_cache() -> None:
     assert newer.calls == ["steel prices"]
 
 
-def test_http_client_uses_shared_key_base_and_timeout(settings_env: dict[str, str]) -> None:
+def test_http_client_uses_shared_key_and_base(settings_env: dict[str, str]) -> None:
     client = build_http_client(Settings(_env_file=None))
     assert str(client.base_url) == "https://llm.example/v1/"
     assert client.headers["Authorization"] == "Bearer test-key"
-    assert client.timeout.read == 8
-    assert client.timeout.connect == 8
 
 
 @pytest.mark.parametrize("task", ["extract", "followup", "interpret", "critic"])
@@ -201,3 +200,12 @@ async def test_complete_returns_call_cost_and_cache_hit_costs_nothing() -> None:
 
     assert (first[3], second[3]) == (0.37, 0.0)
     assert first[3] + second[3] == sum(usage.cost_rub for usage in store.usages)
+
+
+@pytest.mark.parametrize("task", ["interpret", "followup", "critic", "annotate", "extract"])
+async def test_call_waits_for_the_model_as_long_as_its_task_allows(task: str) -> None:
+    server = ModelServer()
+    await make_gateway(server.http_client(), MemoryStore()).complete(task, "system", "user")
+    timeout = server.requests[-1].extensions["timeout"]
+    assert timeout["read"] == TIMEOUTS[task]
+    assert timeout["connect"] == TIMEOUTS[task]

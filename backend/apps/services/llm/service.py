@@ -93,13 +93,16 @@ class ModelGateway:
         output_format = response_format(output_schema)
         model = self._catalog.route(task)
         reasoning = self._catalog.reasoning(task)
+        timeout_seconds = self._catalog.timeout(task)
         parts = (task, model, system, user, output_format)
         key = cache_key(*parts) if reasoning else cache_key(*parts, REASONING_OFF)
         cached = await self._store.cached(key)
         if cached is not None:
             return parse(cached, output_schema), 0, 0, 0.0
         reservation = await self._reserve(task, model)
-        completion = await self._chat(reservation, model, system, user, output_format, reasoning)
+        completion = await self._chat(
+            reservation, model, system, user, output_format, reasoning, timeout_seconds
+        )
         try:
             content = answer_text(completion.content, model)
             result = parse(content, output_schema)
@@ -140,9 +143,12 @@ class ModelGateway:
         user: str,
         output_format: dict[str, Any] | None,
         reasoning: bool,
+        timeout_seconds: float,
     ) -> Completion:
         try:
-            return await self._client.chat(model, system, user, output_format, reasoning)
+            return await self._client.chat(
+                model, system, user, output_format, reasoning, timeout_seconds
+            )
         except ModelUnavailable as error:
             if error.cost_rub is not None:
                 await self._record(reservation, error.tokens_in, error.tokens_out, error.cost_rub)

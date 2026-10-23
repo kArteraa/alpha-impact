@@ -30,6 +30,7 @@ class ModelClient:
         user: str,
         response_format: dict[str, Any] | None,
         reasoning: bool,
+        timeout_seconds: float,
     ) -> Completion:
         body: dict[str, Any] = {
             "model": model,
@@ -44,7 +45,7 @@ class ModelClient:
         if not reasoning:
             body["reasoning"] = {"enabled": False}
         try:
-            response = await self._http.post(CHAT_PATH, json=body)
+            response = await self._http.post(CHAT_PATH, json=body, timeout=timeout_seconds)
             response.raise_for_status()
             data = response.json()
         except httpx.TimeoutException as error:
@@ -112,5 +113,4 @@ def build_http_client(settings: Settings) -> httpx.AsyncClient:
     return httpx.AsyncClient(
         base_url=settings.LLM_API_BASE,
         headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
-        timeout=settings.LLM_TIMEOUT_SECONDS,
     )
