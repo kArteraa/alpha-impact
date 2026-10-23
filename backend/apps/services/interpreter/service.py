@@ -18,7 +18,7 @@ from apps.services.interpreter.followup import (
     trace_news,
 )
 from apps.services.interpreter.journal import Journal, utc_now
-from apps.services.interpreter.planning import Plan, PlanConfig, Template
+from apps.services.interpreter.planning import Plan, PlanConfig, Template, plan_sources
 from apps.services.interpreter.prefilter import Prefilter, news_claims
 from apps.services.interpreter.prompts import (
     DRAFT_SYSTEM,
@@ -244,7 +244,7 @@ class Agent:
         critic_view: list[HouseViewClaim],
     ) -> InsightCard:
         evidence = {
-            **sources(profile, counterparty, news, house_view),
+            **plan_sources(request, profile, counterparty, news, house_view),
             **calculation_evidence(calculation),
         }
         plan = await self._plan(
