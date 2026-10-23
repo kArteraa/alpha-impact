@@ -1,7 +1,9 @@
 import "../styles/controls.css";
 import "../styles/panel.css";
 import type { ActionContext, InterpretResponse, Role } from "../types";
+import { ApiBaseContext } from "./apiBase";
 import { Card } from "./Card";
+import type { FeedbackHandler } from "./CardFooter";
 import { CheckIcon } from "./icons";
 
 const SKELETON_LINES = 3;
@@ -15,6 +17,8 @@ export interface InsightPanelProps {
   compact?: boolean;
   onRetry?: () => void;
   onFollowup?: (cardId: string) => void;
+  onFeedback?: FeedbackHandler;
+  apiBase?: string;
 }
 
 export function InsightPanel({
@@ -26,6 +30,8 @@ export function InsightPanel({
   compact = false,
   onRetry,
   onFollowup,
+  onFeedback,
+  apiBase,
 }: InsightPanelProps) {
   const base = {
     className: compact ? "insight-panel insight-panel-compact" : "insight-panel",
@@ -71,9 +77,11 @@ export function InsightPanel({
   return (
     <section {...base} data-state="cards" aria-busy={pending}>
       {progress}
-      {cards.map((card) => (
-        <Card key={card.id} card={card} compact={compact} onFollowup={onFollowup} />
-      ))}
+      <ApiBaseContext.Provider value={apiBase}>
+        {cards.map((card) => (
+          <Card key={card.id} card={card} compact={compact} onFollowup={onFollowup} onFeedback={onFeedback} />
+        ))}
+      </ApiBaseContext.Provider>
     </section>
   );
 }

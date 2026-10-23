@@ -65,7 +65,9 @@ class Journal:
             step.output_summary = describe(result)
             return result
 
-    async def generate[T: BaseModel](self, name: str, system: str, user: str, schema: type[T]) -> T:
+    async def generate[T: BaseModel](
+        self, name: str, system: str, user: str, schema: type[T], describe: Callable[[T], str]
+    ) -> T:
         async with self._step(
             TraceStep(
                 step="plan" if name == "plan" else "draft",
@@ -80,7 +82,7 @@ class Journal:
                 task=self.task, system=system, user=user, schema=schema
             )
             result = schema.model_validate(raw)
-            step.output_summary = self.summary(result)
+            step.output_summary = describe(result)
             return result
 
     async def review(

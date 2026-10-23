@@ -11,6 +11,7 @@ from apps.services.house_view.batch import load_house_view
 from apps.services.house_view.ingest.config import load_config as load_ingest_config
 from apps.services.profile.batch import rebuild_profiles
 from apps.services.profile.config import load_config
+from shared.config.paths import RAW_DIR
 from shared.config.settings import Settings
 from shared.db.engine import create_engine
 from shared.db.models import UserClientRow, UserRow
@@ -18,7 +19,6 @@ from shared.db.session import make_session_factory
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 SEED_DIR = DATA_DIR / "seed"
-RAW_DIR = DATA_DIR / "raw"
 APPROVED_HOUSE_VIEW = "house_view_approved.json"
 
 

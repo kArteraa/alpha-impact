@@ -1,0 +1,110 @@
+body {
+  margin: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+}
+
+.popup {
+  display: grid;
+  gap: var(--s-4);
+  width: 320px;
+  padding: var(--s-5);
+  box-sizing: border-box;
+}
+
+.popup-title {
+  margin: 0;
+  font-size: var(--fs-18);
+  line-height: var(--lh-24);
+  font-weight: var(--fw-bold);
+}
+
+.popup-form,
+.popup-autoshow {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.popup-field {
+  display: grid;
+  gap: var(--s-1);
+  color: var(--text-secondary);
+  font-size: var(--fs-14);
+}
+
+.popup-field input,
+.popup-field select {
+  height: var(--control-h-sm);
+  padding: 0 var(--s-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-16);
+}
+
+.popup-field input:focus-visible,
+.popup-field select:focus-visible,
+.popup-check input:focus-visible,
+.popup-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.popup-button {
+  height: var(--control-h-sm);
+  border: 0;
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+
+.popup-button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.popup-button:disabled {
+  background: var(--bg-neutral-strong);
+  color: var(--text-tertiary);
+  cursor: default;
+}
+
+.popup-error {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: var(--fs-14);
+}
+
+.popup-user {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-14);
+}
+
+.popup-autoshow {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.popup-autoshow legend {
+  margin-bottom: var(--s-2);
+  padding: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-14);
+}
+
+.popup-check {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--fs-16);
+}

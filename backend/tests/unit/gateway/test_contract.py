@@ -16,4 +16,5 @@ def test_registers_router_with_bootstrap_routes() -> None:
         "/interpret",
         "/profile/{client_id}",
         "/profile/{client_id}/features/{name}",
+        "/reports/{source_doc}",
     } <= paths
