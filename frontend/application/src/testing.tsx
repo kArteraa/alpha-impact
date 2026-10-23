@@ -1,5 +1,5 @@
-import type { Role } from "@alpha-impact/plugin";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { INTERPRET_DELAY_MS, type Role } from "@alpha-impact/plugin";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { vi } from "vitest";
@@ -31,6 +31,28 @@ export function stubApi(routes: Record<string, Reply | ((init?: RequestInit) => 
 export function chooseOption(label: string, option: string | RegExp) {
   fireEvent.click(screen.getByRole("combobox", { name: label }));
   fireEvent.click(screen.getByRole("option", { name: option }));
+}
+
+export function setAmount(amount: string) {
+  fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: amount } });
+}
+
+export async function answer() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(INTERPRET_DELAY_MS);
+  });
+}
+
+export function panelState() {
+  return document.querySelector(".insight-panel")?.getAttribute("data-state");
+}
+
+export function placeholderSteps() {
+  return Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => step.getAttribute("data-done"));
+}
+
+export function askedContext(fetchMock: ReturnType<typeof stubApi>, call: number) {
+  return JSON.parse(String(fetchMock.mock.calls[call][1]?.body)).action_context;
 }
 
 export function signIn(userId = TEST_USER, role: Role = "cfo") {

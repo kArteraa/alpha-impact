@@ -5,7 +5,13 @@
   align-items: start;
 }
 
+.page-stack {
+  display: grid;
+  gap: var(--s-4);
+}
+
 .page-grid > .form,
+.page-stack > .form,
 .deposit-result {
   padding: var(--s-8);
 }
@@ -85,6 +91,17 @@
 
 .table-head h2 {
   margin: 0;
+}
+
+.table-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.tranche {
+  margin-top: var(--s-4);
 }
 
 .table-wrap {
@@ -268,6 +285,7 @@
   }
 
   .page-grid > .form,
+  .page-stack > .form,
   .deposit-result {
     padding: var(--s-6);
   }
