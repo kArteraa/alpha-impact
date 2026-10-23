@@ -1,0 +1,14 @@
+id: page_culture_silent
+title: Премьера фильма для стройгруппы — молчание
+request:
+  user_id: user_cfo_construction
+  client_id: U_9250
+  role: cfo
+  action_context:
+    type: page
+    url: https://regression.example/film-premiere
+    text: |
+      В Москве прошла премьера исторической драмы о жизни композитора
+      Картину представили режиссёр и актёры главных ролей. Фильм выйдет в прокат в декабре, критики отметили музыку и костюмы.
+expect:
+  silent: true

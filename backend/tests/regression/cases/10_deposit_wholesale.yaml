@@ -1,0 +1,13 @@
+id: deposit_wholesale_90d
+title: Депозит оптовика на 90 дней — при карточке позиция банка по ставке
+request:
+  user_id: user_cfo_wholesale
+  client_id: U_1941
+  role: cfo
+  action_context:
+    type: deposit
+    amount: 50000000
+    term_days: 90
+when_card:
+  bank_subject: key_rate
+  basis_kinds: [news, house_view]

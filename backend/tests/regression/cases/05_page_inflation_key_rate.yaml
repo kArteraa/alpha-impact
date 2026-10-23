@@ -1,0 +1,16 @@
+id: page_inflation_key_rate
+title: Новость об инфляции автодилеру — позиция банка по ставке (по инфляции — AH-71)
+request:
+  user_id: user_cfo_autodealer
+  client_id: U_44245
+  role: cfo
+  action_context:
+    type: page
+    url: https://regression.example/inflation
+    text: |
+      Годовая инфляция в России замедлилась до 7,8%
+      Росстат сообщил о замедлении годовой инфляции до 7,8%. Цены на автомобили и запчасти продолжают расти быстрее среднего, потребительский спрос остаётся высоким.
+expect:
+  silent: false
+  bank_subject: key_rate
+  basis_kinds: [news, house_view]

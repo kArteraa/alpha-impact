@@ -1,0 +1,14 @@
+id: page_sport_silent
+title: Спортивная новость оптовику — молчание
+request:
+  user_id: user_cfo_wholesale
+  client_id: U_1941
+  role: cfo
+  action_context:
+    type: page
+    url: https://regression.example/sport-final
+    text: |
+      «Зенит» обыграл ЦСКА в финале Кубка России по футболу
+      Решающий мяч забил полузащитник на 87-й минуте. Главный тренер поблагодарил болельщиков за поддержку, следующий матч команда проведёт через неделю.
+expect:
+  silent: true
