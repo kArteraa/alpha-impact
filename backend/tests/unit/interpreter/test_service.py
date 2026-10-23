@@ -175,6 +175,21 @@ async def test_bank_claim_starting_like_another_claim_is_rewritten(harness: Harn
     assert saved(harness).critic_verdicts == [f"1: {note}", "2: ok"]
 
 
+async def test_repeated_wrong_reference_gives_one_note(harness: Harness) -> None:
+    with_other_claim(harness)
+    reason = {
+        "text": "Получатель работает в логистике",
+        "type": "fact",
+        "source": "graph:industry_class",
+    }
+    harness.answers[1]["why_for_you"] = [reason, bank_claim("Другая позиция банка")]
+    harness.answers[1]["bank_view"] = [bank_claim("Другая позиция банка")]
+    harness.answers.append(draft_answer())
+    await harness.agent.interpret(harness.request())
+    first_round = [v for v in saved(harness).critic_verdicts if v.startswith("1: ")]
+    assert len(first_round) == 1
+
+
 async def test_wrong_bank_reference_after_rewrite_needs_review(harness: Harness) -> None:
     with_other_claim(harness)
     harness.answers[1]["bank_view"] = [bank_claim("Другая позиция банка")]

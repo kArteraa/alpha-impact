@@ -79,12 +79,12 @@ def check_quote(claim: DraftClaim, quotes: dict[str, str], min_words: int) -> Bu
 
 
 def quote_notes(draft: Draft, quotes: dict[str, str], min_words: int) -> BuildNotes:
-    bank = [
-        claim
+    bank = {
+        (claim.source, claim.text): claim
         for name in CLAIM_BLOCKS
         for claim in getattr(draft, name)
         if claim.type == ClaimType.BANK
-    ]
+    }.values()
     return sum((check_quote(claim, quotes, min_words) for claim in bank), BuildNotes())
 
 
