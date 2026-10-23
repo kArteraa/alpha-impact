@@ -1,0 +1,14 @@
+id: followup_fx_2026
+title: Вопрос к карточке о рубле — прогноз банка по курсу
+followup_of: page_fx_bank
+request:
+  user_id: user_cfo_autodealer
+  client_id: U_44245
+  role: cfo
+  action_context:
+    type: followup
+    card_id: ""
+    question: Какой курс доллара банк ждёт на конец 2026 года?
+expect:
+  silent: false
+  bank_subject: fx_rate

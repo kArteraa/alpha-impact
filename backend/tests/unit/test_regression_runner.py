@@ -4,12 +4,14 @@ from scripts.regression import CaseResult, exit_code, render_report, run_cases
 from scripts.regression_cases import Case
 from shared.contracts.errors import BudgetExceeded, NotFound
 from shared.contracts.schemas import (
+    Claim,
+    ClaimType,
     FollowupContext,
     HouseViewClaim,
     InterpretRequest,
     InterpretResponse,
 )
-from tests.regression_data import CITED, SILENT, answer, card
+from tests.regression_data import CITED, PROFILE, SILENT, answer, card
 
 REQUEST = {"user_id": "user", "client_id": "U_1", "role": "cfo"}
 
@@ -185,3 +187,51 @@ async def test_followup_gets_parent_card_when_parent_check_failed() -> None:
     assert isinstance(context, FollowupContext)
     assert context.card_id == "card-1"
     assert [r.passed for r in results] == [False, True]
+
+
+def treasurer_case(case_id: str, parent: str) -> Case:
+    return Case.model_validate(
+        {
+            "id": case_id,
+            "title": "Та же карточка казначею",
+            "differs_from": parent,
+            "request": {**REQUEST, "role": "treasurer", "action_context": {"type": "dashboard"}},
+            "expect": {"silent": False},
+        }
+    )
+
+
+async def test_role_pair_is_checked_against_parent_card() -> None:
+    same = card(id="card-2")
+    interpreter = ScriptedInterpreter(answer(card()), answer(same))
+    cases = [dashboard_case("cfo", {"silent": False}), treasurer_case("treasurer", "cfo")]
+
+    results = await run_cases(cases, interpreter, StoredHouseView(CITED))
+
+    assert results[0].passed
+    assert not results[1].passed
+    assert any("why_for_you" in failure for failure in results[1].failures)
+
+
+async def test_role_pair_fails_when_parent_gave_no_card() -> None:
+    interpreter = ScriptedInterpreter(SILENT, answer(card()))
+    cases = [dashboard_case("cfo", {"silent": True}), treasurer_case("treasurer", "cfo")]
+
+    results = await run_cases(cases, interpreter, StoredHouseView(CITED))
+
+    assert results[0].passed
+    assert not results[1].passed
+
+
+async def test_role_pair_fails_when_parent_case_is_red() -> None:
+    other = card(
+        id="card-2",
+        why_for_you=[Claim(text="Другое", type=ClaimType.AI, source_ref=PROFILE)],
+    )
+    interpreter = ScriptedInterpreter(answer(card()), answer(other))
+    cases = [dashboard_case("cfo", {"silent": True}), treasurer_case("treasurer", "cfo")]
+
+    results = await run_cases(cases, interpreter, StoredHouseView(CITED))
+
+    assert not results[0].passed
+    assert results[1].failures == ("case cfo gave no green card to compare roles",)

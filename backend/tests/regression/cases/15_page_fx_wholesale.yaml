@@ -1,0 +1,16 @@
+id: page_fx_wholesale
+title: Ослабление рубля оптовику-импортёру — позиция банка по курсу
+request:
+  user_id: user_cfo_wholesale
+  client_id: U_1941
+  role: cfo
+  action_context:
+    type: page
+    url: https://regression.example/ruble-yuan
+    text: |
+      Рубль ослаб к доллару и юаню на фоне роста импорта
+      Курс доллара поднялся выше 89 рублей, юань подорожал до 12,4 рубля. Импортёры товаров из Китая и Турции закупают валюту под контракты четвёртого квартала, спрос на валюту растёт.
+expect:
+  silent: false
+  bank_subject: fx_rate
+  basis_kinds: [news, house_view]
