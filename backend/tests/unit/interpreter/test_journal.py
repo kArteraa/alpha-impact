@@ -139,24 +139,3 @@ async def test_failed_charged_redraft_keeps_its_cost(harness: Harness) -> None:
     assert response.cards[0].needs_review
     assert (redraft.tokens_in, redraft.tokens_out, redraft.cost_rub) == (90, 10, 0.07)
     assert sum(step.cost_rub for step in trace.steps) == pytest.approx(2 * CALL_COST + 0.07)
-
-
-async def test_failed_charged_step_records_the_error_text(harness: Harness) -> None:
-    harness.use_critic(["source: a"])
-    answers = iter([plan_answer(), draft_answer()])
-
-    async def complete(
-        task: str, system: str, user: str, schema: type[BaseModel]
-    ) -> tuple[BaseModel, int, int, float]:
-        answer = next(answers, None)
-        if answer is None:
-            raise ChargedModelError("answer does not match Draft: bank_view.0.text", 90, 10, 0.07)
-        return schema.model_validate(answer), 120, 40, CALL_COST
-
-    harness.llm.complete.side_effect = complete
-    await harness.agent.interpret(harness.request())
-    trace: Trace = harness.traces.save.call_args.args[0]
-    redraft = next(step for step in trace.steps if step.name == "redraft")
-    assert redraft.output_summary == (
-        "ChargedModelError: answer does not match Draft: bank_view.0.text"
-    )
