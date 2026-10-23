@@ -9,7 +9,7 @@ import { RATE, RUB_WHOLE } from "../money";
 import { Icon, type IconName } from "../ui/Icon";
 import { plural } from "../ui/plural";
 
-const WIDGET_EVENTS = 4;
+const WIDGET_EVENTS = 3;
 
 const PRODUCTS = { one: "продукт", few: "продукта", many: "продуктов" };
 
@@ -34,7 +34,7 @@ export function DashboardPage() {
       <div className="dashboard-grid">
         <section className="card feed-widget" aria-labelledby={headingId}>
           <div className="feed-head">
-            <h2 id={headingId}>Что важно для вашего бизнеса</h2>
+            <h2 id={headingId}>Что изменилось вокруг ваших операций</h2>
             <Link to="/events">Все события</Link>
           </div>
           <EventList

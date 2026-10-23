@@ -71,6 +71,22 @@ def entity_dimensions(
     return industry, region, countries, products
 
 
+def news_topics(news: Sequence[NewsItem], subjects: Sequence[str]) -> set[str]:
+    return {
+        factor.name
+        for item in news
+        for factor in item.factors
+        if factor.name in FACTORS and factor.strength > 0
+    }.union(subjects)
+
+
+def news_claims(
+    item: NewsItem, claims: list[HouseViewClaim], subjects: Sequence[str]
+) -> list[HouseViewClaim]:
+    topics = news_topics([item], subjects)
+    return [claim for claim in claims if claim.subject in topics]
+
+
 def score_news(
     item: NewsItem,
     profile: ClientProfile,
@@ -148,12 +164,9 @@ class Prefilter:
                 candidates.append(Candidate(news=item, score=score))
         candidates.sort(key=lambda candidate: (-candidate.score, candidate.news.id))
         topics = sorted(
-            {
-                factor.name
-                for candidate in candidates
-                for factor in candidate.news.factors
-                if factor.name in FACTORS and factor.strength > 0
-            }.union(subjects if candidates else ())
+            news_topics(
+                [candidate.news for candidate in candidates], subjects if candidates else ()
+            )
         )
         batches = await gather(
             *(self._house_view.claims(subject=subject, as_of=as_of) for subject in topics)

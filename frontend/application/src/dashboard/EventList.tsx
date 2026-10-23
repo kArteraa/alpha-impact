@@ -1,20 +1,17 @@
 import type { ReactNode } from "react";
-import { useCompany } from "../company/context";
-import { EVENTS } from "../data/events";
 import { EventSummary } from "./EventSummary";
-import { rankEvents } from "./rankEvents";
+import { FeedStatus } from "./FeedStatus";
 
 export function EventList({ limit, empty }: { limit?: number; empty: ReactNode }) {
-  const { company } = useCompany();
-  const events = rankEvents(EVENTS[company.id] ?? []).slice(0, limit);
-  if (events.length === 0) {
-    return <p className="empty">{empty}</p>;
-  }
   return (
-    <ul key={company.id} className="events appear">
-      {events.map((event) => (
-        <EventSummary key={event.id} event={event} />
-      ))}
-    </ul>
+    <FeedStatus empty={<p className="empty">{empty}</p>}>
+      {(events) => (
+        <ul className="events appear">
+          {events.slice(0, limit).map((event) => (
+            <EventSummary key={event.id} event={event} />
+          ))}
+        </ul>
+      )}
+    </FeedStatus>
   );
 }
