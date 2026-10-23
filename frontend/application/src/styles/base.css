@@ -150,6 +150,7 @@ a:hover {
 
 .button-primary:hover:not(:disabled) {
   background: var(--primary-hover);
+  text-decoration: none;
 }
 
 .button:active:not(:disabled),
