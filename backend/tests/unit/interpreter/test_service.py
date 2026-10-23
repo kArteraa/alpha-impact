@@ -156,6 +156,40 @@ async def test_retellings_of_one_bank_claim_give_one_quote(harness: Harness) -> 
     ]
 
 
+async def test_bank_view_quote_is_not_repeated_in_other_blocks(harness: Harness) -> None:
+    reason = harness.answers[1]["why_for_you"][0]
+    harness.answers[1]["why_for_you"] = [
+        reason,
+        {
+            "text": "Банк ждёт рост тарифов",
+            "type": "bank",
+            "source": "house_view:logistics-approved",
+        },
+    ]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert [claim.text for claim in card.why_for_you] == [reason["text"]]
+    assert [claim.text for claim in card.bank_view] == [harness.seed.house_view[0].claim]
+
+
+async def test_block_of_only_the_bank_view_quote_keeps_it(harness: Harness) -> None:
+    harness.answers[1]["why_for_you"] = [
+        {
+            "text": "Банк ждёт рост тарифов",
+            "type": "bank",
+            "source": "house_view:logistics-approved",
+        }
+    ]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert [claim.text for claim in card.why_for_you] == [harness.seed.house_view[0].claim]
+
+
+async def test_identical_claims_of_any_type_give_one_claim(harness: Harness) -> None:
+    action = harness.answers[1]["actions"][0]
+    harness.answers[1]["actions"] = [action, dict(action)]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert [claim.text for claim in card.actions] == [action["text"]]
+
+
 @pytest.mark.parametrize(
     "change",
     [
