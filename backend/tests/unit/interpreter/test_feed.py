@@ -12,6 +12,8 @@ from shared.contracts.schemas import DashboardContext, Factor, InterpretRequest,
 from tests.unit.interpreter.followup_support import rate_claim
 from tests.unit.interpreter.support import Harness, plan_answer, saved
 
+RATE_TOPICS = ("key_rate", "inflation", "debt_market", "corporate_credit")
+
 CONFIG = load_config(PLANS_PATH)
 
 
@@ -152,7 +154,10 @@ async def test_feed_card_gets_house_view_on_its_news_topics_only(harness: Harnes
     assert {
         news_id: {key for key in sources if key.startswith("house_view:")}
         for news_id, sources in model.drafts.items()
-    } == {"trade": {"house_view:hv-trade_logistics"}, "rate": {"house_view:hv-key_rate"}}
+    } == {
+        "trade": {"house_view:hv-trade_logistics"},
+        "rate": {f"house_view:hv-{topic}" for topic in RATE_TOPICS},
+    }
 
 
 async def test_feed_card_critic_checks_against_the_whole_bank_view(harness: Harness) -> None:
@@ -163,7 +168,7 @@ async def test_feed_card_critic_checks_against_the_whole_bank_view(harness: Harn
     await harness.agent.interpret(request)
 
     checked = [{claim.id for claim in call.args[1]} for call in critic.review.await_args_list]
-    assert checked == [{"hv-trade_logistics", "hv-key_rate"}] * 2
+    assert checked == [{"hv-trade_logistics", *(f"hv-{topic}" for topic in RATE_TOPICS)}] * 2
 
 
 async def test_each_card_plan_is_traced_with_its_template(harness: Harness) -> None:
