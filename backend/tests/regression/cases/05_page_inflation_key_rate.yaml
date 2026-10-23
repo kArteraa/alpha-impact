@@ -1,5 +1,5 @@
 id: page_inflation_key_rate
-title: Новость об инфляции автодилеру — позиция банка по ставке (по инфляции — AH-71)
+title: Новость об инфляции автодилеру — позиция банка по ставке
 request:
   user_id: user_cfo_autodealer
   client_id: U_44245

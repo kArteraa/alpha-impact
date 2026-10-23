@@ -6,6 +6,7 @@ from math import fsum, isfinite
 
 from apps.services.interpreter.context import current_claims
 from shared.config.factors import FACTORS
+from shared.config.house_view_topics import topics_for
 from shared.config.news_entities import COUNTRY, INDUSTRY, PRODUCT, REGION, entity
 from shared.contracts.ports import HouseViewService, NewsService
 from shared.contracts.schemas import (
@@ -72,12 +73,8 @@ def entity_dimensions(
 
 
 def news_topics(news: Sequence[NewsItem], subjects: Sequence[str]) -> set[str]:
-    return {
-        factor.name
-        for item in news
-        for factor in item.factors
-        if factor.name in FACTORS and factor.strength > 0
-    }.union(subjects)
+    factors = {factor.name for item in news for factor in item.factors if factor.strength > 0}
+    return topics_for(factors).union(subjects)
 
 
 def news_claims(
