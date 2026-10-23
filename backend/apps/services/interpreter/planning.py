@@ -28,6 +28,7 @@ class PlanConfig(BaseModel):
     followup_focus: str = Field(min_length=1)
     max_question_chars: int = Field(gt=0)
     max_followup_depth: int = Field(gt=0)
+    loan_horizon_months: int = Field(gt=0)
     templates: dict[str, Template]
 
     @model_validator(mode="after")

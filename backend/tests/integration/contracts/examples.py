@@ -17,6 +17,13 @@ CLAIM = s.Claim(text="Ставка 14% сохранена", type=s.ClaimType.FAC
 OFFER = s.ProductOffer(
     product="letter_of_credit", reason="Отрасль получателя в стрессе", rule_id="r1"
 )
+CALCULATION = s.WhatIfResult(
+    kind="deposit_terms",
+    value=12_500.0,
+    unit="RUB",
+    formula="фиксация: 10 000 000 ₽ × 14% × 90/365 = 345 205,48 ₽",
+    assumptions=["ставка депозита следует ключевой ставке"],
+)
 CARD = s.InsightCard(
     id="card-1",
     headline="Логистика в убытке",
@@ -27,6 +34,7 @@ CARD = s.InsightCard(
     bank_view=[CLAIM],
     basis=[SOURCE],
     product_offer=OFFER,
+    calculation=CALCULATION,
     significance=0.8,
     trace_id="trace-1",
 )

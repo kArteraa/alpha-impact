@@ -6,6 +6,7 @@ trace_summary_chars: 1000
 followup_focus: Ответ на вопрос пользователя к карточке с опорой на её источники и актуальную позицию банка
 max_question_chars: 1000
 max_followup_depth: 5
+loan_horizon_months: 12
 templates:
   payment:
     focus: Сроки поставки и тарифы получателя платежа; связь с отраслью и долей в оттоке клиента
