@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import path from "node:path";
+import { askTranche, CARD_TIMEOUT_MS, chooseOption } from "../support/panel";
 import { logIn } from "../support/session";
 
 const OUTPUT = path.join(__dirname, "..", "..", "..", "docs", "design");
@@ -29,11 +30,10 @@ test.describe("dark theme", () => {
 
 test("payment with the panel", async ({ page }) => {
   await page.goto("/payments/new");
-  await page.getByRole("combobox", { name: "Получатель" }).click();
-  await page.getByRole("option", { name: /Северо-Западная логистика/ }).click();
+  await chooseOption(page, "Получатель", /Северо-Западная логистика/);
   await page.getByLabel("Сумма, ₽").fill("1500000");
   await page.getByRole("heading", { name: "Платёж контрагенту" }).click();
-  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
   await page.screenshot({ path: path.join(OUTPUT, "payment.png"), fullPage: true, animations: "disabled" });
 });
 
@@ -53,12 +53,16 @@ test("deposit", async ({ page }) => {
   await page.goto("/deposits/new");
   await page.getByLabel("Сумма, ₽").fill("10000000");
   await page.getByRole("heading", { name: "Разместить средства" }).click();
+  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
   await page.screenshot({ path: path.join(OUTPUT, "deposit.png"), fullPage: true, animations: "disabled" });
 });
 
 test("loans", async ({ page }) => {
   await page.goto("/loans");
   await expect(page.getByRole("table", { name: "Кредитный портфель" })).toBeVisible();
+  await askTranche(page, /Кредитная линия/, "50000000");
+  await page.getByRole("heading", { name: "Новый транш" }).click();
+  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
   await page.screenshot({ path: path.join(OUTPUT, "loans.png"), fullPage: true, animations: "disabled" });
 });
 

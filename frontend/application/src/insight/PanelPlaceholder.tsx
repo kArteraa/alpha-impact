@@ -1,19 +1,16 @@
 import { Icon } from "../ui/Icon";
 
 interface PanelPlaceholderProps {
-  recipient: boolean;
-  amount: boolean;
+  title: string;
+  text: string;
+  steps: readonly (readonly [label: string, done: boolean])[];
 }
 
-export function PanelPlaceholder({ recipient, amount }: PanelPlaceholderProps) {
-  const steps = [
-    ["Получатель", recipient],
-    ["Сумма", amount],
-  ] as const;
+export function PanelPlaceholder({ title, text, steps }: PanelPlaceholderProps) {
   return (
     <div className="card panel-placeholder">
-      <h2>Проверка платежа</h2>
-      <p className="muted">Выберите получателя и сумму — Alpha Impact покажет новости и позицию банка, которые касаются этого платежа</p>
+      <h2>{title}</h2>
+      <p className="muted">{text}</p>
       <ol className="placeholder-steps">
         {steps.map(([label, done], index) => (
           <li key={label} data-done={done}>

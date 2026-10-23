@@ -9,6 +9,12 @@ export function parseAmount(raw: string): number | null {
   return amount > 0 ? amount : null;
 }
 
+const AMOUNT_HINT = "Сумма — положительное число, не больше двух знаков после запятой";
+
+export function amountError(raw: string): string | null {
+  return raw.trim() !== "" && parseAmount(raw) === null ? AMOUNT_HINT : null;
+}
+
 const KOPECK_DIGITS = 2;
 const RUB_PLAIN = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 const RUB_KOPECKS = new Intl.NumberFormat("ru-RU", {

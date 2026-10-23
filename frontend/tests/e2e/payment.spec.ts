@@ -1,11 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
+import { CARD_TIMEOUT_MS, chooseOption } from "../support/panel";
 import { logIn } from "../support/session";
 
-const CARD_TIMEOUT_MS = 60_000;
-
 async function pay(page: Page, recipient: string, amount: string) {
-  await page.getByRole("combobox", { name: "Получатель" }).click();
-  await page.getByRole("option", { name: recipient }).click();
+  await chooseOption(page, "Получатель", recipient);
   await page.getByLabel("Сумма, ₽").fill(amount);
 }
 

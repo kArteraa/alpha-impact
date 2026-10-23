@@ -43,7 +43,7 @@ alpha-impact/
     models/                    скачанная модель эмбеддингов (не коммитится, .gitignore)
     data/
       raw/                     три csv (не коммитятся, .gitignore) + PDF/DOCX отчётов
-      seed/                    тестовые пользователи, контрагенты, остатки, портфели (коммитятся)
+      seed/                    тестовые пользователи и подтверждённые утверждения house view (коммитятся)
     tests/
       unit/                    по сервисам + test_import_boundaries.py
       integration/             контрактные тесты, БД, gateway
