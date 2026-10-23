@@ -205,3 +205,11 @@ async def test_invalid_answer_carries_charged_usage() -> None:
         usage.tokens_out,
         usage.cost_rub,
     )
+
+
+async def test_schema_error_names_fields_without_values() -> None:
+    gateway = make_gateway(ModelServer(content='{"ok": "maybe"}').http_client(), MemoryStore())
+    with pytest.raises(ModelOutputInvalid) as raised:
+        await gateway.complete("critic", "sys", "usr", Verdict)
+    assert "ok" in str(raised.value)
+    assert "maybe" not in str(raised.value)

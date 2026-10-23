@@ -59,7 +59,11 @@ def parse(content: str, schema: type[BaseModel] | None) -> object:
     try:
         return schema.model_validate_json(content)
     except ValidationError as error:
-        raise ModelOutputInvalid(f"answer does not match {schema.__name__}") from error
+        details = "; ".join(
+            f"{'.'.join(map(str, item['loc']))}: {item['msg']}"
+            for item in error.errors(include_input=False, include_url=False)
+        )
+        raise ModelOutputInvalid(f"answer does not match {schema.__name__}: {details}") from error
 
 
 class ModelGateway:
