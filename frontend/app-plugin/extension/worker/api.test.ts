@@ -69,12 +69,10 @@ describe("extension api", () => {
   });
 
   it("turns a failed status into an ApiError with that status", async () => {
-    const failure = await createApi(BASE, replying(501, { detail: "Not implemented" }))
-      .extensionToken()
-      .catch((error: unknown) => error);
+    const token = createApi(BASE, replying(501, { detail: "Not implemented" })).extensionToken();
 
-    expect(failure).toBeInstanceOf(ApiError);
-    expect((failure as ApiError).status).toBe(501);
+    await expect(token).rejects.toBeInstanceOf(ApiError);
+    await expect(token).rejects.toMatchObject({ status: 501 });
   });
 
   it("turns an unreachable server into a NetworkError", async () => {

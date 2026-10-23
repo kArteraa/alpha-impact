@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type ExtensionState, type Send, stateOf } from "../messages";
+import type { ExtensionState, Send } from "../messages";
 import { Login } from "./Login";
 import { Preferences } from "./Preferences";
 
@@ -7,7 +7,7 @@ export function Popup({ send }: { send: Send }) {
   const [state, setState] = useState<ExtensionState | null>(null);
 
   useEffect(() => {
-    void send({ type: "state" }).then((reply) => setState(stateOf(reply)));
+    void send({ type: "state" }).then(setState);
   }, [send]);
 
   return (

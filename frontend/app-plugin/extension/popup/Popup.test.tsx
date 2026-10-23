@@ -1,58 +1,51 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AUTOSHOW_DEFAULT } from "../config";
 import type { ExtensionState, Send, WorkerRequest } from "../messages";
 import { Popup } from "./Popup";
 
-const allPages = { article: true, counterparty: true, tender: true, fx_rate: true };
 const signedOut: ExtensionState = { signedIn: false };
 const signedIn: ExtensionState = {
   signedIn: true,
   userId: "user_cfo",
   clients: ["U_1941", "U_9250"],
-  settings: { clientId: "U_1941", role: null, autoshow: allPages },
+  settings: { clientId: "U_1941", role: null, autoshow: AUTOSHOW_DEFAULT },
 };
 
 function popupWith(state: ExtensionState, replies: Partial<Record<WorkerRequest["type"], unknown>> = {}) {
   const send = vi.fn(async (request: WorkerRequest) =>
-    request.type === "state" ? { ok: true, value: state } : (replies[request.type] ?? { ok: true, value: signedIn }),
+    request.type === "state" ? state : (replies[request.type] ?? signedIn),
   );
   render(<Popup send={send as unknown as Send} />);
   return send;
 }
 
-function select(label: string) {
-  return screen.getByLabelText<HTMLSelectElement>(label);
+async function logInAs(userId: string) {
+  fireEvent.change(await screen.findByPlaceholderText("user_cfo_wholesale"), { target: { value: userId } });
+  fireEvent.click(screen.getByRole("button", { name: "Войти" }));
 }
 
 describe("Popup", () => {
   afterEach(cleanup);
 
   it("logs in with a test user", async () => {
-    const send = popupWith(signedOut);
+    const send = popupWith(signedOut, { login: { ok: true, value: signedIn } });
 
-    fireEvent.change(await screen.findByPlaceholderText("user_cfo_wholesale"), { target: { value: " user_cfo " } });
-    fireEvent.click(screen.getByRole("button", { name: "Войти" }));
+    await logInAs(" user_cfo ");
 
     expect(send).toHaveBeenCalledWith({ type: "login", userId: "user_cfo" });
     expect(await screen.findByLabelText("Компания")).toBeTruthy();
   });
 
-  it("explains a failed login", async () => {
-    popupWith(signedOut, { login: { ok: false, error: "http", status: 501 } });
+  it.each([
+    [{ ok: false, error: "http", status: 501 }, "Вход не удался (501)"],
+    [{ ok: false, error: "network" }, "Сервер недоступен"],
+  ])("explains a failed login %j", async (reply, text) => {
+    popupWith(signedOut, { login: reply });
 
-    fireEvent.change(await screen.findByPlaceholderText("user_cfo_wholesale"), { target: { value: "user_cfo" } });
-    fireEvent.click(screen.getByRole("button", { name: "Войти" }));
+    await logInAs("user_cfo");
 
-    expect((await screen.findByRole("alert")).textContent).toBe("Вход не удался (501)");
-  });
-
-  it("says when the server is unreachable", async () => {
-    popupWith(signedOut, { login: { ok: false, error: "network" } });
-
-    fireEvent.change(await screen.findByPlaceholderText("user_cfo_wholesale"), { target: { value: "user_cfo" } });
-    fireEvent.click(screen.getByRole("button", { name: "Войти" }));
-
-    expect((await screen.findByRole("alert")).textContent).toBe("Сервер недоступен");
+    expect((await screen.findByRole("alert")).textContent).toBe(text);
   });
 
   it("shows company names and saves the chosen company", async () => {
@@ -71,9 +64,9 @@ describe("Popup", () => {
   it("asks for a role and saves it", async () => {
     const send = popupWith(signedIn);
 
-    await screen.findByLabelText("Роль");
-    expect(select("Роль").selectedOptions[0].textContent).toBe("Выберите роль");
-    fireEvent.change(select("Роль"), { target: { value: "treasurer" } });
+    const role = await screen.findByLabelText<HTMLSelectElement>("Роль");
+    expect(role.selectedOptions[0].textContent).toBe("Выберите роль");
+    fireEvent.change(role, { target: { value: "treasurer" } });
 
     expect(send).toHaveBeenCalledWith({ type: "settings", patch: { role: "treasurer" } });
   });
@@ -90,11 +83,11 @@ describe("Popup", () => {
     ]);
     fireEvent.click(tenders);
 
-    expect(send).toHaveBeenCalledWith({ type: "settings", patch: { autoshow: { ...allPages, tender: false } } });
+    expect(send).toHaveBeenCalledWith({ type: "settings", patch: { autoshow: { tender: false } } });
   });
 
   it("logs out", async () => {
-    const send = popupWith(signedIn, { logout: { ok: true, value: signedOut } });
+    const send = popupWith(signedIn, { logout: signedOut });
 
     fireEvent.click(await screen.findByRole("button", { name: "Выйти" }));
 
@@ -103,7 +96,7 @@ describe("Popup", () => {
   });
 
   it("returns to login when the session has ended", async () => {
-    popupWith(signedIn, { settings: { ok: false, error: "signed_out" } });
+    popupWith(signedIn, { settings: signedOut });
 
     fireEvent.change(await screen.findByLabelText("Роль"), { target: { value: "cfo" } });
 
