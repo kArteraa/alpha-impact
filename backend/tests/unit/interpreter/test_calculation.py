@@ -3,7 +3,6 @@ from datetime import date
 import pytest
 
 from apps.services.interpreter.calculation import (
-    KEY_RATE,
     RatePoints,
     calculation_evidence,
     key_rate_points,
@@ -14,41 +13,19 @@ from apps.services.interpreter.calculation import (
 from apps.services.whatif.service import Calculator
 from shared.contracts.errors import DomainError
 from shared.contracts.schemas import DepositContext, HouseViewClaim, LoanContext
+from tests.unit.interpreter.support import key_rate_claim
 
 AS_OF = date(2026, 10, 23)
 
 
-def key_rate(
-    claim_id: str,
-    kind: str,
-    value: str | None,
-    day: date,
-    valid_until: date | None = None,
-    status: str = "approved",
-) -> HouseViewClaim:
-    return HouseViewClaim.model_validate(
-        {
-            "id": claim_id,
-            "claim": f"Ключевая ставка {value}",
-            "type": kind,
-            "subject": KEY_RATE,
-            "value": value,
-            "date": day,
-            "valid_until": valid_until,
-            "source_doc": "macro.pdf",
-            "page": 1,
-            "superseded_by": None,
-            "status": status,
-        }
-    )
-
-
 SEED_RATES = [
-    key_rate("fact-jul", "fact", "14,25%", date(2026, 7, 24)),
-    key_rate("fact-sep", "fact", "14,0%", date(2026, 9, 11)),
-    key_rate("old-2026", "forecast", "13,5%", date(2026, 9, 7), date(2026, 12, 31), "superseded"),
-    key_rate("end-2026", "forecast", "14,0%", date(2026, 9, 11), date(2026, 12, 31)),
-    key_rate("end-2027", "forecast", "12,0%", date(2026, 9, 11), date(2027, 12, 31)),
+    key_rate_claim("fact-jul", "fact", "14,25%", date(2026, 7, 24)),
+    key_rate_claim("fact-sep", "fact", "14,0%", date(2026, 9, 11)),
+    key_rate_claim(
+        "old-2026", "forecast", "13,5%", date(2026, 9, 7), date(2026, 12, 31), "superseded"
+    ),
+    key_rate_claim("end-2026", "forecast", "14,0%", date(2026, 9, 11), date(2026, 12, 31)),
+    key_rate_claim("end-2027", "forecast", "12,0%", date(2026, 9, 11), date(2027, 12, 31)),
 ]
 
 
@@ -71,15 +48,15 @@ def test_points_take_latest_fact_and_current_forecasts() -> None:
 
 
 def test_later_forecast_wins_for_the_same_horizon() -> None:
-    newer = key_rate("newer", "forecast", "13,0%", date(2026, 10, 1), date(2026, 12, 31))
+    newer = key_rate_claim("newer", "forecast", "13,0%", date(2026, 10, 1), date(2026, 12, 31))
     points = key_rate_points([*SEED_RATES, newer], AS_OF)
     assert points is not None
     assert points.forecasts[0] == (date(2026, 12, 31), 13.0)
 
 
 def test_other_subjects_and_future_claims_are_ignored() -> None:
-    other = key_rate("fx", "forecast", "90,0%", date(2026, 9, 1), date(2026, 12, 31))
-    future = key_rate("future", "fact", "10,0%", date(2026, 11, 1))
+    other = key_rate_claim("fx", "forecast", "90,0%", date(2026, 9, 1), date(2026, 12, 31))
+    future = key_rate_claim("future", "fact", "10,0%", date(2026, 11, 1))
     claims = [*SEED_RATES, other.model_copy(update={"subject": "fx_rate"}), future]
     points = key_rate_points(claims, AS_OF)
     assert points is not None
@@ -91,8 +68,8 @@ def test_other_subjects_and_future_claims_are_ignored() -> None:
     [
         [claim for claim in SEED_RATES if claim.type != "fact"],
         [claim for claim in SEED_RATES if claim.type != "forecast"],
-        [*SEED_RATES, key_rate("vague", "forecast", "снижение", AS_OF, date(2027, 6, 30))],
-        [key_rate("vague-fact", "fact", "высокая", AS_OF), *SEED_RATES[2:]],
+        [*SEED_RATES, key_rate_claim("vague", "forecast", "снижение", AS_OF, date(2027, 6, 30))],
+        [key_rate_claim("vague-fact", "fact", "высокая", AS_OF), *SEED_RATES[2:]],
     ],
 )
 def test_no_points_without_parsed_fact_and_forecast(claims: list[HouseViewClaim]) -> None:
@@ -131,14 +108,9 @@ async def test_floating_loan_uses_average_bank_rate_over_horizon() -> None:
     calculation = plan_calculation(action, SEED_RATES, AS_OF, 12)
     assert calculation is not None
     result = await calculation.run(Calculator())
-    points = key_rate_points(SEED_RATES, AS_OF)
-    assert points is not None
-    path = rate_path(points, AS_OF, 12)
-    assert path is not None
-    expected = round(sum(path) / len(path), 2)
     assert result.kind == "rate_burden"
-    assert result.value == round(50_000_000 * (expected - 14.0) / 100, 2)
-    assert result.value < 0
+    assert result.formula == "50 000 000 ₽ × (13,42% − 14%) × 12/12 мес. = −290 000 ₽"
+    assert result.value == -290_000.0
     assert "спред к ключевой ставке не меняется" in result.assumptions
 
 

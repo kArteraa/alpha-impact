@@ -3,11 +3,14 @@ import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import date, timedelta
+from itertools import pairwise
 
 from apps.services.interpreter.context import Evidence, current_claims, source_key
+from shared.config.periods import DAYS_IN_MONTH
 from shared.contracts.errors import DomainError
 from shared.contracts.ports import WhatIfService
 from shared.contracts.schemas import (
+    ActionContext,
     DepositContext,
     HouseViewClaim,
     LoanContext,
@@ -16,7 +19,6 @@ from shared.contracts.schemas import (
 )
 
 KEY_RATE = "key_rate"
-DAYS_IN_MONTH = 30
 RATE_DECIMALS = 2
 RATE_VALUE = re.compile(r"(\d+(?:,\d+)?)%")
 DEPOSIT_RATE = "ставка депозита следует ключевой ставке по позиции банка"
@@ -59,58 +61,46 @@ def parse_rate(value: str | None) -> float | None:
 def key_rate_points(claims: list[HouseViewClaim], as_of: date) -> RatePoints | None:
     current = [claim for claim in current_claims(claims, as_of) if claim.subject == KEY_RATE]
     facts = sorted((claim for claim in current if claim.type == "fact"), key=lambda c: c.date)
-    forecasts = sorted(
-        (
-            claim
-            for claim in current
-            if claim.type == "forecast"
-            and claim.valid_until is not None
-            and claim.valid_until > as_of
-        ),
-        key=lambda claim: claim.date,
+    now = parse_rate(facts[-1].value) if facts else None
+    points = {
+        claim.valid_until: parse_rate(claim.value)
+        for claim in sorted(current, key=lambda c: c.date)
+        if claim.type == "forecast" and claim.valid_until is not None and claim.valid_until > as_of
+    }
+    forecasts = tuple(
+        (until, value) for until, value in sorted(points.items()) if value is not None
     )
-    if not facts or not forecasts:
+    if now is None or not forecasts or len(forecasts) != len(points):
         return None
-    now = parse_rate(facts[-1].value)
-    points: dict[date, float] = {}
-    for claim in forecasts:
-        value = parse_rate(claim.value)
-        if value is None or claim.valid_until is None:
-            return None
-        points[claim.valid_until] = value
-    if now is None:
-        return None
-    return RatePoints(now=now, forecasts=tuple(sorted(points.items())))
+    return RatePoints(now=now, forecasts=forecasts)
 
 
 def rate_path(points: RatePoints, as_of: date, months: int) -> list[float] | None:
     anchors = [(as_of, points.now), *points.forecasts]
-    path = []
-    for month in range(months):
-        rate = _interpolate(anchors, as_of + timedelta(days=month * DAYS_IN_MONTH))
-        if rate is None:
-            return None
-        path.append(rate)
-    return path
+    path = [
+        _interpolate(anchors, as_of + timedelta(days=month * DAYS_IN_MONTH))
+        for month in range(months)
+    ]
+    rates = [rate for rate in path if rate is not None]
+    return rates if len(rates) == len(path) else None
 
 
 def plan_calculation(
-    action: DepositContext | LoanContext,
-    claims: list[HouseViewClaim],
-    as_of: date,
-    loan_horizon_months: int,
+    action: ActionContext, claims: list[HouseViewClaim], as_of: date, loan_horizon_months: int
 ) -> Calculation | None:
-    if isinstance(action, LoanContext) and action.rate_type != "floating":
-        return None
     points = key_rate_points(claims, as_of)
     if points is None:
         return None
     if isinstance(action, DepositContext):
         return _deposit(action, points, as_of)
-    return _loan(action, points, as_of, loan_horizon_months)
+    if isinstance(action, LoanContext) and action.rate_type == "floating":
+        return _loan(action, points, as_of, loan_horizon_months)
+    return None
 
 
-def calculation_evidence(result: WhatIfResult) -> dict[str, Evidence]:
+def calculation_evidence(result: WhatIfResult | None) -> dict[str, Evidence]:
+    if result is None:
+        return {}
     ref = SourceRef(kind="calc", id=result.kind, title=TITLES[result.kind])
     return {source_key(ref): Evidence(ref, result.model_dump(mode="json"), None, False)}
 
@@ -146,8 +136,9 @@ def _loan(action: LoanContext, points: RatePoints, as_of: date, months: int) -> 
 
 
 def _interpolate(anchors: list[tuple[date, float]], day: date) -> float | None:
-    for (start, low), (end, high) in zip(anchors, anchors[1:], strict=False):
+    for (start, low), (end, high) in pairwise(anchors):
         if start <= day <= end:
-            rate = low + (high - low) * (day - start).days / (end - start).days
-            return round(rate, RATE_DECIMALS)
+            return round(
+                low + (high - low) * (day - start).days / (end - start).days, RATE_DECIMALS
+            )
     return None

@@ -11,21 +11,28 @@ templates:
   payment:
     focus: Сроки поставки и тарифы получателя платежа; связь с отраслью и долей в оттоке клиента
     context: [profile, counterparty, news, house_view]
+    house_view_subjects: []
   deposit:
     focus: Влияние событий и позиции банка по ставке на сумму и срок размещения
     context: [profile, news, house_view]
+    house_view_subjects: [key_rate]
   fx:
     focus: Влияние валютных и внешнеторговых событий на будущий платёж
     context: [profile, news, house_view]
+    house_view_subjects: []
   loan:
     focus: Условия финансирования и чувствительность клиента к ставке
     context: [profile, news, house_view]
+    house_view_subjects: [key_rate]
   payroll:
     focus: События рынка труда и последствия для фонда оплаты труда
     context: [profile, news, house_view]
+    house_view_subjects: []
   dashboard:
     focus: Значимость событий для компании и её текущих экспозиций
     context: [profile, news, house_view]
+    house_view_subjects: []
   page:
     focus: Значимость вставленной новости для компании и её текущих экспозиций
     context: [profile, news, house_view]
+    house_view_subjects: []
