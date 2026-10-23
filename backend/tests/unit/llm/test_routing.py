@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from apps.services.llm.catalog import (
+    INTERACTIVE_TASKS,
     MODELS_PATH,
     ModelCatalog,
     ModelNotAllowed,
@@ -11,7 +12,7 @@ from apps.services.llm.catalog import (
     load_models,
 )
 from shared.config.settings import Settings
-from tests.unit.llm.fakes import ALLOWED, INTERACTIVE_TASKS, ROUTES, TIMEOUTS
+from tests.unit.llm.fakes import ALLOWED, ROUTES, TIMEOUTS
 
 CASE_ALLOW_LIST = {
     "google/gemma-4-26b-a4b-it",

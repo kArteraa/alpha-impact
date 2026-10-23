@@ -55,8 +55,10 @@ class ModelCatalog:
         return task not in self._reasoning_off
 
     def timeout(self, task: str) -> float:
-        self.route(task)
-        return self._timeouts[task]
+        seconds = self._timeouts.get(task)
+        if seconds is None:
+            raise UnknownTask(f"no timeout is set for task {task!r}")
+        return seconds
 
 
 def load_models(path: Path) -> ModelsFile:
