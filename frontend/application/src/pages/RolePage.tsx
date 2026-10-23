@@ -1,9 +1,10 @@
 import type { Role } from "@alpha-impact/plugin";
 import { type FormEvent, useId, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
-import { ROLE_LABELS } from "../session/roles";
+import { ROLE_FOCUS, ROLE_LABELS } from "../session/roles";
 import { loadUser, saveRole } from "../session/storage";
 import { AuthScreen } from "../ui/AuthScreen";
+import { Icon } from "../ui/Icon";
 
 const ROLES = Object.entries(ROLE_LABELS) as [Role, string][];
 
@@ -30,11 +31,29 @@ export function RolePage() {
       <span id={hintId} className="muted">
         Alpha Impact расставит акценты под ваши задачи
       </span>
-      <div className="segmented segmented-stack" role="radiogroup" aria-labelledby={hintId}>
+      <div className="choice-list" role="radiogroup" aria-labelledby={hintId}>
         {ROLES.map(([value, label]) => (
-          <label key={value}>
-            <input type="radio" name="role" value={value} checked={role === value} onChange={() => setRole(value)} />
-            <span>{label}</span>
+          <label key={value} className="choice">
+            <input
+              type="radio"
+              name="role"
+              value={value}
+              checked={role === value}
+              aria-labelledby={`${hintId}-${value}`}
+              aria-describedby={`${hintId}-${value}-focus`}
+              onChange={() => setRole(value)}
+            />
+            <span className="choice-body">
+              <span id={`${hintId}-${value}`} className="choice-title">
+                {label}
+              </span>
+              <span id={`${hintId}-${value}-focus`} className="choice-hint">
+                {ROLE_FOCUS[value]}
+              </span>
+              <span className="choice-mark" aria-hidden="true">
+                <Icon name="check" size={14} />
+              </span>
+            </span>
           </label>
         ))}
       </div>

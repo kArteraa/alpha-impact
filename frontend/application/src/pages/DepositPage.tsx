@@ -1,10 +1,16 @@
 import { useId, useState } from "react";
 import { DEPOSIT_RATES } from "../data/depositRates";
 import { DEPOSIT_TERMS, type DepositTerm, depositIncome } from "../deposit/calc";
-import { parseAmount, RATE } from "../money";
+import { parseAmount, RATE, RUB_COMPACT } from "../money";
+import { AmountField } from "../ui/AmountField";
+import { Columns, type ColumnSeries } from "../ui/charts/Columns";
 import { Amount } from "../ui/Amount";
 
 const DEFAULT_TERM: DepositTerm = 6;
+
+const formatRate = (value: number) => `${RATE.format(value)}%`;
+
+const TERM_SERIES: readonly ColumnSeries[] = [{ name: "Срок", tone: "primary" }];
 
 export function DepositPage() {
   const termLabelId = useId();
@@ -18,15 +24,7 @@ export function DepositPage() {
       <div className="page-grid">
         <form className="card form" onSubmit={(event) => event.preventDefault()}>
           <h2>Разместить средства</h2>
-          <label className="field">
-            <span className="muted">Сумма, ₽</span>
-            <input
-              inputMode="decimal"
-              placeholder="0"
-              value={amountText}
-              onChange={(event) => setAmountText(event.target.value)}
-            />
-          </label>
+          <AmountField label="Сумма" value={amountText} onChange={setAmountText} />
           <div className="field field-static">
             <span className="muted" id={termLabelId}>
               Срок
@@ -46,16 +44,32 @@ export function DepositPage() {
             </div>
           </div>
         </form>
-        <aside className="card deposit-result" aria-live="polite">
-          <span className="muted">Доход за {term} мес.</span>
-          {amount === null ? (
-            <p className="empty">Введите сумму — посчитаю доход за выбранный срок</p>
-          ) : (
-            <Amount className="amount-lg" testId="deposit-income" value={depositIncome(amount, term, rate)} />
-          )}
-          <div className="deposit-meta">
-            <span className="badge">{RATE.format(rate)}% годовых</span>
-            <span className="badge badge-warning">демо-ставки</span>
+        <aside className="card deposit-result">
+          <div className="deposit-now" aria-live="polite">
+            <span className="muted">Доход за {term} мес.</span>
+            {amount === null ? (
+              <p className="empty">Введите сумму — посчитаю доход за выбранный срок</p>
+            ) : (
+              <Amount className="amount-lg" testId="deposit-income" value={depositIncome(amount, term, rate)} />
+            )}
+            <div className="deposit-meta">
+              <span className="badge">{RATE.format(rate)}% годовых</span>
+              <span className="badge badge-warning">демо-ставки</span>
+            </div>
+          </div>
+          <div className="deposit-terms">
+            <span className="muted">{amount === null ? "Ставка по сроку" : "Доход по сроку"}</span>
+            <Columns
+              title={amount === null ? "Ставка по сроку, % годовых" : "Доход по сроку"}
+              series={TERM_SERIES}
+              groups={DEPOSIT_TERMS.map((option) => ({
+                label: `${option} мес.`,
+                values: [amount === null ? DEPOSIT_RATES[option] : depositIncome(amount, option, DEPOSIT_RATES[option])],
+                active: option === term,
+              }))}
+              format={amount === null ? formatRate : (value) => RUB_COMPACT.format(value)}
+              showValues
+            />
           </div>
         </aside>
       </div>

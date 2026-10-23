@@ -3,9 +3,20 @@ import { type FormEvent, useCallback, useId, useState } from "react";
 import { api } from "../api/client";
 import { useCompany } from "../company/context";
 import { COUNTERPARTIES } from "../data/counterparties";
-import { formatRub, parseAmount } from "../money";
-import { useSession } from "../session/context";
+import { parseAmount } from "../money";
+import { PanelPlaceholder } from "../payment/PanelPlaceholder";
 import { type PaymentForm, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
+import { useSession } from "../session/context";
+import { AmountField } from "../ui/AmountField";
+import { Select } from "../ui/Select";
+
+const AMOUNT_HINT = "Сумма — положительное число, не больше двух знаков после запятой";
+
+const RECIPIENTS = COUNTERPARTIES.map((counterparty) => ({
+  value: counterparty.id,
+  label: counterparty.name,
+  hint: counterparty.description,
+}));
 
 const EMPTY_FORM: PaymentForm = { beneficiaryId: "", amount: "", purpose: "" };
 
@@ -13,7 +24,6 @@ export function PaymentPage() {
   const { company } = useCompany();
   const { userId, role } = useSession();
   const recipientHintId = useId();
-  const amountHintId = useId();
   const [form, setForm] = useState<PaymentForm>(EMPTY_FORM);
   const [heldAmount, setHeldAmount] = useState<number | null>(null);
   const paymentContext = toPaymentContext(form);
@@ -52,48 +62,26 @@ export function PaymentPage() {
         <form className="card form" onSubmit={submit}>
           <h2>Платёж контрагенту</h2>
           <div className="field">
-            <label htmlFor={`${recipientHintId}-select`} className="muted">
-              Получатель
-            </label>
-            <select
-              id={`${recipientHintId}-select`}
+            <Select
+              label="Получатель"
               value={form.beneficiaryId}
-              aria-describedby={recipient ? recipientHintId : undefined}
-              onChange={(event) => update("beneficiaryId", event.target.value)}
-            >
-              <option value="">Выберите контрагента</option>
-              {COUNTERPARTIES.map((counterparty) => (
-                <option key={counterparty.id} value={counterparty.id}>
-                  {counterparty.name}
-                </option>
-              ))}
-            </select>
+              placeholder="Выберите контрагента"
+              options={RECIPIENTS}
+              describedBy={recipient ? recipientHintId : undefined}
+              onChange={(value) => update("beneficiaryId", value)}
+            />
             {recipient && (
               <small id={recipientHintId} className="field-hint">
                 {recipient.description}
               </small>
             )}
           </div>
-          <div className="field">
-            <label htmlFor={`${amountHintId}-input`} className="muted">
-              Сумма, ₽
-            </label>
-            <input
-              id={`${amountHintId}-input`}
-              inputMode="decimal"
-              placeholder="0"
-              value={form.amount}
-              aria-invalid={amountInvalid}
-              aria-describedby={amountInvalid ? amountHintId : undefined}
-              onChange={(event) => updateAmount(event.target.value)}
-              onBlur={() => update("amount", formatRub(form.amount))}
-            />
-            {amountInvalid && (
-              <small id={amountHintId} className="field-hint">
-                Сумма — положительное число, не больше двух знаков после запятой
-              </small>
-            )}
-          </div>
+          <AmountField
+            label="Сумма"
+            value={form.amount}
+            error={amountInvalid ? AMOUNT_HINT : null}
+            onChange={updateAmount}
+          />
           <label className="field field-static">
             <span className="muted">Назначение платежа</span>
             <textarea rows={3} value={form.purpose} onChange={(event) => update("purpose", event.target.value)} />
@@ -115,7 +103,7 @@ export function PaymentPage() {
               onRetry={insight.retry}
             />
           ) : (
-            <div className="card card-neutral muted">Выберите получателя и сумму — Alpha Impact проверит, что важно для этого платежа</div>
+            <PanelPlaceholder recipient={recipient !== undefined} amount={parseAmount(form.amount) !== null} />
           )}
         </aside>
       </div>

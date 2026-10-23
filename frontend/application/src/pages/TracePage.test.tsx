@@ -25,6 +25,27 @@ describe("TracePage", () => {
     expect(screen.getByText(/820 мс/)).toBeTruthy();
   });
 
+  it("sums up the time, the tokens and the models", () => {
+    renderTrace("trace-mock-1");
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Как получен вывод");
+    expect(screen.getByText("3,5 с")).toBeTruthy();
+    const facts = document.querySelector(".trace-facts")?.textContent?.replace(/\s/g, " ");
+    expect(facts).toBe("Токены5 830 → 790МоделиQwen3.6 35B A3B, GLM-5.3-FlashШагов6");
+    const parts = Array.from(
+      screen.getByRole("list", { name: "На что ушло время" }).querySelectorAll("li"),
+      (part) => part.textContent?.replace(/\s/g, " "),
+    );
+    expect(parts).toEqual(["Модели3 150 мс", "Поиск новостей и позиции банка310 мс", "Служебные шаги50 мс"]);
+  });
+
+  it("lists the critic verdicts", () => {
+    renderTrace("trace-mock-1");
+
+    const verdicts = screen.getByRole("region", { name: "Проверка критика" });
+    expect(verdicts.querySelectorAll("li").length).toBe(2);
+  });
+
   it("leads back to the main screen", () => {
     renderTrace("trace-mock-1");
 

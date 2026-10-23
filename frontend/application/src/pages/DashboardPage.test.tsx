@@ -17,11 +17,16 @@ describe("DashboardPage", () => {
     expect(document.querySelector(".dashboard-grid")?.firstElementChild).toBe(widget());
   });
 
-  it("shows the three most significant events with why and source badges", () => {
+  it("shows the four most significant events with why and source badges", () => {
     renderWithCompany(<DashboardPage />);
 
     const headlines = within(widget()).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
-    expect(headlines).toEqual(["Логистика в убытке", "Банк ждёт снижения ключевой ставки", "Юань дорожает к рублю"]);
+    expect(headlines).toEqual([
+      "Логистика в убытке",
+      "Банк ждёт снижения ключевой ставки",
+      "Юань дорожает к рублю",
+      "Розничный спрос в регионах замедлился",
+    ]);
     expect(within(widget()).getByText("43% ваших платежей уходит перевозчикам и складам")).toBeTruthy();
     expect(within(widget()).getAllByLabelText("Банк").length).toBeGreaterThan(0);
   });
@@ -39,6 +44,22 @@ describe("DashboardPage", () => {
     const loans = screen.getByRole("link", { name: /^Кредиты/ }).textContent;
     expect(loans).toContain(RUB_WHOLE.format(173_400_000));
     expect(loans).toContain("в портфеле · 3 продукта");
+  });
+
+  it("shows the balance trend on the account tile", () => {
+    renderWithCompany(<DashboardPage />);
+
+    expect(screen.getByRole("img", { name: "Остаток за месяц" })).toBeTruthy();
+    expect(document.querySelector(".account-change")?.textContent?.replace(/\s/g, " ")).toBe("+6,8 млн ₽ за месяц");
+  });
+
+  it("sums up money in and out by week", () => {
+    renderWithCompany(<DashboardPage />);
+
+    const cashflow = screen.getByRole("region", { name: "Движение денег" });
+    expect(cashflow.textContent?.replace(/\s/g, " ")).toContain("Поступления364,1 млн ₽");
+    const table = within(cashflow).getByRole("table", { name: /Поступления и списания по неделям/ });
+    expect(within(table).getAllByRole("row").length).toBe(6);
   });
 
   it.each([

@@ -1,5 +1,5 @@
 import type { Role } from "@alpha-impact/plugin";
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { vi } from "vitest";
@@ -26,6 +26,11 @@ export function stubApi(routes: Record<string, Reply | ((init?: RequestInit) => 
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
+}
+
+export function chooseOption(label: string, option: string | RegExp) {
+  fireEvent.click(screen.getByRole("combobox", { name: label }));
+  fireEvent.click(screen.getByRole("option", { name: option }));
 }
 
 export function signIn(userId = TEST_USER, role: Role = "cfo") {

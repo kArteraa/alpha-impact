@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api } from "./client";
+import { ApiError, api, onUnauthorized } from "./client";
 
 function respond(status: number, body: unknown) {
   return vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status }));
@@ -65,6 +65,19 @@ describe("api client", () => {
     expect(url).toBe("/api/interpret");
     expect(init.signal).toBe(controller.signal);
     expect(JSON.parse(init.body)).toEqual(body);
+  });
+
+  it("tells the subscriber when the session is gone", async () => {
+    vi.stubGlobal("fetch", respond(401, "no session"));
+    const expired = vi.fn();
+    const unsubscribe = onUnauthorized(expired);
+
+    const failure = await api.clients().catch((error: unknown) => error);
+    unsubscribe();
+    await api.clients().catch(() => undefined);
+
+    expect((failure as ApiError).status).toBe(401);
+    expect(expired).toHaveBeenCalledOnce();
   });
 
   it("raises ApiError with the response status", async () => {

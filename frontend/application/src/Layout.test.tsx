@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TEST_USER, renderApp, signIn, stubApi } from "./testing";
+import { TEST_USER, chooseOption, renderApp, signIn, stubApi } from "./testing";
 
 const SECTIONS = [
   ["Главная", "/"],
@@ -50,14 +50,11 @@ describe("Layout", () => {
   it("offers the companies the user may act for", async () => {
     await renderShell();
 
-    const options = Array.from(screen.getByLabelText<HTMLSelectElement>("Компания").options, (option) => [
-      option.value,
-      option.text,
-    ]);
-    expect(options).toEqual([
-      ["U_1941", "ООО «Северный опт»"],
-      ["U_9250", "АО «СтройЛизинг»"],
-    ]);
+    fireEvent.click(screen.getByRole("combobox", { name: "Компания" }));
+
+    const options = screen.getAllByRole("option").map((option) => option.textContent);
+    expect(options).toEqual(["СООО «Северный опт»Счёт ·· 4417", "САО «СтройЛизинг»Счёт ·· 9032"]);
+    expect(screen.getByRole("option", { name: /Северный опт/ }).getAttribute("aria-selected")).toBe("true");
   });
 
   it("names a company without a showcase card by its id", async () => {
@@ -73,7 +70,7 @@ describe("Layout", () => {
 
     expect(screen.getByRole("link", { name: "События" }).querySelector(".nav-count")?.textContent).toBe("4");
 
-    fireEvent.change(screen.getByLabelText("Компания"), { target: { value: "U_9250" } });
+    chooseOption("Компания", /СтройЛизинг/);
 
     expect(screen.getByRole("link", { name: "События" }).querySelector(".nav-count")?.textContent).toBe("3");
   });
@@ -82,7 +79,7 @@ describe("Layout", () => {
     await renderShell();
     expect(screen.getByText("Логистика в убытке")).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Компания"), { target: { value: "U_9250" } });
+    chooseOption("Компания", /СтройЛизинг/);
 
     expect(screen.queryByText("Логистика в убытке")).toBeNull();
     expect(screen.getByText("Цемент подорожал на 9%")).toBeTruthy();
@@ -119,5 +116,33 @@ describe("Layout", () => {
     renderApp();
 
     expect((await screen.findByRole("alert")).textContent).toBe("Не удалось загрузить компании");
+    expect(screen.getByRole("link", { name: "Войти заново" }).getAttribute("href")).toBe("/login");
+    expect(document.querySelector(".brand")?.textContent).toBe("Alpha Impact");
+  });
+
+  it("offers to log in again to a user without companies", async () => {
+    stubApi({ "GET /api/clients": [200, []] });
+
+    renderApp();
+
+    expect((await screen.findByRole("alert")).textContent).toBe("Нет компаний, доступных этому пользователю");
+    expect(screen.getByRole("link", { name: "Войти заново" }).getAttribute("href")).toBe("/login");
+  });
+
+  it("keeps the brand on screen while the companies load", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+
+    renderApp();
+
+    expect(document.querySelector(".brand")?.textContent).toBe("Alpha Impact");
+  });
+
+  it("sends the user to the login screen when any request finds the session expired", async () => {
+    stubApi({ "GET /api/clients": [200, ["U_1941"]], "GET /api/profile/U_1941": [401, "no session"] });
+
+    renderApp("/profile");
+
+    expect(await screen.findByRole("heading", { name: "Вход" })).toBeTruthy();
+    expect(localStorage.getItem("alpha-impact.user")).toBeNull();
   });
 });

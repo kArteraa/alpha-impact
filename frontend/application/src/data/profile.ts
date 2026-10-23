@@ -1,7 +1,19 @@
+export type FeatureGroup = "company" | "geography" | "scale" | "bank";
+
 export interface FeatureSpec {
   label: string;
-  options?: Record<string, string>;
+  group: FeatureGroup;
+  labels?: Record<string, string>;
+  editable?: boolean;
+  money?: boolean;
 }
+
+export const FEATURE_GROUPS: readonly (readonly [FeatureGroup, string])[] = [
+  ["company", "Компания"],
+  ["geography", "География"],
+  ["scale", "Масштаб"],
+  ["bank", "Отношения с банком"],
+];
 
 const INDUSTRIES: Record<string, string> = {
   wholesale: "Оптовая торговля",
@@ -23,18 +35,33 @@ const INDUSTRIES: Record<string, string> = {
   other: "Другое",
 };
 
+const PRODUCTS: Record<string, string> = {
+  settlement: "Расчётный счёт",
+  guarantee: "Гарантия",
+  loan: "Кредит",
+  leasing: "Лизинг",
+  deposit: "Депозит",
+  payroll: "Зарплатный проект",
+  factoring: "Факторинг",
+};
+
+const CLIENT_TYPES: Record<string, string> = {
+  CLIENT: "Действующий клиент",
+  CLOSE_CLIENT: "Закрытый клиент",
+};
+
 export const FEATURES: Record<string, FeatureSpec> = {
-  industry_class: { label: "Отрасль", options: INDUSTRIES },
-  okved_name: { label: "Основной вид деятельности" },
-  okved_code: { label: "Код ОКВЭД" },
-  region: { label: "Регион" },
-  city: { label: "Город" },
-  revenue_rub: { label: "Выручка, ₽" },
-  workers: { label: "Сотрудников" },
-  company_age: { label: "Возраст компании, лет" },
-  eco_stage: { label: "Стадия развития" },
-  ownership: { label: "Форма собственности" },
-  cl_type: { label: "Статус клиента" },
-  products: { label: "Продукты банка" },
-  import_countries: { label: "Страны импорта" },
+  industry_class: { label: "Отрасль", group: "company", labels: INDUSTRIES, editable: true },
+  okved_name: { label: "Основной вид деятельности", group: "company" },
+  okved_code: { label: "Код ОКВЭД", group: "company" },
+  company_age: { label: "Возраст компании, лет", group: "company" },
+  eco_stage: { label: "Стадия развития", group: "company" },
+  ownership: { label: "Форма собственности", group: "company" },
+  region: { label: "Регион", group: "geography" },
+  city: { label: "Город", group: "geography" },
+  import_countries: { label: "Страны импорта", group: "geography" },
+  revenue_rub: { label: "Выручка", group: "scale", money: true },
+  workers: { label: "Сотрудников", group: "scale" },
+  cl_type: { label: "Статус клиента", group: "bank", labels: CLIENT_TYPES },
+  products: { label: "Продукты банка", group: "bank", labels: PRODUCTS },
 };
