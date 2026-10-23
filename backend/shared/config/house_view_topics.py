@@ -14,8 +14,11 @@ def load_topics(path: Path) -> Mapping[str, tuple[str, ...]]:
     overlap = sorted(set(raw) & set(FACTORS))
     if overlap:
         raise ValueError(f"house view topics must not repeat factors: {overlap}")
+    empty = sorted(topic for topic, factors in raw.items() if not factors)
+    if empty:
+        raise ValueError(f"house view topics need at least one factor: {empty}")
     unknown = sorted({factor for factors in raw.values() for factor in factors} - set(FACTORS))
-    if unknown or not all(raw.values()):
+    if unknown:
         raise ValueError(f"house view topics must point to known factors, unknown: {unknown}")
     return MappingProxyType({topic: tuple(factors) for topic, factors in raw.items()})
 

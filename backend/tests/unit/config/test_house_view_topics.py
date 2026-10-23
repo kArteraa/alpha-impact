@@ -1,3 +1,4 @@
+from apps.services.house_view.ingest.config import load_config
 from shared.config.factors import FACTORS
 from shared.config.house_view_topics import HOUSE_VIEW_SUBJECTS, HOUSE_VIEW_TOPICS, topics_for
 from tests.house_view_data import APPROVED
@@ -20,3 +21,7 @@ def test_key_rate_reaches_inflation_and_debt_market() -> None:
 
 def test_subjects_are_factors_and_topics() -> None:
     assert set(HOUSE_VIEW_SUBJECTS) == set(FACTORS) | set(HOUSE_VIEW_TOPICS)
+
+
+def test_every_ingest_subject_except_other_is_reachable() -> None:
+    assert set(load_config().subjects) - set(HOUSE_VIEW_SUBJECTS) == {"other"}
