@@ -10,11 +10,15 @@ class ReportFiles:
         self.directory = directory.resolve()
 
     def path(self, name: str) -> Path:
-        candidate = (self.directory / name).resolve()
-        if (
-            candidate.parent != self.directory
-            or candidate.suffix != REPORT_SUFFIX
-            or not candidate.is_file()
-        ):
+        try:
+            candidate = (self.directory / name).resolve()
+            found = (
+                candidate.parent == self.directory
+                and candidate.suffix == REPORT_SUFFIX
+                and candidate.is_file()
+            )
+        except (OSError, ValueError) as error:
+            raise NotFound(f"Unknown report {name}") from error
+        if not found:
             raise NotFound(f"Unknown report {name}")
         return candidate

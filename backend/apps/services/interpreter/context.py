@@ -121,7 +121,9 @@ def prompt_context(
         "counterparty": counterparty.model_dump() if counterparty is not None else None,
         "sources": {
             key: {
-                "ref": item.ref.model_dump(mode="json"),
+                "ref": item.ref.model_dump(
+                    mode="json", exclude={"url"} if item.ref.kind == "house_view" else None
+                ),
                 "value": item.value,
                 "factual": item.factual,
                 "bank_text": item.bank_text,

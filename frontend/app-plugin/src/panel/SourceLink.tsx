@@ -8,20 +8,20 @@ interface SourceLinkProps extends HTMLAttributes<HTMLElement> {
 }
 
 const SAFE_URL = /^https?:\/\//i;
-const GATEWAY_PATH = /^\/(?!\/)/;
+const GATEWAY_PATH = /^\/(?![/\\])/;
 
-function sourceHref(url: string | null | undefined, apiBase: string | undefined): string | null {
+function sourceHref({ kind, url }: SourceRef, apiBase: string | undefined): string | null {
   if (!url) {
     return null;
   }
   if (SAFE_URL.test(url)) {
     return url;
   }
-  return apiBase !== undefined && GATEWAY_PATH.test(url) ? `${apiBase}${url}` : null;
+  return kind === "house_view" && apiBase !== undefined && GATEWAY_PATH.test(url) ? `${apiBase}${url}` : null;
 }
 
 export function SourceLink({ source, children, ...attributes }: SourceLinkProps) {
-  const href = sourceHref(source.url, useContext(ApiBaseContext));
+  const href = sourceHref(source, useContext(ApiBaseContext));
   if (href) {
     return (
       <a href={href} target="_blank" rel="noreferrer" {...attributes}>

@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router";
 import { ApiError, api } from "../api/client";
 import { useLoad } from "../api/useLoad";
 import { Panel } from "../insight/Panel";
-import { NUMBER, RUB, SECONDS } from "../money";
+import { NUMBER, RUB_FINE, SECONDS } from "../money";
 import { requestLabel, stepLabel, verdictLabel } from "../trace/labels";
 import { type StepKind, traceSummary } from "../trace/summary";
 import { Alert } from "../ui/Alert";
@@ -36,7 +36,7 @@ function stepMeta(step: TraceStep): string {
     parts.push(step.model);
   }
   if (step.cost_rub) {
-    parts.push(RUB.format(step.cost_rub));
+    parts.push(RUB_FINE.format(step.cost_rub));
   }
   return parts.join(" · ");
 }
@@ -75,7 +75,7 @@ function Summary({ trace }: { trace: Trace }) {
         </div>
         <div>
           <dt>Стоимость</dt>
-          <dd>{RUB.format(summary.costRub)}</dd>
+          <dd>{RUB_FINE.format(summary.costRub)}</dd>
         </div>
       </dl>
     </div>
