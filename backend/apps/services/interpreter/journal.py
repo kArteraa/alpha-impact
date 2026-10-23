@@ -36,9 +36,10 @@ class Journal:
         try:
             yield step
         except Exception as error:
-            step.output_summary = type(error).__name__
+            charged = isinstance(error, ChargedModelError)
+            described = f"{type(error).__name__}: {error}" if charged else type(error).__name__
+            step.output_summary = described[: self.summary_chars]
             if isinstance(error, ChargedModelError):
-                step.output_summary = f"{type(error).__name__}: {error}"[: self.summary_chars]
                 step.tokens_in, step.tokens_out = error.tokens_in, error.tokens_out
                 step.cost_rub = error.cost_rub
             raise
