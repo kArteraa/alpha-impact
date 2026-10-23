@@ -155,6 +155,17 @@ async def test_feed_card_gets_house_view_on_its_news_topics_only(harness: Harnes
     } == {"trade": {"house_view:hv-trade_logistics"}, "rate": {"house_view:hv-key_rate"}}
 
 
+async def test_feed_card_critic_checks_against_the_whole_bank_view(harness: Harness) -> None:
+    news = [event("trade", "trade_logistics", 0.9), event("rate", "key_rate", 0.8)]
+    request = use_feed(harness, news, FeedModel(), trade_logistics=1.0, key_rate=1.0)
+    critic = harness.use_critic([], [])
+
+    await harness.agent.interpret(request)
+
+    checked = [{claim.id for claim in call.args[1]} for call in critic.review.await_args_list]
+    assert checked == [{"hv-trade_logistics", "hv-key_rate"}] * 2
+
+
 async def test_each_card_plan_is_traced_with_its_template(harness: Harness) -> None:
     request = use_feed(harness, trade("n1", "n2", "n3"), FeedModel(), trade_logistics=1.0)
 

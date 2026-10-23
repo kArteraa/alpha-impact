@@ -5,6 +5,7 @@ import { ApiError, api } from "../api/client";
 import { useLoad } from "../api/useLoad";
 import { useCompany } from "../company/context";
 import { FEATURES } from "../data/profile";
+import { useFeed } from "../feed/context";
 import { type FeatureSection, featureText, groupFeatures, isEditable } from "../profile/features";
 import { Alert } from "../ui/Alert";
 import { Select } from "../ui/Select";
@@ -146,11 +147,13 @@ function FeatureList({ profile, onSave }: FeatureListProps) {
 export function ProfilePage() {
   const { company } = useCompany();
   const navigate = useNavigate();
+  const { retry: refreshFeed } = useFeed();
   const [profile, setProfile] = useLoad(useCallback(() => api.profile(company.id), [company.id]));
 
   async function save(name: string, value: string): Promise<string | null> {
     try {
       setProfile(await api.patchFeature(company.id, name, value));
+      refreshFeed();
       return null;
     } catch (failure) {
       return failure instanceof ApiError ? `Не удалось сохранить (${failure.status})` : "Сервер недоступен";

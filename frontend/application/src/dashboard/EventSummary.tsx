@@ -3,7 +3,6 @@ import { Link } from "react-router";
 
 export function EventSummary({ event }: { event: InsightCard }) {
   const consequence = event.consequences[0];
-  const types = [...new Set(event.consequences.map((claim) => claim.type))];
   return (
     <li className="event">
       <div className="event-head">
@@ -12,12 +11,14 @@ export function EventSummary({ event }: { event: InsightCard }) {
         </h3>
         <Significance value={event.significance} />
       </div>
-      {consequence && <p className="muted">{consequence.text}</p>}
-      <div className="event-badges">
-        {types.map((type) => (
-          <ClaimTypeBadge key={type} type={type} />
-        ))}
-      </div>
+      {consequence && (
+        <>
+          <p className="muted">{consequence.text}</p>
+          <div className="event-badges">
+            <ClaimTypeBadge type={consequence.type} />
+          </div>
+        </>
+      )}
     </li>
   );
 }

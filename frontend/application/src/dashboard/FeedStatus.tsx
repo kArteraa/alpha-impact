@@ -27,7 +27,7 @@ export function FeedStatus({ empty, children }: FeedStatusProps) {
         {Array.from({ length: SKELETON_LINES }, (_, index) => (
           <span key={index} className="insight-skeleton" />
         ))}
-        <p className="empty">Смотрю новости и позицию банка за 14 дней</p>
+        <p className="empty">Смотрю новости и позицию банка</p>
       </div>
     );
   }

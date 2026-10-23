@@ -48,7 +48,7 @@ describe("EventsPage", () => {
   it("shows that it is still looking for events", () => {
     renderEvents({ response: undefined });
 
-    expect(screen.getByText("Смотрю новости и позицию банка за 14 дней")).toBeTruthy();
+    expect(screen.getByText("Смотрю новости и позицию банка")).toBeTruthy();
     expect(document.querySelector(".page-sub")?.textContent).toBe("ООО «Северный опт»");
   });
 
