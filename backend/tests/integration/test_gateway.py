@@ -361,3 +361,5 @@ def test_openapi_matches_contracts(app: FastAPI) -> None:
     assert clients["schema"]["items"]["type"] == "string"
     report = paths["/reports/{source_doc}"]["get"]["responses"]["200"]["content"]
     assert list(report) == ["application/pdf"]
+    token = schema_ref(paths["/auth/extension-token"]["post"], *ok_body)
+    assert set(openapi["components"]["schemas"][token]["properties"]) == {"token", "expires_at"}

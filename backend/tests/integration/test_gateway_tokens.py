@@ -86,12 +86,26 @@ async def test_expired_extension_token_is_rejected(
     assert interpreter.calls == []
 
 
-async def test_unknown_token_is_rejected_even_with_session(
-    logged_in: httpx.AsyncClient, interpreter: FakeInterpreter
+@pytest.mark.parametrize("authorization", ["Bearer not-a-token", "Bearer ", "Basic dXNlcg=="])
+async def test_bad_authorization_is_rejected_even_with_session(
+    logged_in: httpx.AsyncClient, interpreter: FakeInterpreter, authorization: str
 ) -> None:
     response = await logged_in.post(
-        "/interpret", json=interpret_body(), headers=bearer("not-a-token")
+        "/interpret", json=interpret_body(), headers={"Authorization": authorization}
     )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert interpreter.calls == []
+
+
+async def test_token_of_another_scope_is_rejected(
+    logged_in: httpx.AsyncClient,
+    sessions: async_sessionmaker[AsyncSession],
+    interpreter: FakeInterpreter,
+) -> None:
+    token = await token_only(logged_in)
+    async with sessions() as session, session.begin():
+        await session.execute(update(ExtensionTokenRow).values(scope="profile:read"))
+    response = await logged_in.post("/interpret", json=interpret_body(), headers=bearer(token))
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert interpreter.calls == []
 
