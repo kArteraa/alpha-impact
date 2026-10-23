@@ -17,6 +17,13 @@ CLAIM = s.Claim(text="Ставка 14% сохранена", type=s.ClaimType.FAC
 OFFER = s.ProductOffer(
     product="letter_of_credit", reason="Отрасль получателя в стрессе", rule_id="r1"
 )
+CALCULATION = s.WhatIfResult(
+    kind="rate_burden",
+    value=-290_000.0,
+    unit="RUB",
+    formula="50 000 000 ₽ × (13,42% − 14%) × 12/12 мес. = −290 000 ₽",
+    assumptions=["спред к ключевой ставке не меняется"],
+)
 CARD = s.InsightCard(
     id="card-1",
     headline="Логистика в убытке",
@@ -27,6 +34,7 @@ CARD = s.InsightCard(
     bank_view=[CLAIM],
     basis=[SOURCE],
     product_offer=OFFER,
+    calculation=CALCULATION,
     significance=0.8,
     trace_id="trace-1",
 )

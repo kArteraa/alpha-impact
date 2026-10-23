@@ -1,11 +1,11 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from unittest.mock import AsyncMock
 
 from pydantic import BaseModel
 
-from apps.services import interpreter
+from apps.services import interpreter, whatif
 from scripts.prefilter_mocks import MockSeed, make_seed
 from shared.config.settings import Settings
 from shared.contracts.ports import (
@@ -18,10 +18,35 @@ from shared.contracts.ports import (
     ProfileService,
     TraceStore,
 )
-from shared.contracts.schemas import InterpretRequest, Role
+from shared.contracts.schemas import HouseViewClaim, InterpretRequest, Role, Trace
 from shared.di.container import Container
 
 CALL_COST = 0.05
+
+
+def key_rate_claim(
+    claim_id: str,
+    kind: str,
+    value: str | None,
+    day: date,
+    valid_until: date | None = None,
+    status: str = "approved",
+) -> HouseViewClaim:
+    return HouseViewClaim.model_validate(
+        {
+            "id": claim_id,
+            "claim": f"Банк: ключевая ставка {value}",
+            "type": kind,
+            "subject": "key_rate",
+            "value": value,
+            "date": day,
+            "valid_until": valid_until,
+            "source_doc": "macro.pdf",
+            "page": 2,
+            "superseded_by": None,
+            "status": status,
+        }
+    )
 
 
 def constant(value: object) -> Callable[[Container], object]:
@@ -142,7 +167,17 @@ def make_harness(settings: Settings) -> Harness:
         (Settings, settings),
     ):
         container.register(port, constant(service))
+    whatif.register(container)
     interpreter.register(container)
     return Harness(
         container, seed, profiles, counterparties, news, house_view, llm, traces, answers
     )
+
+
+def saved(harness: Harness) -> Trace:
+    trace: Trace = harness.traces.save.call_args.args[0]
+    return trace
+
+
+def tool_names(harness: Harness) -> list[str]:
+    return [step.name for step in saved(harness).steps if step.step == "tool"]

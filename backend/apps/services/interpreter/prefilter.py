@@ -1,4 +1,5 @@
 from asyncio import gather
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from math import fsum, isfinite
@@ -116,6 +117,7 @@ class Prefilter:
         since: date,
         as_of: date,
         limit: int,
+        subjects: Sequence[str],
     ) -> PrefilterResult:
         if since > as_of:
             raise ValueError("since must not be after as_of")
@@ -125,7 +127,9 @@ class Prefilter:
             factors=[], industry=None, region=None, country=None, since=since, limit=limit
         )
         recent = [item for item in items if since <= item.published_at.date() <= as_of]
-        return await self.rank(recent, profile, action, counterparty, as_of=as_of)
+        return await self.rank(
+            recent, profile, action, counterparty, as_of=as_of, subjects=subjects
+        )
 
     async def rank(
         self,
@@ -135,6 +139,7 @@ class Prefilter:
         counterparty: CounterpartyContext | None,
         *,
         as_of: date,
+        subjects: Sequence[str],
     ) -> PrefilterResult:
         candidates = []
         for item in items:
@@ -142,20 +147,20 @@ class Prefilter:
             if score >= self._threshold:
                 candidates.append(Candidate(news=item, score=score))
         candidates.sort(key=lambda candidate: (-candidate.score, candidate.news.id))
-        subjects = sorted(
+        topics = sorted(
             {
                 factor.name
                 for candidate in candidates
                 for factor in candidate.news.factors
                 if factor.name in FACTORS and factor.strength > 0
-            }
+            }.union(subjects if candidates else ())
         )
         batches = await gather(
-            *(self._house_view.claims(subject=subject, as_of=as_of) for subject in subjects)
+            *(self._house_view.claims(subject=subject, as_of=as_of) for subject in topics)
         )
         claims = {
             claim.id: claim
-            for subject, batch in zip(subjects, batches, strict=True)
+            for subject, batch in zip(topics, batches, strict=True)
             for claim in current_claims(batch, as_of)
             if claim.subject == subject
         }

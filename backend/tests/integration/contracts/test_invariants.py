@@ -3,7 +3,7 @@ from pydantic import ValidationError
 
 from shared.contracts import schemas as s
 from shared.contracts.errors import ChargedModelError, DomainError
-from tests.integration.contracts.examples import CARD, FEATURE, SOURCE, STEP
+from tests.integration.contracts.examples import CALCULATION, CARD, FEATURE, SOURCE, STEP
 
 
 def test_claim_without_source_ref_is_invalid() -> None:
@@ -58,3 +58,14 @@ def test_charged_model_error_keeps_call_usage() -> None:
         0,
         0.0,
     )
+
+
+def test_card_without_calculation_reads_as_none() -> None:
+    payload = CARD.model_dump(mode="json")
+    del payload["calculation"]
+    assert s.InsightCard.model_validate(payload).calculation is None
+
+
+def test_card_calculation_is_a_whatif_result() -> None:
+    payload = CARD.model_dump(mode="json")
+    assert s.InsightCard.model_validate(payload).calculation == CALCULATION

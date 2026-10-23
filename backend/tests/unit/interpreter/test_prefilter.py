@@ -186,7 +186,9 @@ def ranker(seed: MockSeed, threshold: float) -> tuple[Prefilter, AsyncMock, Asyn
 async def test_rank_keeps_relevant_item_with_current_house_view(seed: MockSeed) -> None:
     prefilter, news, house_view = ranker(seed, threshold=1.0)
     item = seed.news[0].model_copy(update={"entities": ["product:settlement"]})
-    result = await prefilter.rank([item], seed.profile, DashboardContext(), None, as_of=seed.as_of)
+    result = await prefilter.rank(
+        [item], seed.profile, DashboardContext(), None, as_of=seed.as_of, subjects=[]
+    )
     assert [candidate.news for candidate in result.candidates] == [item]
     assert result.candidates[0].score == pytest.approx(1.1)
     assert [claim.id for claim in result.house_view] == ["logistics-approved"]
@@ -197,7 +199,9 @@ async def test_rank_keeps_relevant_item_with_current_house_view(seed: MockSeed) 
 async def test_rank_below_threshold_is_empty_without_house_view(seed: MockSeed) -> None:
     prefilter, _, house_view = ranker(seed, threshold=1.0)
     item = seed.news[0].model_copy(update={"entities": []})
-    result = await prefilter.rank([item], seed.profile, DashboardContext(), None, as_of=seed.as_of)
+    result = await prefilter.rank(
+        [item], seed.profile, DashboardContext(), None, as_of=seed.as_of, subjects=[]
+    )
     assert result.candidates == []
     assert result.house_view == []
     house_view.claims.assert_not_awaited()
@@ -208,5 +212,34 @@ async def test_rank_ignores_publication_window(seed: MockSeed) -> None:
     item = seed.news[0].model_copy(
         update={"published_at": seed.news[0].published_at.replace(year=2020)}
     )
-    result = await prefilter.rank([item], seed.profile, DashboardContext(), None, as_of=seed.as_of)
+    result = await prefilter.rank(
+        [item], seed.profile, DashboardContext(), None, as_of=seed.as_of, subjects=[]
+    )
     assert len(result.candidates) == 1
+
+
+async def test_rank_fetches_required_subjects_once_with_news_factors(seed: MockSeed) -> None:
+    prefilter, _, house_view = ranker(seed, threshold=1.0)
+    item = seed.news[0].model_copy(update={"entities": ["product:settlement"]})
+    await prefilter.rank(
+        [item],
+        seed.profile,
+        DashboardContext(),
+        None,
+        as_of=seed.as_of,
+        subjects=["key_rate", "trade_logistics"],
+    )
+    assert sorted(call.kwargs["subject"] for call in house_view.claims.await_args_list) == [
+        "key_rate",
+        "trade_logistics",
+    ]
+
+
+async def test_rank_skips_required_subjects_without_candidates(seed: MockSeed) -> None:
+    prefilter, _, house_view = ranker(seed, threshold=1.0)
+    item = seed.news[0].model_copy(update={"entities": []})
+    result = await prefilter.rank(
+        [item], seed.profile, DashboardContext(), None, as_of=seed.as_of, subjects=["key_rate"]
+    )
+    assert result.house_view == []
+    house_view.claims.assert_not_awaited()
