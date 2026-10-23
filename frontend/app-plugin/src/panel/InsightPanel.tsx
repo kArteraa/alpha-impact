@@ -7,6 +7,8 @@ import type { FeedbackHandler } from "./CardFooter";
 import { CheckIcon } from "./icons";
 
 const SKELETON_LINES = 3;
+const PENDING_NOTE = "Смотрю новости и позицию банка по этому действию";
+const FAILED_NOTE = "Не успел разобраться с этим действием";
 
 export interface InsightPanelProps {
   actionContext: ActionContext;
@@ -15,6 +17,8 @@ export interface InsightPanelProps {
   pending?: boolean;
   failed?: boolean;
   compact?: boolean;
+  pendingNote?: string;
+  failedNote?: string;
   onRetry?: () => void;
   onFollowup?: (cardId: string) => void;
   onFeedback?: FeedbackHandler;
@@ -28,6 +32,8 @@ export function InsightPanel({
   pending = false,
   failed = false,
   compact = false,
+  pendingNote = PENDING_NOTE,
+  failedNote = FAILED_NOTE,
   onRetry,
   onFollowup,
   onFeedback,
@@ -41,7 +47,7 @@ export function InsightPanel({
   if (failed) {
     return (
       <section {...base} data-state="failed">
-        <p className="panel-note">Не успел разобраться с этим действием</p>
+        <p className="panel-note">{failedNote}</p>
         {onRetry && (
           <button type="button" className="button-secondary" onClick={onRetry}>
             Попробовать ещё раз
@@ -56,7 +62,7 @@ export function InsightPanel({
         {Array.from({ length: SKELETON_LINES }, (_, index) => (
           <span key={index} className="insight-skeleton" />
         ))}
-        <p className="panel-note">Смотрю новости и позицию банка по этому действию</p>
+        <p className="panel-note">{pendingNote}</p>
       </section>
     );
   }

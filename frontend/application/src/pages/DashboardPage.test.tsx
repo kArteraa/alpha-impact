@@ -23,6 +23,12 @@ describe("DashboardPage", () => {
     expect(document.querySelector(".dashboard-grid")?.firstElementChild).toBe(widget());
   });
 
+  it("offers to paste a news item from the feed widget", () => {
+    renderDashboard();
+
+    expect(within(widget()).getByRole("link", { name: "Вставить новость" }).getAttribute("href")).toBe("/news/new");
+  });
+
   it("shows the three most significant events with significance, a consequence and source badges", () => {
     renderDashboard();
 

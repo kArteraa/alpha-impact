@@ -25,8 +25,11 @@
   margin-bottom: var(--s-2);
 }
 
-.feed-head a {
+.feed-actions {
+  display: flex;
   flex: none;
+  align-items: center;
+  gap: var(--s-4);
   font-size: var(--fs-16);
   line-height: var(--lh-24);
 }
