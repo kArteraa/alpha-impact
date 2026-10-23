@@ -1,0 +1,84 @@
+- step: 2
+  title: Лента оптовика
+  expect: card
+  request:
+    user_id: user_cfo_wholesale
+    client_id: U_1941
+    role: cfo
+    action_context:
+      type: dashboard
+- step: 2
+  title: Лента «СтройЛизинга» после переключения компании
+  expect: card
+  request:
+    user_id: user_cfo_wholesale
+    client_id: U_9250
+    role: cfo
+    action_context:
+      type: dashboard
+- step: 3
+  title: Платёж перевозчику «Северо-Западная логистика»
+  expect: card
+  request:
+    user_id: user_cfo_wholesale
+    client_id: U_1941
+    role: cfo
+    action_context:
+      type: payment
+      beneficiary_id: U_96105
+      amount: 4500000
+- step: 4
+  title: Лента компании без карточки — молчание
+  expect: silent
+  request:
+    user_id: user_cfo_nocard
+    client_id: U_235754
+    role: cfo
+    action_context:
+      type: dashboard
+- step: 5
+  title: Депозит на 3 месяца
+  expect: card
+  request:
+    user_id: user_cfo_wholesale
+    client_id: U_1941
+    role: cfo
+    action_context:
+      type: deposit
+      amount: 50000000
+      term_days: 90
+- step: 5
+  title: Депозит на 6 месяцев
+  expect: card
+  request:
+    user_id: user_cfo_wholesale
+    client_id: U_1941
+    role: cfo
+    action_context:
+      type: deposit
+      amount: 50000000
+      term_days: 180
+- step: 6
+  title: Платёж перевозчику глазами казначея
+  expect: card
+  request:
+    user_id: user_cfo_wholesale
+    client_id: U_1941
+    role: treasurer
+    action_context:
+      type: payment
+      beneficiary_id: U_96105
+      amount: 4500000
+- step: 7
+  title: Вставленная новость о решении ЦБ
+  expect: card
+  request:
+    user_id: user_cfo_wholesale
+    client_id: U_1941
+    role: cfo
+    action_context:
+      type: page
+      url: https://demo.example/cbr-key-rate
+      text: |-
+        Банк России сохранил ключевую ставку на уровне 14% годовых
+        Совет директоров Банка России сохранил ключевую ставку на уровне 14% годовых. Регулятор отметил, что инфляция замедляется, но остаётся выше цели, и допустил снижение ставки в начале следующего года. Кредиты для бизнеса остаются дорогими, банки сохраняют высокие ставки по депозитам.
