@@ -27,7 +27,26 @@ async function reported(offer: boolean, url = COMPANY_URL) {
   return { document, send, openPanel };
 }
 
+function hide(document: Document, state: DocumentVisibilityState) {
+  Object.defineProperty(document, "visibilityState", { value: state, configurable: true });
+}
+
 describe("reportPage", () => {
+  it("waits until a background tab is shown before reading the page", async () => {
+    const document = counterparty();
+    hide(document, "hidden");
+    const send = vi.fn(async (_request: WorkerRequest) => false);
+
+    const reading = reportPage(document, COMPANY_URL, send as unknown as Send, vi.fn());
+    await Promise.resolve();
+    expect(send).not.toHaveBeenCalled();
+
+    hide(document, "visible");
+    document.dispatchEvent(new Event("visibilitychange"));
+    await reading;
+    expect(send).toHaveBeenCalledOnce();
+  });
+
   it("reports the detected page to the worker", async () => {
     const { send } = await reported(false);
 

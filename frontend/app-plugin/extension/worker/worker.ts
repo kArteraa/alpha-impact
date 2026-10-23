@@ -199,7 +199,7 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
       return false;
     }
     const reply = await interpretIn(found, detected.page);
-    return reply.ok && !reply.value.silent && (reply.value.cards ?? []).length > 0;
+    return reply.ok && !reply.value.silent && (reply.value.cards ?? []).length > 0 && reviewed(reply.value);
   }
 
   function handle(request: WorkerRequest) {

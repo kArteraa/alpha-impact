@@ -13,11 +13,11 @@ describe("extension API address", () => {
 });
 
 describe("extension content script", () => {
-  it("runs only on the domains of the page dictionary and their subdomains", () => {
+  it("runs only on the domains of the page dictionary and their www", () => {
     const domains = Object.values(PAGE_DOMAINS).flat();
 
     expect(manifest.content_scripts.flatMap((script) => script.matches)).toEqual(
-      domains.map((domain) => `*://*.${domain}/*`),
+      domains.flatMap((domain) => [`*://${domain}/*`, `*://www.${domain}/*`]),
     );
   });
 });

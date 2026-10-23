@@ -1,4 +1,4 @@
-const SKIPPED = "script, style, noscript, template, nav, footer, aside";
+const SKIPPED = 'script, style, noscript, template, nav, footer, aside, [hidden], [aria-hidden="true"]';
 
 function collapse(text: string | null | undefined): string {
   return (text ?? "").replace(/\s+/g, " ").trim();
@@ -33,5 +33,6 @@ export function paragraphs(root: Element): string[] {
 }
 
 export function heading(root: Element): string {
-  return collapse(root.querySelector("h1")?.textContent);
+  const shown = Array.from(root.querySelectorAll("h1")).find((element) => element.closest(SKIPPED) === null);
+  return collapse(shown?.textContent);
 }

@@ -323,6 +323,14 @@ describe("extension worker page report", () => {
     expect(await worker({ type: "page", detected: article })).toBe(false);
   });
 
+  it("does not offer the notice for cards that need review, which are not kept for the panel", async () => {
+    const { api, worker } = await signedInAs();
+    const card = { ...mockResponses.cards.cards[0], needs_review: true };
+    api.interpret.mockResolvedValueOnce({ ...mockResponses.cards, cards: [card] });
+
+    expect(await worker({ type: "page", detected: article })).toBe(false);
+  });
+
   it("does not offer the notice when the request fails", async () => {
     const { api, worker } = await signedInAs();
     api.interpret.mockRejectedValueOnce(new NetworkError("offline"));

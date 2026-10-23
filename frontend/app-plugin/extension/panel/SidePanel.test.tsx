@@ -125,6 +125,20 @@ describe("SidePanel", () => {
     expect(screen.getByText(HEADLINE)).toBeTruthy();
   });
 
+  it("keeps the card when a setting the panel does not use changes", async () => {
+    const { change, interprets } = panelWith(signedIn(), article);
+    await screen.findByText(HEADLINE);
+
+    change({
+      state: signedIn({ autoshow: { ...AUTOSHOW_DEFAULT, tender: false } }),
+      detected: { ...article, page: { ...article.page, text: `${article.page.text}
+Обновлено 2 мин назад` } },
+    });
+    await new Promise((resolve) => setTimeout(resolve, INTERPRET_DELAY_MS * 2));
+
+    expect(interprets()).toHaveLength(1);
+  });
+
   it("asks again when another company is chosen", async () => {
     const { change, interprets } = panelWith(signedIn(), article);
     await screen.findByText(HEADLINE);

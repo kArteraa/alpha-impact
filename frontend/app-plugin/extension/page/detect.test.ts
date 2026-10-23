@@ -55,6 +55,18 @@ describe("detectPage on a business media article", () => {
     expect(detectPage(rubric, "https://www.kommersant.ru/rubric/3")).toBeNull();
   });
 
+  it("drops the fragment from the address", () => {
+    expect(detectPage(article, "https://www.kommersant.ru/doc/7000001#comments")?.page.url).toBe(
+      "https://www.kommersant.ru/doc/7000001",
+    );
+  });
+
+  it("takes the headline outside the site navigation", () => {
+    const branded = page(`<header><nav><h1>Коммерсантъ</h1></nav></header><h1>Ставка 18%</h1><p>${PARAGRAPH}</p><p>${PARAGRAPH}</p>`);
+
+    expect(lines(detectPage(branded, "https://www.kommersant.ru/doc/2")!.page.text)[0]).toBe("Ставка 18%");
+  });
+
   it("ignores an RSS feed opened on the media site", () => {
     const feed = new DOMParser().parseFromString("<rss><channel><title>Экономика</title></channel></rss>", "application/xml");
 
@@ -76,6 +88,29 @@ describe("detectPage on a counterparty check service", () => {
     expect(lines(detected!.page.text)[0]).toBe("ООО «ТрансЛогистик»");
     expect(detected?.page.text).toContain("49.41 Деятельность автомобильного грузового транспорта");
     expect(detected?.page.entities).toEqual(["inn:7707083893"]);
+  });
+
+  it("sends only the company's own INN, not its founders' or related companies'", () => {
+    const founders = page(`
+      <h1>ООО «ТрансЛогистик»</h1><p>ИНН 7707083893</p>
+      <section><h2>Учредители</h2><p>Иванов Иван Иванович, ИНН 500100732259</p></section>
+    `);
+
+    expect(detectPage(founders, "https://www.rusprofile.ru/id/123")?.page.entities).toEqual(["inn:7707083893"]);
+  });
+
+  it("sends the company name once", () => {
+    const text = detectPage(counterparty, "https://www.rusprofile.ru/id/123")!.page.text;
+
+    expect(lines(text).filter((line) => line === "ООО «ТрансЛогистик»")).toHaveLength(1);
+  });
+
+  it("leaves out hidden blocks", () => {
+    const hidden = page(`<h1>ООО «ТрансЛогистик»</h1><p>ИНН 7707083893</p><div hidden>Похожие компании</div><div aria-hidden="true">Реклама</div>`);
+
+    const text = detectPage(hidden, "https://www.rusprofile.ru/id/123")!.page.text;
+    expect(text).not.toContain("Похожие компании");
+    expect(text).not.toContain("Реклама");
   });
 
   it("leaves out the service's own INN in the footer", () => {
@@ -110,6 +145,7 @@ describe("detectPage on a tender", () => {
       "Поставка офисной бумаги формата А4",
       "Закупка № 0373200041524000123",
     ]);
+    expect(lines(detected!.page.text).filter((line) => line === "Поставка офисной бумаги формата А4")).toHaveLength(1);
   });
 
   it("reads a subject written on the label line", () => {
@@ -140,11 +176,26 @@ describe("detectPage on exchange rates", () => {
   });
 });
 
+describe("detectPage on pages that only look like rates", () => {
+  it("ignores a page of a rates site without a currency", () => {
+    const release = page(`<h1>Вакансии Банка России</h1><p>Приглашаем на работу аналитиков</p>`);
+
+    expect(detectPage(release, "https://www.cbr.ru/vacancies/")).toBeNull();
+  });
+});
+
 describe("detectPage on other sites", () => {
   it.each(["https://example.com/news/1", "https://kommersant.ru.example.com/doc/1", "https://notrbc.ru/news/1"])(
     "stays silent on %s even with article markup",
     (url) => {
       expect(detectPage(article, url)).toBeNull();
+    },
+  );
+
+  it.each(["https://online.sbis.ru/page/company/1", "https://lk.rusprofile.ru/id/123"])(
+    "stays out of other subdomains such as private workspaces on %s",
+    (url) => {
+      expect(detectPage(counterparty, url)).toBeNull();
     },
   );
 });

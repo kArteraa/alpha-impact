@@ -17,10 +17,17 @@ function fromExtension(sender: chrome.runtime.MessageSender): boolean {
 
 chrome.runtime.onMessage.addListener((request: WorkerRequest | PanelRequest, sender, reply) => {
   if (request.type === "open-panel") {
-    if (sender.tab?.id !== undefined) {
-      void chrome.sidePanel.open({ tabId: sender.tab.id });
+    if (sender.tab?.id === undefined) {
+      return false;
     }
-    return false;
+    chrome.sidePanel.open({ tabId: sender.tab.id }).then(
+      () => reply(true),
+      (error: unknown) => {
+        console.error(error);
+        reply(false);
+      },
+    );
+    return true;
   }
   if (request.type !== "page" && !fromExtension(sender)) {
     return false;
