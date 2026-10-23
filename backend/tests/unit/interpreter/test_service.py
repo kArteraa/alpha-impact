@@ -129,6 +129,22 @@ async def test_empty_house_view_does_not_invent_bank_position(harness: Harness) 
     assert response.cards[0].bank_view == []
 
 
+@pytest.mark.parametrize("block", ["why_for_you", "bank_view"])
+async def test_retold_bank_claim_is_replaced_by_quoted_house_view(
+    harness: Harness, block: str
+) -> None:
+    retold = {
+        "text": "Банк обещает прибыль",
+        "type": "bank",
+        "source": "house_view:logistics-approved",
+    }
+    harness.answers[1][block] = [retold]
+    response = await harness.agent.interpret(harness.request())
+    claim = getattr(response.cards[0], block)[0]
+    assert claim.text == harness.seed.house_view[0].claim
+    assert claim.source_ref.id == "logistics-approved"
+
+
 @pytest.mark.parametrize(
     "change",
     [
@@ -136,7 +152,6 @@ async def test_empty_house_view_does_not_invent_bank_position(harness: Harness) 
         {"source": "house_view:logistics-superseded", "type": "bank"},
         {"source": "news:logistics-news", "type": "bank"},
         {"source": "house_view:logistics-approved", "type": "fact"},
-        {"source": "house_view:logistics-approved", "type": "bank", "text": "Банк обещает прибыль"},
     ],
 )
 async def test_invalid_source_or_attribution_rejects_draft(

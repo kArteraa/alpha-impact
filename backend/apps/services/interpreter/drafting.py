@@ -42,14 +42,15 @@ def build_card(
                 raise DomainError("Draft cites a source outside the collected context")
             if bank_only and claim.type != ClaimType.BANK:
                 raise DomainError("Bank view must contain bank claims")
-            if claim.type == ClaimType.BANK and (
-                item.bank_text is None or claim.text != item.bank_text
-            ):
-                raise DomainError("Bank claim must quote an approved house view claim")
+            text = claim.text
+            if claim.type == ClaimType.BANK:
+                if item.bank_text is None:
+                    raise DomainError("Bank claim must quote an approved house view claim")
+                text = item.bank_text
             if claim.type == ClaimType.FACT and not item.factual:
                 raise DomainError("An inferred feature or forecast cannot be cited as a fact")
             basis[claim.source] = item.ref
-            result.append(Claim(text=claim.text, type=claim.type, source_ref=item.ref))
+            result.append(Claim(text=text, type=claim.type, source_ref=item.ref))
         return result
 
     blocks = {name: resolve(getattr(draft, name), name == "bank_view") for name in CLAIM_BLOCKS}
