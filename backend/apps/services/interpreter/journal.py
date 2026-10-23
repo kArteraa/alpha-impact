@@ -7,6 +7,8 @@ from time import perf_counter
 from pydantic import BaseModel
 from pydantic_core import to_jsonable_python
 
+from apps.services.interpreter.drafting import BuildNotes
+from shared.contracts.errors import ChargedModelError
 from shared.contracts.ports import Critic, LLMGateway
 from shared.contracts.schemas import HouseViewClaim, InsightCard, NewsItem, Trace, TraceStep
 
@@ -36,6 +38,9 @@ class Journal:
             yield step
         except Exception as error:
             step.output_summary = type(error).__name__
+            if isinstance(error, ChargedModelError):
+                step.tokens_in, step.tokens_out = error.tokens_in, error.tokens_out
+                step.cost_rub = error.cost_rub
             raise
         finally:
             step.duration_ms = int((perf_counter() - start) * 1000)
@@ -59,7 +64,9 @@ class Journal:
             step.output_summary = describe(result)
             return result
 
-    async def generate[T: BaseModel](self, name: str, system: str, user: str, schema: type[T]) -> T:
+    async def generate[T: BaseModel](
+        self, name: str, system: str, user: str, schema: type[T], describe: Callable[[T], str]
+    ) -> T:
         async with self._step(
             TraceStep(
                 step="plan" if name == "plan" else "draft",
@@ -70,11 +77,11 @@ class Journal:
                 started_at=utc_now(),
             )
         ) as step:
-            raw, step.tokens_in, step.tokens_out = await self.llm.complete(
+            raw, step.tokens_in, step.tokens_out, step.cost_rub = await self.llm.complete(
                 task=self.task, system=system, user=user, schema=schema
             )
             result = schema.model_validate(raw)
-            step.output_summary = self.summary(result)
+            step.output_summary = describe(result)
             return result
 
     async def review(
@@ -84,7 +91,9 @@ class Journal:
         card: InsightCard,
         house_view: list[HouseViewClaim],
         news: list[NewsItem],
+        notes: BuildNotes,
     ) -> list[str]:
+        self.record_rewrite(round_number, notes)
         async with self._step(
             TraceStep(
                 step="critic",
@@ -94,9 +103,33 @@ class Journal:
                 started_at=utc_now(),
             )
         ) as step:
-            verdicts = await critic.review(card, house_view, news)
-            step.output_summary = json.dumps(verdicts, ensure_ascii=False)
-            self.trace.critic_verdicts.extend(
-                [f"{round_number}: {verdict}" for verdict in verdicts] or [f"{round_number}: ok"]
+            found, step.tokens_in, step.tokens_out, step.cost_rub = await critic.review(
+                card, house_view, news
             )
+            verdicts = [*notes.rewrite, *found]
+            step.output_summary = json.dumps(verdicts, ensure_ascii=False)
+            self.trace.critic_verdicts.extend(f"{round_number}: {verdict}" for verdict in found)
+            if not verdicts:
+                self.trace.critic_verdicts.append(f"{round_number}: ok")
             return verdicts
+
+    def record_rewrite(self, round_number: int, notes: BuildNotes) -> None:
+        self.trace.critic_verdicts.extend(f"{round_number}: {note}" for note in notes.rewrite)
+
+    def build(
+        self, round_number: int, make: Callable[[], tuple[InsightCard, BuildNotes]]
+    ) -> tuple[InsightCard, BuildNotes]:
+        started, start = utc_now(), perf_counter()
+        card, notes = make()
+        if notes.remarks:
+            self.trace.steps.append(
+                TraceStep(
+                    step="critic",
+                    name=f"round {round_number} build",
+                    input_summary=f"card {card.id}",
+                    output_summary=self.summary(notes.remarks),
+                    duration_ms=int((perf_counter() - start) * 1000),
+                    started_at=started,
+                )
+            )
+        return card, notes

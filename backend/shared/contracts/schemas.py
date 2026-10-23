@@ -110,6 +110,14 @@ class ProductOffer(BaseModel):
     rule_id: str
 
 
+class WhatIfResult(BaseModel):
+    kind: str
+    value: float
+    unit: str
+    formula: str
+    assumptions: list[str]
+
+
 class InsightCard(BaseModel):
     id: str
     headline: str
@@ -120,6 +128,7 @@ class InsightCard(BaseModel):
     bank_view: list[Claim]
     basis: list[SourceRef]
     product_offer: ProductOffer | None = None
+    calculation: WhatIfResult | None = None
     significance: float = Field(ge=0, le=1)
     needs_review: bool = False
     trace_id: str
@@ -190,14 +199,6 @@ class HouseViewClaim(BaseModel):
     status: Literal["draft", "approved", "superseded", "expired"]
 
 
-class WhatIfResult(BaseModel):
-    kind: str
-    value: float
-    unit: str
-    formula: str
-    assumptions: list[str]
-
-
 class TraceStep(BaseModel):
     step: Literal["prefilter", "plan", "tool", "draft", "critic", "final"]
     name: str
@@ -206,6 +207,7 @@ class TraceStep(BaseModel):
     model: str | None = None
     tokens_in: int = 0
     tokens_out: int = 0
+    cost_rub: float = 0.0
     duration_ms: int = 0
     started_at: dt.datetime
 

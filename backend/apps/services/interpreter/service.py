@@ -1,12 +1,14 @@
 import json
+from asyncio import gather
 from datetime import date, timedelta
 from time import perf_counter
 from uuid import uuid4
 
 from pydantic import ValidationError
 
+from apps.services.interpreter.calculation import calculation_evidence, plan_calculation
 from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
-from apps.services.interpreter.drafting import Draft, build_card
+from apps.services.interpreter.drafting import BuildNotes, Draft, build_card, with_quotes
 from apps.services.interpreter.followup import (
     checked_followup,
     cited_house_view,
@@ -16,8 +18,8 @@ from apps.services.interpreter.followup import (
     trace_news,
 )
 from apps.services.interpreter.journal import Journal, utc_now
-from apps.services.interpreter.planning import Plan, PlanConfig
-from apps.services.interpreter.prefilter import Prefilter
+from apps.services.interpreter.planning import Plan, PlanConfig, Template
+from apps.services.interpreter.prefilter import Prefilter, news_claims
 from apps.services.interpreter.prompts import (
     DRAFT_SYSTEM,
     FOLLOWUP_DRAFT_SYSTEM,
@@ -25,7 +27,7 @@ from apps.services.interpreter.prompts import (
     PLAN_SYSTEM,
 )
 from shared.config.factors import FACTORS
-from shared.contracts.errors import DomainError, NotFound
+from shared.contracts.errors import BudgetExceeded, DomainError, NotFound
 from shared.contracts.ports import (
     CounterpartyService,
     Critic,
@@ -34,9 +36,13 @@ from shared.contracts.ports import (
     NewsService,
     ProfileService,
     TraceStore,
+    WhatIfService,
 )
 from shared.contracts.schemas import (
+    ActionContext,
+    ClientProfile,
     CounterpartyContext,
+    DashboardContext,
     FollowupContext,
     HouseViewClaim,
     InsightCard,
@@ -47,6 +53,7 @@ from shared.contracts.schemas import (
     PaymentContext,
     Trace,
     TraceStep,
+    WhatIfResult,
 )
 
 
@@ -57,6 +64,7 @@ class Agent:
         counterparties: CounterpartyService,
         news: NewsService,
         house_view: HouseViewService,
+        whatif: WhatIfService,
         llm: LLMGateway,
         traces: TraceStore,
         critic: Critic,
@@ -69,6 +77,7 @@ class Agent:
         self._counterparties = counterparties
         self._news = news
         self._house_view = house_view
+        self._whatif = whatif
         self._llm = llm
         self._traces = traces
         self._critic = critic
@@ -142,20 +151,28 @@ class Agent:
         pasted = await self._pasted_news(request, journal)
         prefilter_started_at = utc_now()
         start = perf_counter()
+        feed = isinstance(request.action_context, DashboardContext)
         if pasted is None:
-            scope = f"limit={self._config.search_limit}"
+            limit = self._config.feed_search_limit if feed else self._config.search_limit
+            scope = f"limit={limit}"
             selection = await self._prefilter.select(
                 profile,
                 request.action_context,
                 counterparty,
                 since=as_of - timedelta(days=self._config.lookback_days),
                 as_of=as_of,
-                limit=self._config.search_limit,
+                limit=limit,
+                subjects=template.house_view_subjects,
             )
         else:
             scope = f"pasted={pasted.id}"
             selection = await self._prefilter.rank(
-                [pasted], profile, request.action_context, counterparty, as_of=as_of
+                [pasted],
+                profile,
+                request.action_context,
+                counterparty,
+                as_of=as_of,
+                subjects=template.house_view_subjects,
             )
         journal.trace.steps.append(
             TraceStep(
@@ -176,9 +193,60 @@ class Agent:
             return InterpretResponse(
                 silent=True, silent_reason="Нет значимых событий для этого действия"
             )
-        news = [candidate.news for candidate in selection.candidates]
         house_view = selection.house_view
-        evidence = sources(profile, counterparty, news, house_view)
+        calculation = await self._calculation(journal, request.action_context, house_view, as_of)
+        news = [candidate.news for candidate in selection.candidates]
+        groups = [[item] for item in news[: self._config.feed_cards]] if feed else [news]
+        results = await gather(
+            *(
+                self._card(
+                    journal,
+                    request,
+                    template,
+                    profile,
+                    group,
+                    news_claims(group, house_view, template.house_view_subjects),
+                    as_of,
+                    counterparty=counterparty,
+                    calculation=calculation,
+                    critic_view=house_view,
+                )
+                for group in groups
+            ),
+            return_exceptions=True,
+        )
+        cards = [result for result in results if isinstance(result, InsightCard)]
+        failures = [result for result in results if isinstance(result, BaseException)]
+        fatal = [
+            error
+            for error in failures
+            if isinstance(error, BudgetExceeded)
+            or not isinstance(error, DomainError | ValidationError)
+        ]
+        if fatal or not cards:
+            raise (fatal or failures)[0]
+        return InterpretResponse(
+            silent=False, cards=sorted(cards, key=lambda card: -card.significance)
+        )
+
+    async def _card(
+        self,
+        journal: Journal,
+        request: InterpretRequest,
+        template: Template,
+        profile: ClientProfile,
+        news: list[NewsItem],
+        house_view: list[HouseViewClaim],
+        as_of: date,
+        *,
+        counterparty: CounterpartyContext | None,
+        calculation: WhatIfResult | None,
+        critic_view: list[HouseViewClaim],
+    ) -> InsightCard:
+        evidence = {
+            **sources(profile, counterparty, news, house_view),
+            **calculation_evidence(calculation),
+        }
         plan = await self._plan(
             journal,
             PLAN_SYSTEM,
@@ -186,16 +254,28 @@ class Agent:
             {"context": prompt_context(request, profile, counterparty, evidence)},
         )
         current = await self._collect(journal, plan, house_view, as_of)
-        evidence = sources(profile, counterparty, news, current)
+        evidence = {
+            **sources(profile, counterparty, news, current),
+            **calculation_evidence(calculation),
+        }
         payload: dict[str, object] = {
             "plan": plan.model_dump(),
             "context": prompt_context(request, profile, counterparty, evidence),
         }
         draft = await journal.generate(
-            "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+            "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft, journal.summary
         )
-        card = await self._reviewed(journal, DRAFT_SYSTEM, payload, draft, evidence, current, news)
-        return InterpretResponse(silent=False, cards=[card])
+        checked = {claim.id: claim for claim in [*critic_view, *current]}
+        card = await self._reviewed(
+            journal,
+            DRAFT_SYSTEM,
+            payload,
+            draft,
+            evidence,
+            [checked[key] for key in sorted(checked)],
+            news,
+        )
+        return card.model_copy(update={"calculation": calculation})
 
     async def _followup(
         self, request: InterpretRequest, action: FollowupContext, journal: Journal
@@ -237,7 +317,11 @@ class Agent:
             ),
         }
         draft = await journal.generate(
-            "draft", FOLLOWUP_DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
+            "draft",
+            FOLLOWUP_DRAFT_SYSTEM,
+            json.dumps(payload, ensure_ascii=False),
+            Draft,
+            journal.summary,
         )
         answer = await self._reviewed(
             journal, FOLLOWUP_DRAFT_SYSTEM, payload, draft, evidence, current, trace_news(card)
@@ -251,7 +335,7 @@ class Agent:
         template: dict[str, object],
         context: dict[str, object],
     ) -> Plan:
-        plan = await journal.generate(
+        return await journal.generate(
             "plan",
             system,
             json.dumps(
@@ -264,11 +348,8 @@ class Agent:
                 ensure_ascii=False,
             ),
             Plan,
+            lambda plan: journal.summary({"template": template, **plan.model_dump()}),
         )
-        journal.trace.steps[-1].output_summary = journal.summary(
-            {"template": template, **plan.model_dump()}
-        )
-        return plan
 
     async def _card_trace(self, journal: Journal, request: InterpretRequest, card_id: str) -> Trace:
         return await journal.lookup(
@@ -338,6 +419,16 @@ class Agent:
             collected.update({claim.id: claim for claim in found})
         return [collected[key] for key in sorted(collected)]
 
+    async def _calculation(
+        self, journal: Journal, action: ActionContext, house_view: list[HouseViewClaim], as_of: date
+    ) -> WhatIfResult | None:
+        calculation = plan_calculation(action, house_view, as_of, self._config.loan_horizon_months)
+        if calculation is None:
+            return None
+        return await journal.tool(
+            f"whatif.{calculation.name}", calculation.summary, calculation.run(self._whatif)
+        )
+
     async def _pasted_news(self, request: InterpretRequest, journal: Journal) -> NewsItem | None:
         if not isinstance(request.action_context, PageContext):
             return None
@@ -354,6 +445,20 @@ class Agent:
             self._news.annotate(first[:limit].rstrip(), body, request.action_context.url),
         )
 
+    def _build(
+        self,
+        journal: Journal,
+        round_number: int,
+        draft: Draft,
+        evidence: dict[str, Evidence],
+        card_id: str,
+    ) -> tuple[InsightCard, BuildNotes]:
+        trace_id = journal.trace.id
+        limit = self._config.min_quote_words
+        return journal.build(
+            round_number, lambda: build_card(draft, evidence, card_id, trace_id, limit)
+        )
+
     async def _reviewed(
         self,
         journal: Journal,
@@ -364,24 +469,30 @@ class Agent:
         house_view: list[HouseViewClaim],
         news: list[NewsItem],
     ) -> InsightCard:
-        card = build_card(draft, evidence, card_id=str(uuid4()), trace_id=journal.trace.id)
+        card, notes = self._build(journal, 1, draft, evidence, str(uuid4()))
         round_number = 1
         try:
-            verdicts = await journal.review(round_number, self._critic, card, house_view, news)
+            verdicts = await journal.review(
+                round_number, self._critic, card, house_view, news, notes
+            )
             if not verdicts:
                 return card
             round_number = 2
+            previous = with_quotes(draft, evidence).model_dump()
             redraft = await journal.generate(
                 "redraft",
                 system,
                 json.dumps(
-                    {**payload, "previous_draft": draft.model_dump(), "critic_verdicts": verdicts},
+                    {**payload, "previous_draft": previous, "critic_verdicts": verdicts},
                     ensure_ascii=False,
                 ),
                 Draft,
+                journal.summary,
             )
-            card = build_card(redraft, evidence, card_id=card.id, trace_id=journal.trace.id)
-            verdicts = await journal.review(round_number, self._critic, card, house_view, news)
+            card, notes = self._build(journal, round_number, redraft, evidence, card.id)
+            verdicts = await journal.review(
+                round_number, self._critic, card, house_view, news, notes
+            )
         except (DomainError, ValidationError) as error:
             journal.trace.critic_verdicts.append(f"{round_number}: error: {type(error).__name__}")
             return card.model_copy(update={"needs_review": True})

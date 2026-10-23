@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { loadUser, saveRole } from "../session/storage";
 import { LoginPage } from "./LoginPage";
 
 function renderLogin() {
@@ -8,7 +9,8 @@ function renderLogin() {
     <MemoryRouter initialEntries={["/login"]}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<h1>Главный экран</h1>} />
+        <Route path="/role" element={<h1>Ваша роль</h1>} />
+        <Route path="/profile" element={<h1>Профиль компании</h1>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -22,6 +24,7 @@ function submit(userId: string) {
 describe("LoginPage", () => {
   afterEach(() => {
     cleanup();
+    localStorage.clear();
     vi.unstubAllGlobals();
   });
 
@@ -31,15 +34,26 @@ describe("LoginPage", () => {
     expect(screen.getByText("Тестовый режим")).toBeTruthy();
   });
 
-  it("logs in through /auth/mock and opens the main screen", async () => {
+  it("logs in through /auth/mock and asks for the role on the first visit", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ user_id: "user_cfo_wholesale" })));
     vi.stubGlobal("fetch", fetchMock);
     renderLogin();
 
     submit("user_cfo_wholesale");
 
-    expect(await screen.findByRole("heading", { name: "Главный экран" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Ваша роль" })).toBeTruthy();
     expect(fetchMock.mock.calls[0][0]).toBe("/api/auth/mock");
+    expect(loadUser()).toBe("user_cfo_wholesale");
+  });
+
+  it("goes straight to the profile confirmation when the role is known", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ user_id: "user_cfo_wholesale" }))));
+    saveRole("user_cfo_wholesale", "treasurer");
+    renderLogin();
+
+    submit("user_cfo_wholesale");
+
+    expect(await screen.findByRole("heading", { name: "Профиль компании" })).toBeTruthy();
   });
 
   it("trims the user id before logging in", async () => {
@@ -49,7 +63,7 @@ describe("LoginPage", () => {
 
     submit("  user_cfo_wholesale ");
 
-    await screen.findByRole("heading", { name: "Главный экран" });
+    await screen.findByRole("heading", { name: "Ваша роль" });
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ user_id: "user_cfo_wholesale" });
   });
 

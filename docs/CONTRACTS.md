@@ -114,6 +114,14 @@ class ProductOffer(BaseModel):
     rule_id: str
 
 
+class WhatIfResult(BaseModel):
+    kind: str
+    value: float
+    unit: str
+    formula: str
+    assumptions: list[str]
+
+
 class InsightCard(BaseModel):
     id: str
     headline: str
@@ -124,6 +132,7 @@ class InsightCard(BaseModel):
     bank_view: list[Claim]
     basis: list[SourceRef]
     product_offer: ProductOffer | None = None
+    calculation: WhatIfResult | None = None
     significance: float = Field(ge=0, le=1)
     needs_review: bool = False
     trace_id: str
@@ -194,14 +203,6 @@ class HouseViewClaim(BaseModel):
     status: Literal["draft", "approved", "superseded", "expired"]
 
 
-class WhatIfResult(BaseModel):
-    kind: str
-    value: float
-    unit: str
-    formula: str
-    assumptions: list[str]
-
-
 class TraceStep(BaseModel):
     step: Literal["prefilter", "plan", "tool", "draft", "critic", "final"]
     name: str
@@ -210,6 +211,7 @@ class TraceStep(BaseModel):
     model: str | None = None
     tokens_in: int = 0
     tokens_out: int = 0
+    cost_rub: float = 0.0
     duration_ms: int = 0
     started_at: datetime
 
@@ -222,6 +224,12 @@ class Trace(BaseModel):
     result: InterpretResponse | None
     created_at: datetime
 ```
+
+`InsightCard.calculation` — расчёт `WhatIfService` для действия карточки, который UI показывает отдельным блоком: число, формула, допущения. Interpreter заполняет его для `DepositContext` (`deposit_terms`) и для `LoanContext` с `product: "loan"` и `rate_type: "floating"` (`rate_burden`), если в актуальной позиции банка по `key_rate` есть разборчивый факт и прогноз на весь срок; в остальных случаях, в ответе на followup и у старых карточек — `None`. Тот же расчёт доступен черновику источником `calc:<kind>`: тезис, который на него ссылается, получает `SourceRef(kind="calc", id=<kind>)` и попадает в `basis`. Followup к такой карточке получает тот же источник из `calculation` исходной карточки, но сам расчёт заново не делает.
+
+`SourceRef.url` — куда ведёт клик по источнику (AH-33). У `news` это адрес статьи (`http`/`https`). У `house_view` это путь шлюза `/reports/<source_doc в url-кодировке>#page=<page>`, а без `page` — без фрагмента. Путь от корня шлюза: хост InsightPanel приклеивает к нему свой адрес API (в приложении — `/api`), PDF отдаёт `GET /reports/{source_doc}`. У `profile`, `graph` и `calc` — `None`. Карточки, сохранённые до AH-33, держат house view без `url`.
+
+`Trace.critic_verdicts` — строки `<круг>: ok` или `<круг>: <код>: <деталь>`; коды — `source`, `bank`, `contradiction`, `retelling` (критик AH-22) и `error` (сбой круга, деталь — класс ошибки). Экран трассы (AH-33) показывает их по-русски, а метрика `critic_first_pass_share` ищет `1: ok`.
 
 ## Порты
 
@@ -275,7 +283,7 @@ class ProductRulesService(Protocol):
 
 
 class LLMGateway(Protocol):
-    async def complete(self, task: str, system: str, user: str, schema: type | None = None) -> tuple[object, int, int]: ...
+    async def complete(self, task: str, system: str, user: str, schema: type | None = None) -> tuple[object, int, int, float]: ...
     async def embed(self, text: str) -> list[float]: ...
     async def budget_left_rub(self) -> float: ...
 
@@ -289,7 +297,7 @@ class TraceStore(Protocol):
 
 
 class Critic(Protocol):
-    async def review(self, card: InsightCard, house_view: list[HouseViewClaim], news: list[NewsItem]) -> list[str]: ...
+    async def review(self, card: InsightCard, house_view: list[HouseViewClaim], news: list[NewsItem]) -> tuple[list[str], int, int, float]: ...
 
 
 class Interpreter(Protocol):
@@ -302,6 +310,8 @@ class Interpreter(Protocol):
 
 `HouseViewService.version()` — версия подтверждённого house view: первые 16 символов sha256 от всех утверждений со статусом `approved` (все поля, по порядку `id`). Меняется при любой правке подтверждённого набора, не меняется при повторном `seed` и от черновиков; статусы `superseded`/`expired`, вычисляемые на дату, в неё не входят. Gateway кладёт её в ключ кэша карточки.
 
+`LLMGateway.complete` возвращает `(ответ, tokens_in, tokens_out, cost_rub)`: стоимость вызова в рублях берётся из `usage.cost` ответа прокси кейса и совпадает со списанием в `llm_usage`; ответ из кэша — `0, 0, 0.0`. `Critic.review` возвращает `(вердикты, tokens_in, tokens_out, cost_rub)` своего вызова модели, без вызова — нули. Interpreter пишет токены и стоимость в шаги `plan`, `draft`, `redraft` и `critic` трассы (`TraceStep.cost_rub`, у старых трасс — 0). Если прокси уже списал вызов, а ответ невалиден, шлюз бросает `ChargedModelError` (`shared/contracts/errors.py`; в `llm` это `ModelOutputInvalid`) с токенами и стоимостью этого вызова, и interpreter записывает их в шаг, хотя шаг упал; из шагов AH-29 считает рубли на карточку.
+
 ## HTTP (gateway)
 
 | Метод | Путь | Тело / ответ |
@@ -312,6 +322,7 @@ class Interpreter(Protocol):
 | GET | `/clients` | `list[str]` для текущего пользователя |
 | POST | `/feedback` | `{card_id, useful: bool, comment?}` |
 | GET | `/trace/{trace_id}` | `Trace` |
+| GET | `/reports/{source_doc}` | PDF отчёта банка (`application/pdf`, inline) из `data/raw`; нужна сессия; не `.pdf`, нет файла или путь вне каталога — 404 |
 | GET | `/metrics` | `dict[str, float]` |
 | POST | `/auth/mock` | `{user_id}` → cookie сессии (только прототип) |
 | POST | `/auth/extension-token` | → `{token, expires_at}` |

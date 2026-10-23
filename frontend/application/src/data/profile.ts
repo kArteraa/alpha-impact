@@ -1,21 +1,67 @@
-import type { Feature } from "@alpha-impact/plugin";
+export type FeatureGroup = "company" | "geography" | "scale" | "bank";
 
-const UPDATED = "2026-10-01T00:00:00Z";
+export interface FeatureSpec {
+  label: string;
+  group: FeatureGroup;
+  labels?: Record<string, string>;
+  editable?: boolean;
+  money?: boolean;
+}
 
-export const FEATURE_LABELS: Record<string, string> = {
-  industry: "Отрасль",
-  region: "Регион",
-  size: "Размер компании",
-  logistics_share: "Доля логистики в платежах",
+export const FEATURE_GROUPS: readonly (readonly [FeatureGroup, string])[] = [
+  ["company", "Компания"],
+  ["geography", "География"],
+  ["scale", "Масштаб"],
+  ["bank", "Отношения с банком"],
+];
+
+const INDUSTRIES: Record<string, string> = {
+  wholesale: "Оптовая торговля",
+  retail: "Розничная торговля",
+  logistics: "Логистика",
+  construction: "Строительство",
+  real_estate: "Недвижимость",
+  auto_dealer: "Автодилеры",
+  agro: "Сельское хозяйство",
+  food: "Пищевая промышленность",
+  chemicals: "Химия",
+  pharma: "Фармацевтика",
+  energy: "Энергетика",
+  fuel: "Топливо",
+  horeca: "Гостиницы и общепит",
+  it: "ИТ",
+  finance: "Финансы",
   leasing: "Лизинг",
-  fx_purchases: "Закупки в валюте",
+  other: "Другое",
 };
 
-export const PROFILE_FEATURES: Record<string, Feature> = {
-  industry: { value: "Оптовая торговля", source: "bank", confidence: 1, updated_at: UPDATED },
-  region: { value: "Самарская область", source: "bank", confidence: 1, updated_at: UPDATED },
-  size: { value: "крупный", source: "bank", confidence: 1, updated_at: UPDATED },
-  logistics_share: { value: "43%", source: "graph", confidence: 0.9, updated_at: UPDATED },
-  leasing: { value: true, source: "inferred", confidence: 0.7, updated_at: UPDATED },
-  fx_purchases: { value: ["юани"], source: "inferred", confidence: 0.6, updated_at: UPDATED },
+const PRODUCTS: Record<string, string> = {
+  settlement: "Расчётный счёт",
+  guarantee: "Гарантия",
+  loan: "Кредит",
+  leasing: "Лизинг",
+  deposit: "Депозит",
+  payroll: "Зарплатный проект",
+  factoring: "Факторинг",
+};
+
+const CLIENT_TYPES: Record<string, string> = {
+  CLIENT: "Действующий клиент",
+  CLOSE_CLIENT: "Закрытый клиент",
+};
+
+export const FEATURES: Record<string, FeatureSpec> = {
+  industry_class: { label: "Отрасль", group: "company", labels: INDUSTRIES, editable: true },
+  okved_name: { label: "Основной вид деятельности", group: "company" },
+  okved_code: { label: "Код ОКВЭД", group: "company" },
+  company_age: { label: "Возраст компании, лет", group: "company" },
+  eco_stage: { label: "Стадия развития", group: "company" },
+  ownership: { label: "Форма собственности", group: "company" },
+  region: { label: "Регион", group: "geography" },
+  city: { label: "Город", group: "geography" },
+  import_countries: { label: "Страны импорта", group: "geography" },
+  revenue_rub: { label: "Выручка", group: "scale", money: true },
+  workers: { label: "Сотрудников", group: "scale" },
+  cl_type: { label: "Статус клиента", group: "bank", labels: CLIENT_TYPES },
+  products: { label: "Продукты банка", group: "bank", labels: PRODUCTS },
 };

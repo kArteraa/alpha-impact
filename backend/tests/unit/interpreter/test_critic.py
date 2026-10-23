@@ -10,6 +10,7 @@ from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import Claim, ClaimType, InsightCard, SourceRef
 
 SEED = make_seed()
+CRITIC_COST = 0.03
 CURRENT = SEED.house_view[0]
 NEWS = SourceRef(kind="news", id="logistics-news", title=SEED.news[0].title)
 BANK = SourceRef(kind="house_view", id=CURRENT.id, title="synthetic-report, стр. 1")
@@ -51,21 +52,22 @@ def model(*flags: tuple[str, str], items: list[dict[str, object]] | None = None)
 
     async def complete(
         task: str, system: str, user: str, schema: type[BaseModel]
-    ) -> tuple[BaseModel, int, int]:
+    ) -> tuple[BaseModel, int, int, float]:
         ids = {claim["text"]: claim["id"] for claim in json.loads(user)["claims"]}
         found = [
             {"claim_id": ids[text], "house_view_id": claim_id, "reason": "банк ждёт иного"}
             for text, claim_id in flags
             if text in ids
         ]
-        return schema.model_validate({"items": found + (items or [])}), 50, 10
+        return schema.model_validate({"items": found + (items or [])}), 50, 10, CRITIC_COST
 
     llm.complete.side_effect = complete
     return llm
 
 
 async def review(target: InsightCard, llm: AsyncMock | None = None) -> list[str]:
-    return await CriticAgent(llm or model()).review(target, [CURRENT], SEED.news)
+    verdicts, _, _, _ = await CriticAgent(llm or model()).review(target, [CURRENT], SEED.news)
+    return verdicts
 
 
 def codes(verdicts: list[str]) -> set[str]:
@@ -120,7 +122,7 @@ async def test_bank_claim_must_quote_current_house_view(bank: Claim) -> None:
 )
 async def test_bank_claim_on_outdated_house_view_is_rejected(update: dict[str, str]) -> None:
     outdated = CURRENT.model_copy(update=update)
-    verdicts = await CriticAgent(model()).review(card(), [outdated], SEED.news)
+    verdicts, _, _, _ = await CriticAgent(model()).review(card(), [outdated], SEED.news)
     assert "bank" in codes(verdicts)
 
 
@@ -201,7 +203,7 @@ async def test_bank_quotes_are_not_sent_for_contradiction_check() -> None:
 async def test_without_house_view_model_is_not_called() -> None:
     llm = model()
     target = card(bank_view=[])
-    assert await CriticAgent(llm).review(target, [], SEED.news) == []
+    assert await CriticAgent(llm).review(target, [], SEED.news) == ([], 0, 0, 0.0)
     llm.complete.assert_not_awaited()
 
 
@@ -226,3 +228,12 @@ async def test_card_without_client_feature_is_rejected() -> None:
 async def test_profile_feature_counts_as_client_context() -> None:
     claim = Claim(text="Компания в Петербурге", type=ClaimType.FACT, source_ref=PROFILE)
     assert await review(card(why_for_you=[claim], actions=[claim])) == []
+
+
+async def test_review_reports_model_usage() -> None:
+    _, tokens_in, tokens_out, cost = await CriticAgent(model()).review(card(), [CURRENT], SEED.news)
+    assert (tokens_in, tokens_out, cost) == (50, 10, CRITIC_COST)
+
+
+async def test_review_without_model_call_costs_nothing() -> None:
+    assert await CriticAgent(model()).review(card(bank_view=[]), [], SEED.news) == ([], 0, 0, 0.0)

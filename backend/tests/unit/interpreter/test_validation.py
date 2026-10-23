@@ -99,7 +99,16 @@ async def test_news_window_uses_explicit_limits(harness: Harness) -> None:
 
 @pytest.mark.parametrize(
     "field",
-    ["lookback_days", "search_limit", "max_tool_calls", "max_title_chars", "trace_summary_chars"],
+    [
+        "lookback_days",
+        "search_limit",
+        "max_tool_calls",
+        "max_title_chars",
+        "trace_summary_chars",
+        "feed_cards",
+        "feed_search_limit",
+        "min_quote_words",
+    ],
 )
 def test_invalid_plan_limits_fail_at_startup(tmp_path: Path, field: str) -> None:
     data = yaml.safe_load(PLANS_PATH.read_text(encoding="utf-8"))

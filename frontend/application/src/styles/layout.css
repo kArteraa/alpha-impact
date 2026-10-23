@@ -75,15 +75,6 @@
   padding: 0 var(--s-3) 0 6px;
   border-radius: var(--r-pill);
   background: var(--bg-card);
-  transition: box-shadow var(--t-fast);
-}
-
-.company:has(select):hover {
-  box-shadow: var(--shadow-card);
-}
-
-.company:has(select:focus-visible) {
-  box-shadow: var(--focus-ring);
 }
 
 .company-mark {
@@ -100,33 +91,15 @@
   font-weight: 600;
 }
 
-.company-name,
-.company-switcher {
+.company-name {
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--text-primary);
   font-size: var(--fs-16);
   line-height: var(--lh-24);
   font-weight: var(--fw-medium);
-}
-
-.company-switcher {
-  appearance: none;
-  margin-right: calc(-1 * var(--s-6));
-  padding: 0 var(--s-6) 0 0;
-  border: 0;
-  background: transparent;
-  font-family: inherit;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-
-.company-switcher:focus-visible {
-  box-shadow: none;
-}
-
-.company .icon {
-  color: var(--text-secondary);
-  pointer-events: none;
 }
 
 .main-nav {
@@ -240,10 +213,6 @@
   .main-nav a.active {
     padding: 0 var(--s-3) 0 10px;
     font-size: var(--fs-14);
-  }
-
-  .company-switcher {
-    max-width: 150px;
   }
 }
 

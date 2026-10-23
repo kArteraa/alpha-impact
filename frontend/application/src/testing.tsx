@@ -1,13 +1,95 @@
-import { render } from "@testing-library/react";
+import { INTERPRET_DELAY_MS, type InterpretState, type Role } from "@alpha-impact/plugin";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { vi } from "vitest";
 import { App } from "./App";
-import { CompanyProvider } from "./company/CompanyContext";
+import { CompanyContext } from "./company/context";
+import { feedOf } from "./dashboard/events.fixture";
+import { companyOf } from "./data/companies";
+import { FeedContext } from "./feed/context";
+import { SessionContext } from "./session/context";
+import { saveRole, saveUser } from "./session/storage";
 
-export function renderWithCompany(node: ReactNode, path = "/") {
+export const TEST_USER = "user_cfo_wholesale";
+export const TEST_CLIENT = "U_1941";
+const NO_CONTENT = 204;
+
+export type Reply = readonly [status: number, body: unknown];
+
+export function stubApi(routes: Record<string, Reply | ((init?: RequestInit) => Reply)>) {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    const key = `${init?.method ?? "GET"} ${url}`;
+    const route = routes[key];
+    if (route === undefined) {
+      return Promise.reject(new Error(`No stub for ${key}`));
+    }
+    const [status, body] = typeof route === "function" ? route(init) : route;
+    return Promise.resolve(new Response(status === NO_CONTENT ? null : JSON.stringify(body), { status }));
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  return fetchMock;
+}
+
+export function chooseOption(label: string, option: string | RegExp) {
+  fireEvent.click(screen.getByRole("combobox", { name: label }));
+  fireEvent.click(screen.getByRole("option", { name: option }));
+}
+
+export function setAmount(amount: string) {
+  fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: amount } });
+}
+
+export async function answer() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(INTERPRET_DELAY_MS);
+  });
+}
+
+export function panelState() {
+  return document.querySelector(".insight-panel")?.getAttribute("data-state");
+}
+
+export function placeholderSteps() {
+  return Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => step.getAttribute("data-done"));
+}
+
+export function answerFeed(init?: RequestInit): Reply {
+  return [200, feedOf(JSON.parse(String(init?.body)).client_id)];
+}
+
+export function askedContext(fetchMock: ReturnType<typeof stubApi>, call: number) {
+  return JSON.parse(String(fetchMock.mock.calls[call][1]?.body)).action_context;
+}
+
+export function signIn(userId = TEST_USER, role: Role = "cfo") {
+  saveUser(userId);
+  saveRole(userId, role);
+}
+
+interface PageOptions {
+  path?: string;
+  entry?: string;
+  role?: Role;
+  routes?: ReactNode;
+  feed?: Partial<InterpretState>;
+}
+
+export function renderWithCompany(node: ReactNode, { path = "/", entry = path, role = "cfo", routes, feed }: PageOptions = {}) {
+  const company = companyOf(TEST_CLIENT);
+  const value = { response: feedOf(TEST_CLIENT), pending: false, failed: false, retry: () => {}, ...feed };
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <CompanyProvider>{node}</CompanyProvider>
+    <MemoryRouter initialEntries={[entry]}>
+      <SessionContext.Provider value={{ userId: TEST_USER, role }}>
+        <CompanyContext.Provider value={{ company, companies: [company], select: () => {} }}>
+          <FeedContext.Provider value={value}>
+            <Routes>
+              <Route path={path} element={node} />
+              {routes}
+            </Routes>
+          </FeedContext.Provider>
+        </CompanyContext.Provider>
+      </SessionContext.Provider>
     </MemoryRouter>,
   );
 }

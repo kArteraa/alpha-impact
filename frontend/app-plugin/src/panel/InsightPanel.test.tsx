@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mockResponses } from "../mocks";
 import { InsightPanel } from "./InsightPanel";
@@ -84,6 +84,20 @@ describe("InsightPanel card", () => {
     ]);
   });
 
+  it("places the calculation between the bank view and the evidence", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} />);
+
+    expect(blockTitles()).toEqual([
+      "Почему это важно для вас",
+      "Что произошло",
+      "Последствия",
+      "Что можно сделать",
+      "Как это оценивает банк",
+      "Расчёт",
+      "На чём основан вывод",
+    ]);
+  });
+
   it("shows significance as dots, not a number", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
 
@@ -112,6 +126,42 @@ describe("InsightPanel card", () => {
     const badge = screen.getByLabelText("Факт — источник: Подозрительный источник");
     expect(badge.tagName).toBe("SPAN");
     expect(badge.getAttribute("href")).toBeNull();
+  });
+
+  it("leads a bank source to its report page through the host gateway", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} apiBase="/api" />);
+
+    const basis = screen.getByRole("region", { name: "На чём основан вывод" });
+    const page = within(basis).getByRole("link", { name: "ALFA-Macro_Insights-Policy_Rate_11Sep.pdf, стр. 2" });
+    expect(page.getAttribute("href")).toBe("/api/reports/ALFA-Macro_Insights-Policy_Rate_11Sep.pdf#page=2");
+    expect(page.getAttribute("target")).toBe("_blank");
+    const bank = screen.getByRole("region", { name: "Как это оценивает банк" });
+    expect(within(bank).getByLabelText(/^Банк — источник: /).getAttribute("href")).toBe(
+      "/api/reports/ALFA-Macro_Insights-Policy_Rate_11Sep.pdf#page=1",
+    );
+  });
+
+  it("keeps a report source as text when the host has no gateway", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} />);
+
+    const basis = screen.getByRole("region", { name: "На чём основан вывод" });
+    expect(within(basis).queryByRole("link")).toBeNull();
+    expect(within(basis).getByText("ALFA-Macro_Insights-Policy_Rate_11Sep.pdf, стр. 2")).toBeTruthy();
+  });
+
+  it.each([
+    ["a protocol-relative url of a report", "house_view", "//evil.example/report.pdf"],
+    ["a backslash url of a report", "house_view", "/\\evil.example/report.pdf"],
+    ["a relative path of a news item", "news", "/news/123"],
+  ] as const)("never treats %s as a gateway path", (_, kind, url) => {
+    const card = mockResponses.rates.cards[0];
+    const other = { ...card.basis[0], kind, url, title: "Чужой путь" };
+    const response = { ...mockResponses.rates, cards: [{ ...card, basis: [other] }] };
+    render(<InsightPanel actionContext={context} role="cfo" response={response} apiBase="/api" />);
+
+    const basis = screen.getByRole("region", { name: "На чём основан вывод" });
+    expect(within(basis).queryByRole("link")).toBeNull();
+    expect(within(basis).getByText("Чужой путь")).toBeTruthy();
   });
 
   it("highlights company traits as chips in the why block", () => {
@@ -168,17 +218,13 @@ describe("InsightPanel card", () => {
     expect(within(offer).getByRole("button", { name: "Узнать подробнее" }).className).toContain("button-secondary");
   });
 
-  it("links the trace, takes feedback and asks a follow-up", () => {
+  it("links the trace and asks a follow-up", () => {
     const onFollowup = vi.fn();
     render(
       <InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} onFollowup={onFollowup} />,
     );
 
     expect(screen.getByText("Как получен вывод").getAttribute("href")).toBe("/trace/trace-mock-1");
-    const useful = screen.getByRole("button", { name: "Полезно" });
-    fireEvent.click(useful);
-    expect(useful.getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "Не полезно" }).getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "Задать вопрос" }));
     expect(onFollowup).toHaveBeenCalledWith("card-mock-1");
   });
@@ -187,6 +233,48 @@ describe("InsightPanel card", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
 
     expect(screen.queryByRole("button", { name: "Задать вопрос" })).toBeNull();
+  });
+
+  it("sends feedback and marks it once it is saved", async () => {
+    const onFeedback = vi.fn(() => Promise.resolve());
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} onFeedback={onFeedback} />);
+    const useful = screen.getByRole("button", { name: "Полезно" });
+    const useless = screen.getByRole("button", { name: "Не полезно" });
+
+    fireEvent.click(useful);
+
+    expect(onFeedback).toHaveBeenCalledWith("card-mock-1", true);
+    expect(useful.hasAttribute("disabled")).toBe(true);
+    await waitFor(() => expect(useful.getAttribute("aria-pressed")).toBe("true"));
+    expect(useless.getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(useful);
+    expect(onFeedback).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(useless);
+
+    expect(onFeedback).toHaveBeenLastCalledWith("card-mock-1", false);
+    await waitFor(() => expect(useless.getAttribute("aria-pressed")).toBe("true"));
+    expect(useful.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("keeps the previous choice when feedback is not saved", async () => {
+    const onFeedback = vi.fn(() => Promise.reject(new Error("offline")));
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} onFeedback={onFeedback} />);
+    const useful = screen.getByRole("button", { name: "Полезно" });
+
+    fireEvent.click(useful);
+
+    expect((await screen.findByRole("status")).textContent).toBe("Отзыв не отправлен");
+    expect(useful.getAttribute("aria-pressed")).toBe("false");
+    expect(useful.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("hides feedback without a handler", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
+
+    expect(screen.queryByRole("button", { name: "Полезно" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Не полезно" })).toBeNull();
   });
 
   it("folds the detail blocks into an accordion when compact", () => {

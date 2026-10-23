@@ -11,6 +11,7 @@ from shared.contracts.errors import DomainError
 NOW = datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
 TOKENS_IN = 100
 TOKENS_OUT = 20
+CALL_COST = 0.01
 EMPTY_ANSWER: dict[str, Any] = {
     "factors": [],
     "industries": [],
@@ -74,7 +75,7 @@ class FakeNewsLlm:
 
     async def complete(
         self, task: str, system: str, user: str, schema: type | None = None
-    ) -> tuple[object, int, int]:
+    ) -> tuple[object, int, int, float]:
         assert schema is not None and issubclass(schema, BaseModel)
         self.tasks.append(task)
         self.completions.append(user)
@@ -82,7 +83,7 @@ class FakeNewsLlm:
         if failing is not None:
             raise self.errors.pop(failing)
         answer = next((value for key, value in self.answers.items() if key in user), EMPTY_ANSWER)
-        return schema.model_validate(answer), TOKENS_IN, TOKENS_OUT
+        return schema.model_validate(answer), TOKENS_IN, TOKENS_OUT, CALL_COST
 
     async def embed(self, text: str) -> list[float]:
         self.embedded.append(text)
