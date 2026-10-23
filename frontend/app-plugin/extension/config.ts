@@ -38,6 +38,8 @@ export const PAGE_TEXT_MAX_CHARS = 2000;
 
 export const ARTICLE_MIN_CHARS = 300;
 
+export const FX_CURRENCY_CODES = ["USD", "EUR", "CNY"];
+
 export const TENDER_SUBJECT_LABELS = [
   "Объект закупки",
   "Наименование объекта закупки",

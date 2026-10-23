@@ -13,12 +13,13 @@ interface View {
   detected: DetectedPage | null;
 }
 
+function shownAs({ state, detected }: View): string {
+  const viewer = state.signedIn ? [state.userId, state.settings.clientId, state.settings.role] : null;
+  return JSON.stringify([viewer, detected?.page.url ?? null]);
+}
+
 function sameView(previous: View | null, next: View): boolean {
-  return (
-    previous !== null &&
-    previous.detected?.page.url === next.detected?.page.url &&
-    JSON.stringify(previous.state) === JSON.stringify(next.state)
-  );
+  return previous !== null && shownAs(previous) === shownAs(next);
 }
 
 function PageInsight({ page, role, send }: { page: PageContext; role: Role; send: Send }) {
