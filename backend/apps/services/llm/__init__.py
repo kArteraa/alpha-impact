@@ -25,7 +25,10 @@ def build_gateway(container: Container) -> ModelGateway:
     container.on_close(http.aclose)
     return ModelGateway(
         catalog=build_catalog(
-            settings, models.models, models.reasoning_off_tasks, models.interactive_tasks
+            settings,
+            allowed=models.models,
+            reasoning_off=models.reasoning_off_tasks,
+            interactive=models.interactive_tasks,
         ),
         client=ModelClient(http),
         embedder=build_embedder(),
