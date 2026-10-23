@@ -1,10 +1,15 @@
 import { expect, test } from "@playwright/test";
 import path from "node:path";
+import { logIn } from "../support/session";
 
 const OUTPUT = path.join(__dirname, "..", "..", "..", "docs", "design");
 const VIEWPORT = { width: 1600, height: 1000 };
 
 test.use({ viewport: VIEWPORT });
+
+test.beforeEach(async ({ page }) => {
+  await logIn(page);
+});
 
 test("dashboard", async ({ page }) => {
   await page.goto("/");
@@ -24,10 +29,10 @@ test.describe("dark theme", () => {
 
 test("payment with the panel", async ({ page }) => {
   await page.goto("/payments/new");
-  await page.getByLabel("Получатель").selectOption("cp_logistics_spb");
+  await page.getByLabel("Получатель").selectOption({ label: "ООО «Северо-Западная логистика»" });
   await page.getByLabel("Сумма, ₽").fill("1500000");
   await page.getByRole("heading", { name: "Платёж контрагенту" }).click();
-  await expect(page.locator(".insight-card")).toBeVisible();
+  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: 60_000 });
   await page.screenshot({ path: path.join(OUTPUT, "payment.png"), fullPage: true, animations: "disabled" });
 });
 

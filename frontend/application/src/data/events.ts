@@ -22,13 +22,13 @@ function event(id: string, headline: string, why: string, significance: number, 
 }
 
 export const EVENTS: Record<string, InsightCard[]> = {
-  client_wholesale: [
+  U_1941: [
     event("ev-logistics", "Логистика в убытке", "43% ваших платежей уходит перевозчикам и складам", 0.8, ["fact", "bank", "ai"]),
     event("ev-yuan", "Юань дорожает к рублю", "12% закупок оплачиваются в юанях", 0.6, ["fact", "ai"]),
     event("ev-rate", "Банк ждёт снижения ключевой ставки", "Кредитная линия с плавающей ставкой", 0.7, ["bank", "ai"]),
     event("ev-retail", "Розничный спрос в регионах замедлился", "Половина выручки — сети в Поволжье", 0.4, ["fact"]),
   ],
-  client_construction: [
+  U_9250: [
     event("ev-cement", "Цемент подорожал на 9%", "Цемент — крупнейшая статья закупок", 0.9, ["fact", "ai"]),
     event("ev-leasing", "Лизинговые ставки растут", "Техника в лизинге с плавающей ставкой", 0.7, ["bank", "ai"]),
     event("ev-mortgage", "Льготная ипотека сокращается", "Застройщики — основные заказчики", 0.6, ["fact", "bank"]),

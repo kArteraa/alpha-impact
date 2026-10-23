@@ -1,8 +1,7 @@
 import type { TraceStep } from "@alpha-impact/plugin";
 import { Link, useParams } from "react-router";
 import { TRACES } from "../data/trace";
-
-const NUMBER = new Intl.NumberFormat("ru-RU");
+import { NUMBER } from "../money";
 
 function stepMeta(step: TraceStep): string {
   const parts: string[] = [];
