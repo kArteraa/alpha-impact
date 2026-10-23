@@ -11,12 +11,24 @@ export class ApiError extends Error {
   }
 }
 
+const unauthorizedHandlers = new Set<() => void>();
+
+export function onUnauthorized(handler: () => void): () => void {
+  unauthorizedHandlers.add(handler);
+  return () => {
+    unauthorizedHandlers.delete(handler);
+  };
+}
+
 async function request<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     ...init,
   });
+  if (response.status === 401) {
+    unauthorizedHandlers.forEach((handler) => handler());
+  }
   if (!response.ok) {
     throw new ApiError(response.status, await response.text());
   }

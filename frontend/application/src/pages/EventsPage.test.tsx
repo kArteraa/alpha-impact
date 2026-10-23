@@ -19,6 +19,19 @@ describe("EventsPage", () => {
     expect(screen.getAllByLabelText(/^Значимость \d из 3$/).length).toBe(4);
   });
 
+  it("groups the events by significance with a count", () => {
+    renderWithCompany(<EventsPage />, { path: "/events" });
+
+    const groups = screen.getAllByRole("region").map((group) => [
+      group.querySelector("h2")?.textContent,
+      group.querySelector(".badge")?.textContent,
+    ]);
+    expect(groups).toEqual([
+      ["Высокая значимость", "2"],
+      ["Средняя значимость", "2"],
+    ]);
+  });
+
   it("names the company under the heading", () => {
     renderWithCompany(<EventsPage />, { path: "/events" });
 

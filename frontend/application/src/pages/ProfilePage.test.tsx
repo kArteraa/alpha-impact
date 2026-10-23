@@ -2,6 +2,7 @@ import type { ClientProfile, Feature } from "@alpha-impact/plugin";
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { Route } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { FEATURES } from "../data/profile";
 import { TEST_CLIENT, renderWithCompany, stubApi } from "../testing";
 import { ProfilePage } from "./ProfilePage";
 
@@ -37,6 +38,11 @@ function renderProfile() {
   renderWithCompany(<ProfilePage />, { path: "/profile", routes: <Route path="/" element={<h1>Главный экран</h1>} /> });
 }
 
+function choose(scope: HTMLElement, option: string) {
+  fireEvent.click(within(scope).getByRole("combobox", { name: "Отрасль" }));
+  fireEvent.click(within(scope).getByRole("option", { name: option }));
+}
+
 async function card(label: string) {
   return screen.findByRole("listitem", { name: label });
 }
@@ -54,7 +60,16 @@ describe("ProfilePage", () => {
     expect(within(await card("Отрасль")).getByText("Оптовая торговля")).toBeTruthy();
     expect(within(await card("Регион")).getByText("Самарская область")).toBeTruthy();
     expect(within(await card("Страны импорта")).getByText("КИТАЙ, ТУРЦИЯ")).toBeTruthy();
-    expect(within(await card("Выручка, ₽")).getByText(/18\s500\s000\s000/)).toBeTruthy();
+    expect(within(await card("Выручка")).getByText(/18\s500\s000\s000/)).toBeTruthy();
+  });
+
+  it("splits the features into titled groups", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
+    renderProfile();
+    await card("Отрасль");
+
+    const groups = screen.getAllByRole("region").map((group) => group.querySelector("h2")?.textContent);
+    expect(groups).toEqual(["Компания", "География", "Масштаб"]);
   });
 
   it("keeps bank facts read-only", async () => {
@@ -76,7 +91,7 @@ describe("ProfilePage", () => {
     expect(within(industry).getByText("определено по данным")).toBeTruthy();
 
     fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
-    fireEvent.change(within(industry).getByRole("combobox", { name: "Отрасль" }), { target: { value: "logistics" } });
+    choose(industry, "Логистика");
     fireEvent.click(within(industry).getByRole("button", { name: "Сохранить" }));
 
     expect(await within(industry).findByText("Логистика")).toBeTruthy();
@@ -91,7 +106,7 @@ describe("ProfilePage", () => {
     const industry = await card("Отрасль");
 
     fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
-    fireEvent.change(within(industry).getByRole("combobox", { name: "Отрасль" }), { target: { value: "retail" } });
+    choose(industry, "Розничная торговля");
     fireEvent.click(within(industry).getByRole("button", { name: "Отмена" }));
 
     expect(within(industry).getByText("Оптовая торговля")).toBeTruthy();
@@ -118,12 +133,13 @@ describe("ProfilePage", () => {
     const industry = await card("Отрасль");
 
     fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
-    const shown = within(industry).getByRole<HTMLSelectElement>("combobox", { name: "Отрасль" }).value;
+    const shown = within(industry).getByRole("combobox", { name: "Отрасль" }).textContent;
     fireEvent.click(within(industry).getByRole("button", { name: "Сохранить" }));
 
     expect(await within(industry).findByText("изменено вами")).toBeTruthy();
     const patch = fetchMock.mock.calls.find(([, init]) => init?.method === "PATCH");
-    expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ value: shown });
+    const { value } = JSON.parse(String(patch?.[1]?.body));
+    expect(shown).toBe(FEATURES.industry_class.labels?.[value]);
   });
 
   it("sends one correction for a double click", async () => {

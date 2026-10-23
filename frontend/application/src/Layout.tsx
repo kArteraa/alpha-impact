@@ -4,6 +4,8 @@ import { CompanyProvider } from "./company/CompanyContext";
 import { useCompany } from "./company/context";
 import { EVENTS } from "./data/events";
 import { Icon, type IconName } from "./ui/Icon";
+import { stripLegalForm } from "./ui/listbox";
+import { Mark, Select } from "./ui/Select";
 
 const NAV: readonly (readonly [string, string, IconName])[] = [
   ["/", "Главная", "home"],
@@ -14,44 +16,33 @@ const NAV: readonly (readonly [string, string, IconName])[] = [
   ["/profile", "Профиль", "profile"],
 ];
 
-const LEGAL_FORM = /^(ООО|АО|ПАО|ЗАО|ИП)\s+/;
-
 function monogram(name: string): string {
-  return name.replace(LEGAL_FORM, "").replace(/[«»"]/g, "").trim().charAt(0).toUpperCase();
+  return stripLegalForm(name).charAt(0).toUpperCase();
 }
 
 function CompanySwitcher() {
   const { company, companies, select } = useCompany();
-  const mark = (
-    <span className="company-mark" aria-hidden="true">
-      {monogram(company.name)}
-    </span>
-  );
   if (companies.length === 1) {
     return (
       <span className="company">
-        {mark}
+        <Mark text={monogram(company.name)} />
         <span className="company-name">{company.name}</span>
       </span>
     );
   }
   return (
-    <span className="company">
-      {mark}
-      <select
-        className="company-switcher"
-        aria-label="Компания"
-        value={company.id}
-        onChange={(event) => select(event.target.value)}
-      >
-        {companies.map((candidate) => (
-          <option key={candidate.id} value={candidate.id}>
-            {candidate.name}
-          </option>
-        ))}
-      </select>
-      <Icon name="chevron-down" size={18} />
-    </span>
+    <Select
+      label="Компания"
+      variant="pill"
+      value={company.id}
+      options={companies.map((candidate) => ({
+        value: candidate.id,
+        label: candidate.name,
+        hint: candidate.account ? `Счёт ${candidate.account}` : undefined,
+        mark: monogram(candidate.name),
+      }))}
+      onChange={select}
+    />
   );
 }
 

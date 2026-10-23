@@ -227,6 +227,38 @@ a:hover {
   color: var(--warning-text);
 }
 
+.badge-danger {
+  background: var(--bg-danger);
+  color: var(--danger-text);
+}
+
+.icon-list {
+  display: grid;
+  gap: var(--s-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
+}
+
+.icon-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.check-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--s-6);
+  height: var(--s-6);
+  border-radius: var(--r-pill);
+  background: var(--bg-success);
+  color: var(--success-text);
+}
+
 .badge-warning::before {
   content: "";
   width: 6px;
