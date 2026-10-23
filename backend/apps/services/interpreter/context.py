@@ -100,6 +100,19 @@ def sources(
     return {source_key(item.ref): item for item in items}
 
 
+def page_annotations(news: list[NewsItem]) -> dict[str, Evidence]:
+    items = [
+        Evidence(
+            SourceRef(kind="news", id=item.id, url=item.url, published_at=item.published_at),
+            item.model_dump(mode="json", exclude={"title", "text"}),
+            None,
+            True,
+        )
+        for item in news
+    ]
+    return {source_key(item.ref): item for item in items}
+
+
 def prompt_context(
     request: InterpretRequest,
     profile: ClientProfile,
