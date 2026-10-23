@@ -7,9 +7,11 @@ import { useInterpretFetcher } from "./useInterpretFetcher";
 interface ActionPanelProps {
   context: ActionContext | null;
   placeholder: ReactNode;
+  pendingNote?: string;
+  failedNote?: string;
 }
 
-export function ActionPanel({ context, placeholder }: ActionPanelProps) {
+export function ActionPanel({ context, placeholder, pendingNote, failedNote }: ActionPanelProps) {
   const { role } = useSession();
   const insight = useInterpret(context, useInterpretFetcher());
   if (context === null) {
@@ -22,6 +24,8 @@ export function ActionPanel({ context, placeholder }: ActionPanelProps) {
       response={insight.response}
       pending={insight.pending}
       failed={insight.failed}
+      pendingNote={pendingNote}
+      failedNote={failedNote}
       onRetry={insight.retry}
     />
   );

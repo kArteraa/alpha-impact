@@ -43,6 +43,15 @@ describe("InsightPanel states", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
+  it("names the wait and the failure in the host's words", () => {
+    render(<InsightPanel actionContext={context} role="cfo" pendingNote="Размечаю новость" failedNote="Не успел" />);
+    expect(screen.getByText("Размечаю новость")).toBeTruthy();
+    cleanup();
+
+    render(<InsightPanel actionContext={context} role="cfo" failed pendingNote="Размечаю новость" failedNote="Не успел" />);
+    expect(screen.getByText("Не успел")).toBeTruthy();
+  });
+
   it("keeps the card and shows progress while a new answer is pending", () => {
     const { rerender } = render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
     const shown = document.querySelector(".insight-card");
