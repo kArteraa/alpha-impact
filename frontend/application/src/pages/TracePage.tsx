@@ -16,6 +16,7 @@ import { Skeleton } from "../ui/Skeleton";
 const WHEN = new Intl.DateTimeFormat("ru-RU", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Moscow" });
 const MS_IN_SECOND = 1000;
 const MISSING = new Set([403, 404]);
+const FAILED = "failed";
 
 const PARTS: Record<StepKind, readonly [string, Tone]> = {
   model: ["Модели", "ai"],
@@ -88,7 +89,7 @@ function Steps({ steps }: { steps: TraceStep[] }) {
       <h2 id={headingId}>Шаги</h2>
       <ol className="trace-steps">
         {steps.map((step, index) => (
-          <li key={index} className="trace-step">
+          <li key={index} className="trace-step" data-failed={step.step === "final" && step.name === FAILED}>
             <details>
               <summary>
                 <span className="trace-step-name">{stepLabel(step)}</span>
