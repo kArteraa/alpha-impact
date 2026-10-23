@@ -2,13 +2,11 @@ import { type FormEvent, useId, useState } from "react";
 import { COUNTERPARTIES } from "../data/counterparties";
 import { ActionPanel } from "../insight/ActionPanel";
 import { PanelPlaceholder } from "../insight/PanelPlaceholder";
-import { parseAmount } from "../money";
+import { amountError, parseAmount } from "../money";
 import { type PaymentForm, paymentContextOf, toPaymentContext } from "../payment/paymentContext";
 import { AmountField } from "../ui/AmountField";
 import { Select } from "../ui/Select";
 import { useHeldAmount } from "../ui/useHeldAmount";
-
-const AMOUNT_HINT = "Сумма — положительное число, не больше двух знаков после запятой";
 
 const RECIPIENTS = COUNTERPARTIES.map((counterparty) => ({
   value: counterparty.id,
@@ -25,7 +23,6 @@ export function PaymentPage() {
   const paymentContext = toPaymentContext(form);
   const recipient = COUNTERPARTIES.find((counterparty) => counterparty.id === form.beneficiaryId);
   const amount = parseAmount(form.amount);
-  const amountInvalid = form.amount.trim() !== "" && amount === null;
 
   function update(field: keyof PaymentForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -62,7 +59,7 @@ export function PaymentPage() {
           <AmountField
             label="Сумма"
             value={form.amount}
-            error={amountInvalid ? AMOUNT_HINT : null}
+            error={amountError(form.amount)}
             onChange={(value) => update("amount", value)}
           />
           <label className="field field-static">

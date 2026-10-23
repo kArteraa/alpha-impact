@@ -4,7 +4,7 @@ import { DEPOSIT_TERMS, type DepositTerm, depositIncome } from "../deposit/calc"
 import { depositContextOf } from "../deposit/depositContext";
 import { ActionPanel } from "../insight/ActionPanel";
 import { PanelPlaceholder } from "../insight/PanelPlaceholder";
-import { parseAmount, RATE, RUB_COMPACT } from "../money";
+import { amountError, parseAmount, RATE, RUB_COMPACT } from "../money";
 import { AmountField } from "../ui/AmountField";
 import { Columns, type ColumnSeries } from "../ui/charts/Columns";
 import { Amount } from "../ui/Amount";
@@ -30,7 +30,7 @@ export function DepositPage() {
         <div className="page-stack">
           <form className="card form" onSubmit={(event) => event.preventDefault()}>
             <h2>Разместить средства</h2>
-            <AmountField label="Сумма" value={amountText} onChange={setAmountText} />
+            <AmountField label="Сумма" value={amountText} error={amountError(amountText)} onChange={setAmountText} />
             <div className="field field-static">
               <span className="muted" id={termLabelId}>
                 Срок

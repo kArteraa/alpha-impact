@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { LOANS } from "../data/loans";
 import { ActionPanel } from "../insight/ActionPanel";
 import { PanelPlaceholder } from "../insight/PanelPlaceholder";
-import { parseAmount, RUB_WHOLE } from "../money";
+import { amountError, parseAmount, RUB_WHOLE } from "../money";
 import { AmountField } from "../ui/AmountField";
 import { Select } from "../ui/Select";
 import { useHeldAmount } from "../ui/useHeldAmount";
@@ -33,7 +33,7 @@ export function NewTranche({ id }: { id: string }) {
           Новый транш
         </h2>
         <Select label="Продукт" value={loanId} placeholder="Выберите продукт" options={PRODUCTS} onChange={setLoanId} />
-        <AmountField label="Сумма" value={amountText} onChange={setAmountText} />
+        <AmountField label="Сумма" value={amountText} error={amountError(amountText)} onChange={setAmountText} />
       </form>
       <aside>
         <ActionPanel

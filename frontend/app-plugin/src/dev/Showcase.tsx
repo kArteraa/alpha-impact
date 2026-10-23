@@ -6,7 +6,7 @@ import type { ActionContext, ClaimType } from "../types";
 import "./showcase.css";
 
 const CONTEXT: ActionContext = { type: "payment", amount: 1_500_000, beneficiary_id: "cp_logistics_spb" };
-const DEPOSIT: ActionContext = { type: "deposit", amount: 50_000_000, term_days: 90 };
+const DEPOSIT: ActionContext = { type: "deposit", amount: 50_000_000, term_days: 360 };
 const CLAIM_TYPES: ClaimType[] = ["fact", "bank", "ai"];
 const WIDTHS = [
   { width: 400, compact: false },

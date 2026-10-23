@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { mockResponses } from "../mocks";
 import type { InterpretResponse, WhatIfResult } from "../types";
 import { InsightPanel } from "./InsightPanel";
 
-const context = { type: "deposit", amount: 50_000_000, term_days: 90 } as const;
+const context = { type: "deposit", amount: 50_000_000, term_days: 360 } as const;
 
 const RATE_BURDEN: WhatIfResult = {
   kind: "rate_burden",
@@ -36,7 +36,7 @@ describe("InsightPanel calculation", () => {
     const block = calculation();
     const result = mockResponses.rates.cards[0].calculation;
     expect(within(block).getByText("Выгода фиксации ставки против помесячного переразмещения")).toBeTruthy();
-    expect(spaced(block.querySelector(".calc-value")?.textContent)).toBe("+61 643,84 ₽");
+    expect(spaced(block.querySelector(".calc-value")?.textContent)).toBe("+286 027,40 ₽");
     expect(within(block).getByText(result?.formula ?? "")).toBeTruthy();
     const assumptions = within(block).getByRole("list", { name: "Допущения" });
     expect(Array.from(assumptions.querySelectorAll("li"), (item) => item.textContent)).toEqual(result?.assumptions);
@@ -50,12 +50,33 @@ describe("InsightPanel calculation", () => {
     expect(spaced(block.querySelector(".calc-value")?.textContent)).toMatch(/^[−-]290 000 ₽$/);
   });
 
-  it("shows no caption for a calculation it does not know", () => {
-    render(
-      <InsightPanel actionContext={context} role="cfo" response={withCalculation({ ...RATE_BURDEN, kind: "fx_exposure" })} />,
-    );
+  it.each(["fx_exposure", "constructor"])("shows no caption for a calculation it does not know: %s", (kind) => {
+    render(<InsightPanel actionContext={context} role="cfo" response={withCalculation({ ...RATE_BURDEN, kind })} />);
 
     expect(calculation().querySelector(".calc-title")).toBeNull();
+  });
+
+  it("shows a value in a unit that is not a currency next to its unit", () => {
+    render(
+      <InsightPanel
+        actionContext={context}
+        role="cfo"
+        response={withCalculation({ ...RATE_BURDEN, value: 1.5, unit: "%" })}
+      />,
+    );
+
+    expect(spaced(calculation().querySelector(".calc-value")?.textContent)).toBe("+1,50 %");
+  });
+
+  it("lists a repeated assumption every time it comes", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const repeated = { ...RATE_BURDEN, assumptions: ["без налогов", "без налогов"] };
+    render(<InsightPanel actionContext={context} role="cfo" response={withCalculation(repeated)} />);
+
+    const assumptions = within(calculation()).getByRole("list", { name: "Допущения" });
+    expect(assumptions.querySelectorAll("li").length).toBe(2);
+    expect(error).not.toHaveBeenCalled();
+    error.mockRestore();
   });
 
   it("has no calculation block when the card carries none", () => {
@@ -73,6 +94,6 @@ describe("InsightPanel calculation", () => {
 
     fireEvent.click(toggle);
 
-    expect(spaced(document.querySelector(".calc-value")?.textContent)).toBe("+61 643,84 ₽");
+    expect(spaced(document.querySelector(".calc-value")?.textContent)).toBe("+286 027,40 ₽");
   });
 });

@@ -372,6 +372,11 @@
   gap: var(--s-3);
 }
 
+.insight-panel-compact .calc-value {
+  font-size: var(--fs-22);
+  line-height: var(--lh-26);
+}
+
 @container insight-panel (max-width: 440px) {
   .product-offer {
     grid-template-columns: minmax(0, 1fr);
