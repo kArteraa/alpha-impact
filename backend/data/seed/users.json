@@ -2,7 +2,7 @@
   {
     "id": "user_cfo_wholesale",
     "name": "Финансовый директор, оптовая торговля",
-    "clients": ["U_1941"]
+    "clients": ["U_1941", "U_9250"]
   },
   {
     "id": "user_cfo_autodealer",

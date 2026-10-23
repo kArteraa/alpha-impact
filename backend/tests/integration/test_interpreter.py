@@ -28,7 +28,7 @@ def model() -> AsyncMock:
 
     async def complete(
         task: str, system: str, user: str, schema: type[BaseModel]
-    ) -> tuple[BaseModel, int, int]:
+    ) -> tuple[BaseModel, int, int, float]:
         context = json.loads(user)
         answer: dict[str, object]
         if task == "critic":
@@ -48,7 +48,7 @@ def model() -> AsyncMock:
             assert house_view
             key, source = house_view[0]
             answer["bank_view"] = [{"text": source["bank_text"], "type": "bank", "source": key}]
-        return schema.model_validate(answer), 200, 60
+        return schema.model_validate(answer), 200, 60, 0.0
 
     llm.complete.side_effect = complete
     return llm

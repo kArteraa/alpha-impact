@@ -8,6 +8,7 @@ const PATHS = {
   "chevron-down": "M6 9l6 6 6-6",
   plus: "M12 5v14M5 12h14",
   "arrow-right": "M5 12h14M13 6l6 6-6 6",
+  check: "M5 12.5 10 17.5 19 7",
   alert:
     "M12 8v5M12 16.5v.5M10.3 3.9 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z",
 } as const;

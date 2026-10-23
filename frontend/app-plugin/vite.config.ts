@@ -12,7 +12,7 @@ const library = defineConfig({
   },
   test: {
     environment: "happy-dom",
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "extension/**/*.test.{ts,tsx}"],
     css: { include: [/tokens\.css/] },
   },
 });

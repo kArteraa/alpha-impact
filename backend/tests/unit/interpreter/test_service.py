@@ -14,7 +14,7 @@ from shared.contracts.schemas import (
     PayrollContext,
     Trace,
 )
-from tests.unit.interpreter.support import Harness, draft_answer
+from tests.unit.interpreter.support import Harness, draft_answer, saved
 
 
 async def test_logistics_payment_returns_sourced_draft(harness: Harness) -> None:
@@ -28,6 +28,7 @@ async def test_logistics_payment_returns_sourced_draft(harness: Harness) -> None
     assert card.what_happened[0].source_ref.id == "logistics-news"
     assert card.what_happened[0].source_ref.url == harness.seed.news[0].url
     assert card.bank_view[0].source_ref.id == "logistics-approved"
+    assert card.bank_view[0].source_ref.url == "/reports/synthetic-report#page=1"
     assert card.bank_view[0].text == harness.seed.house_view[0].claim
     for block in (
         card.what_happened,
@@ -129,6 +130,172 @@ async def test_empty_house_view_does_not_invent_bank_position(harness: Harness) 
     assert response.cards[0].bank_view == []
 
 
+QUOTED = "house_view:logistics-approved"
+
+
+def bank_claim(text: str) -> dict[str, str]:
+    return {"text": text, "type": "bank", "source": QUOTED}
+
+
+@pytest.mark.parametrize("block", ["why_for_you", "bank_view"])
+async def test_first_words_of_bank_claim_give_the_full_quote(harness: Harness, block: str) -> None:
+    harness.answers[1]["bank_view"] = []
+    harness.answers[1][block] = [bank_claim("Тестовая позиция банка")]
+    response = await harness.agent.interpret(harness.request())
+    claim = getattr(response.cards[0], block)[0]
+    assert claim.text == harness.seed.house_view[0].claim
+    assert claim.source_ref.id == "logistics-approved"
+    assert saved(harness).critic_verdicts == ["1: ok"]
+
+
+def with_other_claim(harness: Harness) -> str:
+    other = harness.seed.house_view[0].model_copy(
+        update={"id": "other", "claim": "Другая позиция банка: ставки по кредитам растут"}
+    )
+    harness.house_view.claims.return_value = [*harness.seed.house_view, other]
+    return "house_view:other"
+
+
+async def test_bank_claim_starting_like_another_claim_is_rewritten(harness: Harness) -> None:
+    other = with_other_claim(harness)
+    harness.answers[1]["bank_view"] = [bank_claim("Другая позиция банка")]
+    harness.answers.append(draft_answer())
+    response = await harness.agent.interpret(harness.request())
+    card = response.cards[0]
+    assert card.bank_view[0].text == harness.seed.house_view[0].claim
+    assert not card.needs_review
+    redraft = next(
+        json.loads(call.kwargs["user"])
+        for call in harness.llm.complete.await_args_list
+        if "previous_draft" in call.kwargs["user"]
+    )
+    assert redraft["previous_draft"]["bank_view"][0]["text"] == harness.seed.house_view[0].claim
+    note = redraft["critic_verdicts"][0]
+    assert note.startswith("bank: ") and other in note and QUOTED in note
+    assert saved(harness).critic_verdicts == [f"1: {note}", "2: ok"]
+
+
+async def test_repeated_wrong_reference_gives_one_note(harness: Harness) -> None:
+    with_other_claim(harness)
+    reason = {
+        "text": "Получатель работает в логистике",
+        "type": "fact",
+        "source": "graph:industry_class",
+    }
+    harness.answers[1]["why_for_you"] = [reason, bank_claim("Другая позиция банка")]
+    harness.answers[1]["bank_view"] = [bank_claim("Другая позиция банка")]
+    harness.answers.append(draft_answer())
+    await harness.agent.interpret(harness.request())
+    first_round = [v for v in saved(harness).critic_verdicts if v.startswith("1: ")]
+    assert len(first_round) == 1
+
+
+async def test_wrong_bank_reference_after_rewrite_needs_review(harness: Harness) -> None:
+    with_other_claim(harness)
+    harness.answers[1]["bank_view"] = [bank_claim("Другая позиция банка")]
+    harness.answers.append(harness.answers[1])
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert card.needs_review
+    assert card.bank_view[0].text == harness.seed.house_view[0].claim
+
+
+async def test_short_match_with_another_claim_is_traced_without_rewrite(
+    harness: Harness,
+) -> None:
+    with_other_claim(harness)
+    harness.answers[1]["bank_view"] = [bank_claim("Другая")]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert card.bank_view[0].text == harness.seed.house_view[0].claim
+    trace = saved(harness)
+    assert trace.critic_verdicts == ["1: ok"]
+    build = next(step for step in trace.steps if step.name == "round 1 build")
+    assert "Другая" in build.output_summary
+    assert build.duration_ms >= 0
+    assert build.started_at <= trace.steps[-1].started_at
+
+
+async def test_bank_claim_unlike_any_claim_is_traced_without_rewrite(harness: Harness) -> None:
+    with_other_claim(harness)
+    harness.answers[1]["bank_view"] = [bank_claim("Банк обещает прибыль")]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert card.bank_view[0].text == harness.seed.house_view[0].claim
+    assert not card.needs_review
+    trace = saved(harness)
+    assert trace.critic_verdicts == ["1: ok"]
+    build = next(step for step in trace.steps if step.name == "round 1 build")
+    assert build.step == "critic"
+    assert "Банк обещает прибыль" in build.output_summary
+
+
+async def test_retellings_of_one_bank_claim_give_one_quote(harness: Harness) -> None:
+    harness.answers[1]["bank_view"] = [
+        bank_claim(text) for text in ("Тестовая позиция банка", "Тестовая позиция")
+    ]
+    response = await harness.agent.interpret(harness.request())
+    assert [claim.text for claim in response.cards[0].bank_view] == [
+        harness.seed.house_view[0].claim
+    ]
+
+
+async def test_bank_view_quote_is_not_repeated_in_other_blocks(harness: Harness) -> None:
+    reason = {
+        "text": "Получатель работает в логистике",
+        "type": "fact",
+        "source": "graph:industry_class",
+    }
+    harness.answers[1]["why_for_you"] = [reason, bank_claim("Тестовая позиция банка")]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert [claim.text for claim in card.why_for_you] == [reason["text"]]
+    assert [claim.text for claim in card.bank_view] == [harness.seed.house_view[0].claim]
+
+
+async def test_block_of_only_the_bank_view_quote_keeps_it_for_review(harness: Harness) -> None:
+    harness.answers[1]["why_for_you"] = [bank_claim("Тестовая позиция банка")]
+    harness.answers.append(harness.answers[1])
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert [claim.text for claim in card.why_for_you] == [harness.seed.house_view[0].claim]
+    assert card.needs_review
+    verdicts = saved(harness).critic_verdicts
+    assert [verdict.split(":")[:2] for verdict in verdicts] == [
+        ["1", " bank"],
+        ["2", " bank"],
+    ]
+    assert all("why_for_you" in verdict for verdict in verdicts)
+
+
+async def test_build_notes_are_traced_when_critic_fails(harness: Harness) -> None:
+    critic = harness.use_critic()
+    critic.review.side_effect = BudgetExceeded("spent")
+    harness.answers[1]["why_for_you"] = [bank_claim("Тестовая позиция банка")]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert card.needs_review
+    verdicts = saved(harness).critic_verdicts
+    assert verdicts[0].startswith("1: bank: блок why_for_you")
+    assert verdicts[1:] == ["1: error: BudgetExceeded"]
+
+
+@pytest.mark.parametrize(
+    "claim",
+    [
+        {"text": "Тестовая позиция банка", "type": "bank", "source": "house_view"},
+        {"text": "Расчёт дохода", "type": "ai", "source": "calc"},
+    ],
+)
+async def test_bare_source_key_is_named_in_the_error(
+    harness: Harness, claim: dict[str, str]
+) -> None:
+    harness.answers[1]["consequences"] = [claim]
+    with pytest.raises(DomainError, match=f": {claim['source']}$"):
+        await harness.agent.interpret(harness.request())
+
+
+async def test_identical_claims_of_any_type_give_one_claim(harness: Harness) -> None:
+    action = {"text": "Уточните срок поставки", "type": "ai", "source": "graph:industry_class"}
+    harness.answers[1]["actions"] = [action, dict(action)]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert [claim.text for claim in card.actions] == [action["text"]]
+
+
 @pytest.mark.parametrize(
     "change",
     [
@@ -136,7 +303,6 @@ async def test_empty_house_view_does_not_invent_bank_position(harness: Harness) 
         {"source": "house_view:logistics-superseded", "type": "bank"},
         {"source": "news:logistics-news", "type": "bank"},
         {"source": "house_view:logistics-approved", "type": "fact"},
-        {"source": "house_view:logistics-approved", "type": "bank", "text": "Банк обещает прибыль"},
     ],
 )
 async def test_invalid_source_or_attribution_rejects_draft(
@@ -235,7 +401,7 @@ async def test_templates_cover_business_actions(harness: Harness, action: object
 
 async def test_malformed_gateway_result_is_a_domain_error(harness: Harness) -> None:
     harness.llm.complete.side_effect = None
-    harness.llm.complete.return_value = ({"focus": "missing tools"}, 1, 1)
+    harness.llm.complete.return_value = ({"focus": "missing tools"}, 1, 1, 0.0)
     with pytest.raises(DomainError):
         await harness.agent.interpret(harness.request())
 
@@ -300,11 +466,6 @@ async def test_card_failing_second_round_needs_review(harness: Harness) -> None:
     assert trace.result == response
 
 
-def saved(harness: Harness) -> Trace:
-    trace: Trace = harness.traces.save.call_args.args[0]
-    return trace
-
-
 async def test_critic_budget_error_returns_first_card_for_review(harness: Harness) -> None:
     critic = harness.use_critic()
     critic.review.side_effect = BudgetExceeded("spent")
@@ -363,7 +524,7 @@ async def test_redraft_model_error_returns_first_card_for_review(harness: Harnes
 
 async def test_second_round_critic_error_returns_redraft_for_review(harness: Harness) -> None:
     critic = harness.use_critic()
-    critic.review.side_effect = [["source: a"], BudgetExceeded("spent")]
+    critic.review.side_effect = [(["source: a"], 0, 0, 0.0), BudgetExceeded("spent")]
     harness.answers.append(draft_answer() | {"headline": "Исправленный заголовок"})
     response = await harness.agent.interpret(harness.request())
     assert response.cards[0].needs_review

@@ -37,7 +37,7 @@ class FakeLlm:
 
     async def complete(
         self, task: str, system: str, user: str, schema: type | None = None
-    ) -> tuple[object, int, int]:
+    ) -> tuple[object, int, int, float]:
         assert schema is not None and issubclass(schema, BaseModel)
         self.calls.append(task)
         if self.errors:
@@ -49,7 +49,7 @@ class FakeLlm:
             "value": "14%",
             "valid_until": None,
         }
-        return schema.model_validate({"claims": [claim]}), 100, 20
+        return schema.model_validate({"claims": [claim]}), 100, 20, 0.0
 
     async def embed(self, text: str) -> list[float]:
         raise NotImplementedError

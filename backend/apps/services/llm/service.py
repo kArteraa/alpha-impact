@@ -59,7 +59,11 @@ def parse(content: str, schema: type[BaseModel] | None) -> object:
     try:
         return schema.model_validate_json(content)
     except ValidationError as error:
-        raise ModelOutputInvalid(f"answer does not match {schema.__name__}") from error
+        details = "; ".join(
+            f"{'.'.join(map(str, item['loc']))}: {item['msg']}"
+            for item in error.errors(include_input=False, include_url=False)
+        )
+        raise ModelOutputInvalid(f"answer does not match {schema.__name__}: {details}") from error
 
 
 class ModelGateway:
@@ -84,7 +88,7 @@ class ModelGateway:
 
     async def complete(
         self, task: str, system: str, user: str, schema: type | None = None
-    ) -> tuple[object, int, int]:
+    ) -> tuple[object, int, int, float]:
         output_schema = pydantic_schema(schema)
         output_format = response_format(output_schema)
         model = self._catalog.route(task)
@@ -93,17 +97,18 @@ class ModelGateway:
         key = cache_key(*parts) if reasoning else cache_key(*parts, REASONING_OFF)
         cached = await self._store.cached(key)
         if cached is not None:
-            return parse(cached, output_schema), 0, 0
+            return parse(cached, output_schema), 0, 0, 0.0
         reservation = await self._reserve(task, model)
         completion = await self._chat(reservation, model, system, user, output_format, reasoning)
         try:
             content = answer_text(completion.content, model)
             result = parse(content, output_schema)
-        except ModelOutputInvalid:
+        except ModelOutputInvalid as error:
+            error.tokens_in, error.tokens_out, error.cost_rub = spent(completion)
             await self._record(reservation, *spent(completion))
             raise
         await self._remembered(reservation, key, content, completion)
-        return result, completion.tokens_in, completion.tokens_out
+        return result, completion.tokens_in, completion.tokens_out, completion.cost_rub
 
     async def embed(self, text: str) -> list[float]:
         key = cache_key(EMBED_TASK, self._embedder.spec.model_dump(), text)

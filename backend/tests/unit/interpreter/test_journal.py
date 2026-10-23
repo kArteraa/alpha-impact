@@ -2,12 +2,16 @@ import asyncio
 import json
 from unittest.mock import AsyncMock
 
+import pytest
+from pydantic import BaseModel
+
 from apps.services.interpreter.journal import Journal
 from apps.services.interpreter.planning import PLANS_PATH, load_config
+from shared.contracts.errors import ChargedModelError
 from shared.contracts.ports import LLMGateway
 from shared.contracts.schemas import CounterpartyContext, Trace
 from tests.integration.contracts.examples import EXAMPLES, TRACE
-from tests.unit.interpreter.support import Harness, draft_answer
+from tests.unit.interpreter.support import CALL_COST, Harness, draft_answer, plan_answer
 
 
 def empty_trace() -> Trace:
@@ -94,3 +98,44 @@ async def test_steps_keep_start_order_when_calls_overlap() -> None:
         journal.tool("house_view.chain", "second", fast()),
     )
     assert [step.input_summary for step in journal.trace.steps] == ["first", "second"]
+
+
+async def test_model_steps_record_cost_and_critic_usage(harness: Harness) -> None:
+    harness.use_critic(([], 30, 5, 0.02))
+    await harness.agent.interpret(harness.request())
+    trace: Trace = harness.traces.save.call_args.args[0]
+    by_kind = {step.step: step for step in trace.steps}
+    assert by_kind["plan"].cost_rub == by_kind["draft"].cost_rub == CALL_COST
+    critic = by_kind["critic"]
+    assert (critic.tokens_in, critic.tokens_out, critic.cost_rub) == (30, 5, 0.02)
+    assert sum(step.cost_rub for step in trace.steps) == pytest.approx(2 * CALL_COST + 0.02)
+
+
+async def test_redraft_step_records_its_cost(harness: Harness) -> None:
+    harness.use_critic(["source: a"], [])
+    harness.answers.append(draft_answer())
+    await harness.agent.interpret(harness.request())
+    trace: Trace = harness.traces.save.call_args.args[0]
+    redraft = next(step for step in trace.steps if step.name == "redraft")
+    assert (redraft.tokens_in, redraft.cost_rub) == (120, CALL_COST)
+
+
+async def test_failed_charged_redraft_keeps_its_cost(harness: Harness) -> None:
+    harness.use_critic(["source: a"])
+    answers = iter([plan_answer(), draft_answer()])
+
+    async def complete(
+        task: str, system: str, user: str, schema: type[BaseModel]
+    ) -> tuple[BaseModel, int, int, float]:
+        answer = next(answers, None)
+        if answer is None:
+            raise ChargedModelError("answer is not JSON", 90, 10, 0.07)
+        return schema.model_validate(answer), 120, 40, CALL_COST
+
+    harness.llm.complete.side_effect = complete
+    response = await harness.agent.interpret(harness.request())
+    trace: Trace = harness.traces.save.call_args.args[0]
+    redraft = next(step for step in trace.steps if step.name == "redraft")
+    assert response.cards[0].needs_review
+    assert (redraft.tokens_in, redraft.tokens_out, redraft.cost_rub) == (90, 10, 0.07)
+    assert sum(step.cost_rub for step in trace.steps) == pytest.approx(2 * CALL_COST + 0.07)

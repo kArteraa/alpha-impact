@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatRub, parseAmount } from "./money";
+import { amountError, formatRub, parseAmount } from "./money";
 
 describe("formatRub", () => {
   it.each([
@@ -25,5 +25,15 @@ describe("formatRub", () => {
   it("leaves invalid input untouched", () => {
     expect(formatRub("1500,")).toBe("1500,");
     expect(formatRub("")).toBe("");
+  });
+});
+
+describe("amountError", () => {
+  it("explains an amount it cannot accept", () => {
+    expect(amountError("1500.555")).toBe("Сумма — положительное число, не больше двух знаков после запятой");
+  });
+
+  it.each(["", "  ", "1 500 000,50"])("has nothing to say about %j", (raw) => {
+    expect(amountError(raw)).toBeNull();
   });
 });

@@ -4,11 +4,11 @@ from itertools import groupby
 from operator import itemgetter
 
 from apps.services.whatif.formatting import MINUS, format_amount, format_rate
+from shared.config.periods import DAYS_IN_MONTH
 from shared.contracts.schemas import WhatIfResult
 
 MONTHS_IN_YEAR = 12
 DAYS_IN_YEAR = 365
-DAYS_IN_MONTH = 30
 PERCENT = 100
 CURRENCY_CODE = re.compile(r"[A-Z]{3}")
 RUB = "RUB"

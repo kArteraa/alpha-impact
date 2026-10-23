@@ -61,6 +61,7 @@ async def test_metrics_count_only_traces_of_the_period(store: TraceRepository) -
     recent = await store.metrics(date(2026, 10, 21))
     assert recent["silent_share"] == 1.0
     assert "tokens_per_card" not in recent
+    assert "useful_share" not in recent
     whole = await store.metrics(date(2026, 10, 20))
     assert (whole["silent_share"], whole["tokens_per_card"]) == (0.5, 160.0)
 
@@ -136,3 +137,17 @@ async def test_find_by_card_of_foreign_trace_is_denied(
     await store.save(make_trace("t-1", TRACE.created_at, card_response("card-a")))
     with pytest.raises(AccessDenied):
         await store.find_by_card(user_id=user_id, client_id=client_id, card_id="card-a")
+
+
+async def test_useful_share_counts_feedback_on_traces_of_the_period(
+    store: TraceRepository,
+) -> None:
+    now = datetime.now(UTC)
+    await store.save(make_trace("t1", now, card_response("card-a")))
+    await store.save(make_trace("t2", now, card_response("card-b")))
+    await store.save(make_trace("t3", datetime(2026, 1, 1, tzinfo=UTC), card_response("card-c")))
+    await store.feedback(OWNER, "card-a", True, None)
+    await store.feedback(OWNER, "card-b", True, None)
+    await store.feedback(OWNER, "card-b", False, "Не про нас")
+    await store.feedback(OWNER, "card-c", True, None)
+    assert (await store.metrics(now.date()))["useful_share"] == 0.5
