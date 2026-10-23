@@ -21,3 +21,7 @@ export async function askTranche(page: Page, product: RegExp, amount: string) {
 export async function waitForFeed(page: Page) {
   await expect(page.locator(".event").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
 }
+
+export function feedWidget(page: Page) {
+  return page.getByRole("region", { name: "Что изменилось вокруг ваших операций" });
+}
