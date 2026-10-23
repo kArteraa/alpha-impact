@@ -21,11 +21,16 @@ const STEP_NAMES: Record<string, string> = {
 };
 
 const CRITIC_ROUND = /^round (\d+)$/;
+const CARD_BUILD = /^round (\d+) build$/;
 
 export function stepLabel(step: TraceStep): string {
   const round = step.step === "critic" ? CRITIC_ROUND.exec(step.name) : null;
   if (round) {
     return `Критик, круг ${round[1]}`;
+  }
+  const build = step.step === "critic" ? CARD_BUILD.exec(step.name) : null;
+  if (build) {
+    return `Сборка карточки, круг ${build[1]}`;
   }
   return Object.hasOwn(STEP_NAMES, step.name) ? STEP_NAMES[step.name] : step.name;
 }

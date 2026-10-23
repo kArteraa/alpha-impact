@@ -26,6 +26,7 @@ describe("stepLabel", () => {
     ["draft", "redraft", "Переписанный черновик"],
     ["critic", "round 1", "Критик, круг 1"],
     ["critic", "round 2", "Критик, круг 2"],
+    ["critic", "round 1 build", "Сборка карточки, круг 1"],
     ["final", "card", "Итог: карточка"],
     ["final", "silent", "Итог: молчание"],
     ["final", "failed", "Итог: ошибка"],
