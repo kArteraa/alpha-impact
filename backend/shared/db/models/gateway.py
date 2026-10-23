@@ -31,3 +31,12 @@ class GatewayCallRow(Base):
     outcome: Mapped[str] = mapped_column(String(64))
     duration_ms: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ExtensionTokenRow(Base):
+    __tablename__ = "extension_tokens"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64))
+    scope: Mapped[str] = mapped_column(String(32))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

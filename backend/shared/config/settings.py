@@ -25,5 +25,5 @@ class Settings(BaseSettings):
     MODEL_FOLLOWUP: str
     RELEVANCE_THRESHOLD: float
     CACHE_TTL_SECONDS: int
-    EXTENSION_TOKEN_TTL_SECONDS: int
+    EXTENSION_TOKEN_TTL_SECONDS: int = Field(gt=0)
     NEWS_RSS_URLS: list[str]

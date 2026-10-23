@@ -1,4 +1,5 @@
 import hashlib
+import json
 from collections.abc import Callable, Sequence
 from typing import Any, Literal
 
@@ -121,7 +122,7 @@ def page_schema(config: NewsConfig) -> type[Annotation]:
 
 
 def page_prompt(url: str, text: str, max_chars: int) -> str:
-    return f"Адрес: {url}\nТекст: {text[:max_chars]}"
+    return json.dumps({"url": url, "text": text[:max_chars]}, ensure_ascii=False)
 
 
 def news_id(title: str) -> str:
@@ -145,7 +146,7 @@ def news_factors(annotation: Annotation) -> list[Factor]:
 
 
 def entry_prompt(title: str, text: str, max_chars: int) -> str:
-    return f"Заголовок: {title}\nТекст: {text[:max_chars]}"
+    return json.dumps({"title": title, "text": text[:max_chars]}, ensure_ascii=False)
 
 
 async def ask(
