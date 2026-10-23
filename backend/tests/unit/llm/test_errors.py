@@ -38,6 +38,8 @@ async def test_timeout_keeps_the_reservation_because_the_proxy_may_bill_it() -> 
         await gateway.complete("interpret", "sys", "usr")
     assert isinstance(raised.value.__cause__, httpx.TimeoutException)
     assert [(u.tokens_in, u.cost_rub) for u in store.usages] == [(0, 1.0)]
+    assert isinstance(raised.value, ChargedModelError)
+    assert (raised.value.tokens_in, raised.value.cost_rub) == (0, 1.0)
     assert store.cache == {}
 
 
@@ -113,11 +115,17 @@ async def test_broken_completion_without_usage_is_unavailable_and_not_charged(
 async def test_broken_completion_with_usage_is_unavailable_but_charged(payload: object) -> None:
     store = MemoryStore()
     gateway = make_gateway(ModelServer(payload=payload).http_client(), store)
-    with pytest.raises(ModelUnavailable):
+    with pytest.raises(ModelUnavailable) as raised:
         await gateway.complete("interpret", "sys", "usr")
     assert [(u.task, u.tokens_in, u.tokens_out, u.cost_rub) for u in store.usages] == [
         ("interpret", 1200, 300, 0.4)
     ]
+    assert isinstance(raised.value, ChargedModelError)
+    assert (raised.value.tokens_in, raised.value.tokens_out, raised.value.cost_rub) == (
+        1200,
+        300,
+        0.4,
+    )
     assert store.cache == {}
 
 

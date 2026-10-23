@@ -1,4 +1,5 @@
 from collections import Counter
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 from typing import Literal, Self
@@ -20,6 +21,7 @@ from shared.contracts.schemas import (
 
 CASES_DIR = Path(__file__).resolve().parents[1] / "tests" / "regression" / "cases"
 SourceKind = Literal["news", "house_view", "profile", "graph", "calc"]
+ROLE_BLOCKS = ("why_for_you", "actions")
 
 
 class Expectations(BaseModel):
@@ -46,6 +48,7 @@ class Case(BaseModel):
     title: str
     request: InterpretRequest
     followup_of: str | None = None
+    differs_from: str | None = None
     expect: Expectations = Expectations()
     when_card: Expectations = Expectations()
 
@@ -54,6 +57,8 @@ class Case(BaseModel):
         is_followup = isinstance(self.request.action_context, FollowupContext)
         if is_followup != (self.followup_of is not None):
             raise ValueError("followup_of is set exactly for followup action contexts")
+        if self.followup_of is not None and self.differs_from is not None:
+            raise ValueError("a followup case cannot compare roles")
         if self.when_card.silent is not None:
             raise ValueError("when_card is checked only on cards and cannot set silent")
         return self
@@ -74,7 +79,22 @@ def load_cases(directory: Path) -> list[Case]:
     duplicates = sorted(case_id for case_id, count in counts.items() if count > 1)
     if duplicates:
         raise ValueError(f"Duplicate regression case ids: {', '.join(duplicates)}")
+    seen: dict[str, Case] = {}
+    for item in cases:
+        for reference in (item.followup_of, item.differs_from):
+            if reference is not None and reference not in seen:
+                raise ValueError(f"Case {item.id} refers to no earlier case {reference}")
+        if item.differs_from is not None:
+            check_role_pair(item, seen[item.differs_from])
+        seen[item.id] = item
     return cases
+
+
+def check_role_pair(case: Case, peer: Case) -> None:
+    if case.request.role == peer.request.role:
+        raise ValueError(f"Case {case.id} compares the same role as {peer.id}")
+    if case.request.model_copy(update={"role": peer.request.role}) != peer.request:
+        raise ValueError(f"Case {case.id} must repeat the request of {peer.id} except the role")
 
 
 def bank_claims(card: InsightCard) -> list[Claim]:
@@ -147,8 +167,54 @@ def expectation_failures(
     return [f"no card meets expectations: {reasons}"]
 
 
-def check(case: Case, response: InterpretResponse, cited: dict[str, HouseViewClaim]) -> list[str]:
+def event_news(card: InsightCard) -> frozenset[str]:
+    return frozenset(
+        item.source_ref.id for item in card.what_happened if item.source_ref.kind == "news"
+    )
+
+
+def repeated_claims(card: InsightCard, peer: InsightCard, peer_case: str) -> list[str]:
+    failures = []
+    for name in ROLE_BLOCKS:
+        theirs = {item.text for item in getattr(peer, name)}
+        failures += [
+            f"card {card.id}: {name} repeats «{item.text}» of card {peer.id} of {peer_case}"
+            for item in getattr(card, name)
+            if item.text in theirs
+        ]
+    return failures
+
+
+def role_failures(
+    peer_case: str, response: InterpretResponse, peers: Sequence[InsightCard]
+) -> list[str]:
+    if not peers:
+        return [f"case {peer_case} gave no green card to compare roles"]
+    if not response.cards:
+        return ["expected a card to compare roles, got none"]
+    pairs = [
+        repeated_claims(card, peer, peer_case)
+        for card in response.cards
+        if (news := event_news(card))
+        for peer in peers
+        if news & event_news(peer)
+    ]
+    if not pairs:
+        return [f"no card shares what_happened news with a card of {peer_case}"]
+    if any(not failures for failures in pairs):
+        return []
+    return [failure for failures in pairs for failure in failures]
+
+
+def check(
+    case: Case,
+    response: InterpretResponse,
+    cited: dict[str, HouseViewClaim],
+    peers: Sequence[InsightCard] = (),
+) -> list[str]:
     failures = expectation_failures(case.expect, response, cited)
+    if case.differs_from is not None:
+        failures += role_failures(case.differs_from, response, peers)
     for card in response.cards:
         failures += invariant_failures(card, cited)
     if response.cards:
