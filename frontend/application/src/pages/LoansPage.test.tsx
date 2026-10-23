@@ -179,4 +179,13 @@ describe("LoansPage", () => {
     expect(screen.getAllByLabelText(/^Банк — источник: /).length).toBeGreaterThan(0);
     expect(screen.getByRole("region", { name: "Расчёт" })).toBeTruthy();
   });
+
+  it("explains a tranche amount it cannot accept", () => {
+    openTranche();
+
+    setAmount("1500.555");
+
+    expect(screen.getByText("Сумма — положительное число, не больше двух знаков после запятой")).toBeTruthy();
+    expect(screen.getByLabelText("Сумма, ₽").getAttribute("aria-invalid")).toBe("true");
+  });
 });

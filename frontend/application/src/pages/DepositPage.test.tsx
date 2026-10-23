@@ -128,4 +128,16 @@ describe("DepositPage", () => {
     expect(document.querySelector(".insight-card")).toBe(shown);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("explains an amount it cannot accept while the panel keeps the last one", async () => {
+    render();
+    setAmount("50000000");
+    await answer();
+
+    setAmount("5000000O");
+
+    expect(panelState()).toBe("cards");
+    expect(screen.getByText("Сумма — положительное число, не больше двух знаков после запятой")).toBeTruthy();
+    expect(screen.getByLabelText("Сумма, ₽").getAttribute("aria-invalid")).toBe("true");
+  });
 });
