@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass, field
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -37,15 +38,48 @@ def words(text: str) -> list[str]:
     return re.findall(r"\w+", text.casefold())
 
 
-def quote_note(claim: DraftClaim, quote: str) -> str | None:
-    said = words(claim.text)
-    if said and said == words(quote)[: len(said)]:
-        return None
-    start = " ".join(quote.split()[: max(len(said), 1)])
-    return (
-        f"bank: тезис со ссылкой на {claim.source} начинается «{claim.text}», "
-        f"а утверждение — «{start}»"
+def starts_like(text: str, quote: str) -> bool:
+    said = words(text)
+    return bool(said) and said == words(quote)[: len(said)]
+
+
+@dataclass
+class BuildNotes:
+    rewrite: list[str] = field(default_factory=list)
+    remarks: list[str] = field(default_factory=list)
+
+
+def check_quote(claim: DraftClaim, quotes: dict[str, str], notes: BuildNotes) -> None:
+    if starts_like(claim.text, quotes[claim.source]):
+        return
+    other = next(
+        (
+            key
+            for key, quote in quotes.items()
+            if key != claim.source and starts_like(claim.text, quote)
+        ),
+        None,
     )
+    if other is None:
+        notes.remarks.append(
+            f"bank: тезис со ссылкой на {claim.source} — трактовка модели «{claim.text}», "
+            "в карточке цитата утверждения по ссылке"
+        )
+        return
+    notes.rewrite.append(
+        f"bank: тезис со ссылкой на {claim.source} начинается как утверждение {other}: "
+        f"«{claim.text}»"
+    )
+
+
+def without_quoted(
+    name: str, block: list[Claim], quoted: list[Claim], notes: BuildNotes
+) -> list[Claim]:
+    rest = [claim for claim in block if claim not in quoted]
+    if rest:
+        return rest
+    notes.rewrite.append(f"{name}: состоит только из цитаты позиции банка")
+    return block
 
 
 def with_quotes(draft: Draft, evidence: dict[str, Evidence]) -> Draft:
@@ -62,9 +96,10 @@ def with_quotes(draft: Draft, evidence: dict[str, Evidence]) -> Draft:
 
 def build_card(
     draft: Draft, evidence: dict[str, Evidence], card_id: str, trace_id: str
-) -> tuple[InsightCard, list[str]]:
+) -> tuple[InsightCard, BuildNotes]:
     basis: dict[str, SourceRef] = {}
-    notes: list[str] = []
+    notes = BuildNotes()
+    quotes = {key: item.bank_text for key, item in evidence.items() if item.bank_text is not None}
 
     def resolve(claims: list[DraftClaim], bank_only: bool) -> list[Claim]:
         result = []
@@ -82,7 +117,7 @@ def build_card(
                 if item.bank_text is None:
                     raise DomainError("Bank claim must quote an approved house view claim")
                 text = item.bank_text
-                notes.extend(note for note in [quote_note(claim, text)] if note)
+                check_quote(claim, quotes, notes)
             if claim.type == ClaimType.FACT and not item.factual:
                 raise DomainError("An inferred feature or forecast cannot be cited as a fact")
             basis[claim.source] = item.ref
@@ -94,14 +129,8 @@ def build_card(
     blocks = {name: resolve(getattr(draft, name), name == "bank_view") for name in CLAIM_BLOCKS}
     bank_view = blocks["bank_view"]
     required = {
-        name: [claim for claim in blocks[name] if claim not in bank_view]
-        for name in REQUIRED_BLOCKS
+        name: without_quoted(name, blocks[name], bank_view, notes) for name in REQUIRED_BLOCKS
     }
-    notes.extend(
-        f"{name}: состоит только из цитаты позиции банка"
-        for name, block in required.items()
-        if not block
-    )
     card = InsightCard(
         id=card_id,
         trace_id=trace_id,
