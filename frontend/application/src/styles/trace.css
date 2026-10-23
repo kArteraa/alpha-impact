@@ -80,6 +80,10 @@
   box-shadow: none;
 }
 
+.trace-step[data-failed="true"]::after {
+  background: var(--danger);
+}
+
 .trace-step summary {
   display: flex;
   flex-wrap: wrap;

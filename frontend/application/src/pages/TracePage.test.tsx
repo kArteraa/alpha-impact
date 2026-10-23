@@ -140,11 +140,15 @@ describe("TracePage", () => {
     expect(within(result).getByText("Нет значимых событий для этого действия")).toBeTruthy();
   });
 
-  it("has no result when the request failed", async () => {
-    renderTrace([200, { ...TRACE, result: null }]);
+  it("marks the failed end and has no result when the request failed", async () => {
+    const failed = { ...TRACE.steps[9], name: "failed", output_summary: "ModelUnavailable" };
+    renderTrace([200, { ...TRACE, result: null, steps: [...TRACE.steps.slice(0, 9), failed] }]);
     await loaded();
 
     expect(screen.queryByRole("region", { name: "Итог" })).toBeNull();
+    const steps = Array.from(document.querySelectorAll(".trace-step"), (step) => step.getAttribute("data-failed"));
+    expect(steps.at(-1)).toBe("true");
+    expect(steps.slice(0, -1).every((value) => value === "false")).toBe(true);
   });
 
   it("shows that the trace is loading", async () => {
