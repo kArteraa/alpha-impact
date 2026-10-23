@@ -92,7 +92,7 @@ async def test_deposit_card_carries_calculation_on_bank_rate_path(harness: Harne
     assert card.calculation.kind == "deposit_terms"
     assert card.calculation.formula.startswith("фиксация: 10 000 000 ₽ × 14% × 90/365")
     assert (
-        "ставка депозита следует ключевой ставке по позиции банка" in card.calculation.assumptions
+        "ставка размещения следует ключевой ставке по позиции банка" in card.calculation.assumptions
     )
     assert card.consequences[0].source_ref.kind == "calc"
     assert card.consequences[0].source_ref in card.basis

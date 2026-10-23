@@ -21,7 +21,7 @@ from shared.contracts.schemas import (
 KEY_RATE = "key_rate"
 RATE_DECIMALS = 2
 RATE_VALUE = re.compile(r"(\d+(?:,\d+)?)%")
-DEPOSIT_RATE = "ставка депозита следует ключевой ставке по позиции банка"
+DEPOSIT_RATE = "ставка размещения следует ключевой ставке по позиции банка"
 LINEAR_PATH = "между прогнозами банка ключевая ставка меняется линейно"
 FIXED_SPREAD = "спред к ключевой ставке не меняется"
 TITLES = {
