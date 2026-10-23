@@ -16,6 +16,14 @@ class Template(BaseModel):
     model_config = ConfigDict(extra="forbid")
     focus: str = Field(min_length=1)
     context: list[Literal["profile", "counterparty", "news", "house_view"]]
+    house_view_subjects: list[str]
+
+    @model_validator(mode="after")
+    def known_subjects(self) -> Self:
+        unknown = set(self.house_view_subjects) - set(FACTORS)
+        if unknown:
+            raise ValueError(f"Unknown house view subjects: {sorted(unknown)}")
+        return self
 
 
 class PlanConfig(BaseModel):
@@ -28,6 +36,7 @@ class PlanConfig(BaseModel):
     followup_focus: str = Field(min_length=1)
     max_question_chars: int = Field(gt=0)
     max_followup_depth: int = Field(gt=0)
+    loan_horizon_months: int = Field(gt=0)
     templates: dict[str, Template]
 
     @model_validator(mode="after")

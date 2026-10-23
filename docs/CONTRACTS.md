@@ -114,6 +114,14 @@ class ProductOffer(BaseModel):
     rule_id: str
 
 
+class WhatIfResult(BaseModel):
+    kind: str
+    value: float
+    unit: str
+    formula: str
+    assumptions: list[str]
+
+
 class InsightCard(BaseModel):
     id: str
     headline: str
@@ -124,6 +132,7 @@ class InsightCard(BaseModel):
     bank_view: list[Claim]
     basis: list[SourceRef]
     product_offer: ProductOffer | None = None
+    calculation: WhatIfResult | None = None
     significance: float = Field(ge=0, le=1)
     needs_review: bool = False
     trace_id: str
@@ -194,14 +203,6 @@ class HouseViewClaim(BaseModel):
     status: Literal["draft", "approved", "superseded", "expired"]
 
 
-class WhatIfResult(BaseModel):
-    kind: str
-    value: float
-    unit: str
-    formula: str
-    assumptions: list[str]
-
-
 class TraceStep(BaseModel):
     step: Literal["prefilter", "plan", "tool", "draft", "critic", "final"]
     name: str
@@ -223,6 +224,8 @@ class Trace(BaseModel):
     result: InterpretResponse | None
     created_at: datetime
 ```
+
+`InsightCard.calculation` — расчёт `WhatIfService` для действия карточки, который UI показывает отдельным блоком: число, формула, допущения. Interpreter заполняет его для `DepositContext` (`deposit_terms`) и для `LoanContext` с `product: "loan"` и `rate_type: "floating"` (`rate_burden`), если в актуальной позиции банка по `key_rate` есть разборчивый факт и прогноз на весь срок; в остальных случаях, в ответе на followup и у старых карточек — `None`. Тот же расчёт доступен черновику источником `calc:<kind>`: тезис, который на него ссылается, получает `SourceRef(kind="calc", id=<kind>)` и попадает в `basis`. Followup к такой карточке получает тот же источник из `calculation` исходной карточки, но сам расчёт заново не делает.
 
 ## Порты
 

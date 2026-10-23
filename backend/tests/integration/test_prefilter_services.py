@@ -120,7 +120,9 @@ async def select(services: Container, seed: MockSeed, beneficiary: str) -> Prefi
         services.resolve(NewsService),
         services.resolve(HouseViewService),
         threshold=services.resolve(Settings).RELEVANCE_THRESHOLD,
-    ).select(profile, seed.payment, context, since=seed.since, as_of=seed.as_of, limit=200)
+    ).select(
+        profile, seed.payment, context, since=seed.since, as_of=seed.as_of, limit=200, subjects=[]
+    )
 
 
 async def test_real_services_select_logistics_and_current_house_view(
@@ -175,6 +177,7 @@ async def test_real_index_matches_fx_country_case_and_whitespace(
         since=seed.since,
         as_of=seed.as_of,
         limit=200,
+        subjects=[],
     )
     assert len(result.candidates) == 1
 
@@ -215,7 +218,7 @@ async def test_real_database_prefilter_under_200_ms_for_200_items(
     )
     started = perf_counter()
     result = await prefilter.select(
-        profile, seed.payment, context, since=seed.since, as_of=seed.as_of, limit=200
+        profile, seed.payment, context, since=seed.since, as_of=seed.as_of, limit=200, subjects=[]
     )
     elapsed_ms = (perf_counter() - started) * 1000
     assert len(result.candidates) == 200

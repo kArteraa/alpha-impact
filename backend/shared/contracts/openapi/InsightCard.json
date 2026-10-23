@@ -105,6 +105,37 @@
       ],
       "title": "SourceRef",
       "type": "object"
+    },
+    "WhatIfResult": {
+      "properties": {
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "unit",
+        "formula",
+        "assumptions"
+      ],
+      "title": "WhatIfResult",
+      "type": "object"
     }
   },
   "properties": {
@@ -125,6 +156,17 @@
         "$ref": "#/$defs/SourceRef"
       },
       "type": "array"
+    },
+    "calculation": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WhatIfResult"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "consequences": {
       "items": {

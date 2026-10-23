@@ -11,6 +11,7 @@ from shared.contracts.ports import (
     NewsService,
     ProfileService,
     TraceStore,
+    WhatIfService,
 )
 from shared.di.container import Container
 
@@ -26,6 +27,7 @@ def register(container: Container) -> None:
             counterparties=c.resolve(CounterpartyService),
             news=c.resolve(NewsService),
             house_view=c.resolve(HouseViewService),
+            whatif=c.resolve(WhatIfService),
             llm=c.resolve(LLMGateway),
             traces=c.resolve(TraceStore),
             critic=c.resolve(Critic),

@@ -134,6 +134,17 @@
           },
           "type": "array"
         },
+        "calculation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WhatIfResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "consequences": {
           "items": {
             "$ref": "#/$defs/Claim"
@@ -581,6 +592,37 @@
         "started_at"
       ],
       "title": "TraceStep",
+      "type": "object"
+    },
+    "WhatIfResult": {
+      "properties": {
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "unit",
+        "formula",
+        "assumptions"
+      ],
+      "title": "WhatIfResult",
       "type": "object"
     }
   },

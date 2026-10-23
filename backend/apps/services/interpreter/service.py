@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
+from apps.services.interpreter.calculation import calculation_evidence, plan_calculation
 from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
 from apps.services.interpreter.drafting import Draft, build_card
 from apps.services.interpreter.followup import (
@@ -34,8 +35,10 @@ from shared.contracts.ports import (
     NewsService,
     ProfileService,
     TraceStore,
+    WhatIfService,
 )
 from shared.contracts.schemas import (
+    ActionContext,
     CounterpartyContext,
     FollowupContext,
     HouseViewClaim,
@@ -47,6 +50,7 @@ from shared.contracts.schemas import (
     PaymentContext,
     Trace,
     TraceStep,
+    WhatIfResult,
 )
 
 
@@ -57,6 +61,7 @@ class Agent:
         counterparties: CounterpartyService,
         news: NewsService,
         house_view: HouseViewService,
+        whatif: WhatIfService,
         llm: LLMGateway,
         traces: TraceStore,
         critic: Critic,
@@ -69,6 +74,7 @@ class Agent:
         self._counterparties = counterparties
         self._news = news
         self._house_view = house_view
+        self._whatif = whatif
         self._llm = llm
         self._traces = traces
         self._critic = critic
@@ -151,11 +157,17 @@ class Agent:
                 since=as_of - timedelta(days=self._config.lookback_days),
                 as_of=as_of,
                 limit=self._config.search_limit,
+                subjects=template.house_view_subjects,
             )
         else:
             scope = f"pasted={pasted.id}"
             selection = await self._prefilter.rank(
-                [pasted], profile, request.action_context, counterparty, as_of=as_of
+                [pasted],
+                profile,
+                request.action_context,
+                counterparty,
+                as_of=as_of,
+                subjects=template.house_view_subjects,
             )
         journal.trace.steps.append(
             TraceStep(
@@ -178,7 +190,11 @@ class Agent:
             )
         news = [candidate.news for candidate in selection.candidates]
         house_view = selection.house_view
-        evidence = sources(profile, counterparty, news, house_view)
+        calculation = await self._calculation(journal, request.action_context, house_view, as_of)
+        evidence = {
+            **sources(profile, counterparty, news, house_view),
+            **calculation_evidence(calculation),
+        }
         plan = await self._plan(
             journal,
             PLAN_SYSTEM,
@@ -186,7 +202,10 @@ class Agent:
             {"context": prompt_context(request, profile, counterparty, evidence)},
         )
         current = await self._collect(journal, plan, house_view, as_of)
-        evidence = sources(profile, counterparty, news, current)
+        evidence = {
+            **sources(profile, counterparty, news, current),
+            **calculation_evidence(calculation),
+        }
         payload: dict[str, object] = {
             "plan": plan.model_dump(),
             "context": prompt_context(request, profile, counterparty, evidence),
@@ -195,7 +214,9 @@ class Agent:
             "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
         )
         card = await self._reviewed(journal, DRAFT_SYSTEM, payload, draft, evidence, current, news)
-        return InterpretResponse(silent=False, cards=[card])
+        return InterpretResponse(
+            silent=False, cards=[card.model_copy(update={"calculation": calculation})]
+        )
 
     async def _followup(
         self, request: InterpretRequest, action: FollowupContext, journal: Journal
@@ -337,6 +358,16 @@ class Agent:
                 found = await self._chain(journal, call.argument, as_of)
             collected.update({claim.id: claim for claim in found})
         return [collected[key] for key in sorted(collected)]
+
+    async def _calculation(
+        self, journal: Journal, action: ActionContext, house_view: list[HouseViewClaim], as_of: date
+    ) -> WhatIfResult | None:
+        calculation = plan_calculation(action, house_view, as_of, self._config.loan_horizon_months)
+        if calculation is None:
+            return None
+        return await journal.tool(
+            f"whatif.{calculation.name}", calculation.summary, calculation.run(self._whatif)
+        )
 
     async def _pasted_news(self, request: InterpretRequest, journal: Journal) -> NewsItem | None:
         if not isinstance(request.action_context, PageContext):
