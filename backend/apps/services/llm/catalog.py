@@ -24,6 +24,12 @@ class ModelsFile(BaseModel):
     interactive_tasks: frozenset[str]
 
 
+def reject_unknown(tasks: frozenset[str], routes: dict[str, str], setting: str) -> None:
+    unknown = sorted(tasks - set(routes))
+    if unknown:
+        raise UnknownTask(f"{setting} names unknown tasks: {unknown}")
+
+
 class ModelCatalog:
     def __init__(
         self,
@@ -35,9 +41,7 @@ class ModelCatalog:
         foreign = sorted(set(routes.values()) - allowed)
         if foreign:
             raise ModelNotAllowed(f"models outside the allow-list: {foreign}")
-        unknown = sorted(reasoning_off - set(routes))
-        if unknown:
-            raise UnknownTask(f"reasoning is switched off for unknown tasks: {unknown}")
+        reject_unknown(reasoning_off, routes, "reasoning_off_tasks")
         untimed = sorted(set(routes) - set(timeouts))
         if untimed:
             raise UnknownTask(f"no timeout is set for tasks: {untimed}")
@@ -78,9 +82,7 @@ def build_catalog(
         "critic": settings.MODEL_CRITIC,
         "followup": settings.MODEL_FOLLOWUP,
     }
-    unknown = sorted(interactive - set(routes))
-    if unknown:
-        raise UnknownTask(f"interactive timeout is set for unknown tasks: {unknown}")
+    reject_unknown(interactive, routes, "interactive_tasks")
     timeouts = {
         task: settings.LLM_INTERACTIVE_TIMEOUT_SECONDS
         if task in interactive
