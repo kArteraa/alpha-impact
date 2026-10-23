@@ -1,6 +1,7 @@
 import type { InsightCard, SourceRef, Trace, TraceStep } from "@alpha-impact/plugin";
 
 const MODEL = "z-ai/glm-5.3-flash";
+const TRACE_ID = "5e60de14-6b46-407c-8f00-33a5bcf44446";
 const START = Date.parse("2026-10-23T08:15:00.000Z");
 
 export const NEWS_SOURCE: SourceRef = {
@@ -29,7 +30,7 @@ const GRAPH_SOURCE: SourceRef = {
 
 const CARD: InsightCard = {
   id: "0f9d1c52-6a43-4b8e-9d0c-1e2f3a4b5c6d",
-  trace_id: "5e60de14-6b46-407c-8f00-33a5bcf44446",
+  trace_id: TRACE_ID,
   headline: "Перевозчики дорожают: платёж логистической компании",
   significance: 0.8,
   needs_review: false,
@@ -48,7 +49,7 @@ function step(offsetMs: number, fields: Omit<TraceStep, "started_at">): TraceSte
 }
 
 export const TRACE: Trace = {
-  id: "5e60de14-6b46-407c-8f00-33a5bcf44446",
+  id: TRACE_ID,
   created_at: "2026-10-23T08:15:00Z",
   request: {
     action_context: { type: "payment", amount: 1_500_000, beneficiary_id: "U_96105" },

@@ -112,7 +112,7 @@ async def trace(trace_id: str, user_id: CurrentUser, container: ContainerDep) ->
     responses={status.HTTP_200_OK: {"content": {PDF: {}}}},
     dependencies=[Depends(current_user)],
 )
-async def report(source_doc: str, container: ContainerDep) -> FileResponse:
+def report(source_doc: str, container: ContainerDep) -> FileResponse:
     return FileResponse(container.resolve(ReportFiles).path(source_doc), media_type=PDF)
 
 

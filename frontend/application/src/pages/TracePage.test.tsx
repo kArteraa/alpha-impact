@@ -1,18 +1,14 @@
-import type { Trace } from "@alpha-impact/plugin";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { stubApi } from "../testing";
-import { NEWS_SOURCE, TRACE } from "../trace/trace.fixture";
+import { type Reply, stubApi } from "../testing";
+import { NEWS_SOURCE, REPORT_SOURCE, TRACE } from "../trace/trace.fixture";
 import { TracePage } from "./TracePage";
 
-function renderTrace(trace: Trace | readonly [number, unknown] = TRACE, id = TRACE.id) {
-  const fetchMock = stubApi({
-    [`GET /api/trace/${id}`]: Array.isArray(trace) ? (trace as readonly [number, unknown]) : [200, trace],
-    "POST /api/feedback": [204, null],
-  });
+function renderTrace(reply: Reply = [200, TRACE]) {
+  const fetchMock = stubApi({ [`GET /api/trace/${TRACE.id}`]: reply, "POST /api/feedback": [204, null] });
   render(
-    <MemoryRouter initialEntries={[`/trace/${id}`]}>
+    <MemoryRouter initialEntries={[`/trace/${TRACE.id}`]}>
       <Routes>
         <Route path="/trace/:id" element={<TracePage />} />
       </Routes>
@@ -119,8 +115,8 @@ describe("TracePage", () => {
     const result = screen.getByRole("region", { name: "Итог" });
     const basis = within(result).getByRole("region", { name: "На чём основан вывод" });
     expect(within(basis).getByRole("link", { name: NEWS_SOURCE.title ?? "" }).getAttribute("href")).toBe(NEWS_SOURCE.url);
-    expect(within(basis).getByRole("link", { name: "ALFA-7M26.pdf, стр. 1" }).getAttribute("href")).toBe(
-      "/api/reports/ALFA-7M26.pdf#page=1",
+    expect(within(basis).getByRole("link", { name: REPORT_SOURCE.title ?? "" }).getAttribute("href")).toBe(
+      `/api${REPORT_SOURCE.url}`,
     );
   });
 
@@ -136,7 +132,7 @@ describe("TracePage", () => {
   });
 
   it("shows the silence the request ended with", async () => {
-    renderTrace({ ...TRACE, result: { silent: true, silent_reason: "Нет значимых событий для этого действия" } });
+    renderTrace([200, { ...TRACE, result: { silent: true, silent_reason: "Нет значимых событий для этого действия" } }]);
     await loaded();
 
     const result = screen.getByRole("region", { name: "Итог" });
@@ -145,7 +141,7 @@ describe("TracePage", () => {
   });
 
   it("has no result when the request failed", async () => {
-    renderTrace({ ...TRACE, result: null });
+    renderTrace([200, { ...TRACE, result: null }]);
     await loaded();
 
     expect(screen.queryByRole("region", { name: "Итог" })).toBeNull();

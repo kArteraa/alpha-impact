@@ -227,7 +227,9 @@ class Trace(BaseModel):
 
 `InsightCard.calculation` — расчёт `WhatIfService` для действия карточки, который UI показывает отдельным блоком: число, формула, допущения. Interpreter заполняет его для `DepositContext` (`deposit_terms`) и для `LoanContext` с `product: "loan"` и `rate_type: "floating"` (`rate_burden`), если в актуальной позиции банка по `key_rate` есть разборчивый факт и прогноз на весь срок; в остальных случаях, в ответе на followup и у старых карточек — `None`. Тот же расчёт доступен черновику источником `calc:<kind>`: тезис, который на него ссылается, получает `SourceRef(kind="calc", id=<kind>)` и попадает в `basis`. Followup к такой карточке получает тот же источник из `calculation` исходной карточки, но сам расчёт заново не делает.
 
-`SourceRef.url` — куда ведёт клик по источнику (AH-33). У `news` это адрес статьи (`http`/`https`). У `house_view` это путь шлюза `/reports/<source_doc в url-кодировке>#page=<page>`, а без `page` — без фрагмента. Путь относительный: хост InsightPanel приклеивает к нему свой адрес API (в приложении — `/api`), PDF отдаёт `GET /reports/{source_doc}`. У `profile`, `graph` и `calc` — `None`. Карточки, сохранённые до AH-33, держат house view без `url`.
+`SourceRef.url` — куда ведёт клик по источнику (AH-33). У `news` это адрес статьи (`http`/`https`). У `house_view` это путь шлюза `/reports/<source_doc в url-кодировке>#page=<page>`, а без `page` — без фрагмента. Путь от корня шлюза: хост InsightPanel приклеивает к нему свой адрес API (в приложении — `/api`), PDF отдаёт `GET /reports/{source_doc}`. У `profile`, `graph` и `calc` — `None`. Карточки, сохранённые до AH-33, держат house view без `url`.
+
+`Trace.critic_verdicts` — строки `<круг>: ok` или `<круг>: <код>: <деталь>`; коды — `source`, `bank`, `contradiction`, `retelling` (критик AH-22) и `error` (сбой круга, деталь — класс ошибки). Экран трассы (AH-33) показывает их по-русски, а метрика `critic_first_pass_share` ищет `1: ok`.
 
 ## Порты
 

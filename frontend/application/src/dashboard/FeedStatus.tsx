@@ -1,8 +1,7 @@
 import type { InsightCard } from "@alpha-impact/plugin";
 import type { ReactNode } from "react";
 import { useFeed } from "../feed/context";
-
-const SKELETON_LINES = 3;
+import { Skeleton } from "../ui/Skeleton";
 
 interface FeedStatusProps {
   empty: ReactNode;
@@ -24,10 +23,7 @@ export function FeedStatus({ empty, children }: FeedStatusProps) {
   if (response === undefined) {
     return (
       <div className="feed-status" data-state="checking" aria-busy="true">
-        {Array.from({ length: SKELETON_LINES }, (_, index) => (
-          <span key={index} className="insight-skeleton" />
-        ))}
-        <p className="empty">Смотрю новости и позицию банка</p>
+        <Skeleton text="Смотрю новости и позицию банка" />
       </div>
     );
   }

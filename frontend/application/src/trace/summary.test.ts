@@ -16,11 +16,11 @@ describe("traceSummary", () => {
     expect(summary.models).toEqual(["z-ai/glm-5.3-flash"]);
   });
 
-  it("counts the critic that spent tokens as model time", () => {
+  it("splits the time between the models, the search and the service steps", () => {
     expect(summary.parts).toEqual([
-      { kind: "model", durationMs: 21_900 },
+      { kind: "model", durationMs: 18_300 },
       { kind: "tool", durationMs: 35 },
-      { kind: "service", durationMs: 45 },
+      { kind: "service", durationMs: 3_645 },
     ]);
   });
 

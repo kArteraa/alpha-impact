@@ -1,8 +1,9 @@
-import { type InterpretRequest, type InterpretResponse, InsightPanel, type Trace, type TraceStep } from "@alpha-impact/plugin";
+import type { InterpretRequest, InterpretResponse, Trace, TraceStep } from "@alpha-impact/plugin";
 import { useCallback, useId } from "react";
 import { Link, useParams } from "react-router";
-import { API_BASE, ApiError, api } from "../api/client";
+import { ApiError, api } from "../api/client";
 import { useLoad } from "../api/useLoad";
+import { Panel } from "../insight/Panel";
 import { NUMBER, RUB, SECONDS } from "../money";
 import { requestLabel, stepLabel, verdictLabel } from "../trace/labels";
 import { type StepKind, traceSummary } from "../trace/summary";
@@ -10,10 +11,10 @@ import { Alert } from "../ui/Alert";
 import { ShareBar } from "../ui/charts/ShareBar";
 import type { Tone } from "../ui/charts/tone";
 import { Icon } from "../ui/Icon";
+import { Skeleton } from "../ui/Skeleton";
 
 const WHEN = new Intl.DateTimeFormat("ru-RU", { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Moscow" });
 const MS_IN_SECOND = 1000;
-const SKELETON_LINES = 3;
 const MISSING = new Set([403, 404]);
 
 const PARTS: Record<StepKind, readonly [string, Tone]> = {
@@ -133,13 +134,7 @@ function Result({ request, response }: { request: InterpretRequest; response: In
   return (
     <section className="trace-result" aria-labelledby={headingId}>
       <h2 id={headingId}>Итог</h2>
-      <InsightPanel
-        actionContext={request.action_context}
-        role={request.role}
-        response={response}
-        apiBase={API_BASE}
-        onFeedback={api.feedback}
-      />
+      <Panel actionContext={request.action_context} role={request.role} response={response} />
     </section>
   );
 }
@@ -186,10 +181,7 @@ export function TracePage() {
       </div>
       {trace.status === "loading" && (
         <div className="card trace-card" aria-busy="true">
-          {Array.from({ length: SKELETON_LINES }, (_, index) => (
-            <span key={index} className="insight-skeleton" />
-          ))}
-          <p className="empty">Загружаю трассу</p>
+          <Skeleton text="Загружаю трассу" />
         </div>
       )}
       {trace.status === "failed" && <Failure error={trace.error} />}

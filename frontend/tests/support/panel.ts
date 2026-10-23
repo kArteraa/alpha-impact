@@ -7,6 +7,11 @@ export async function chooseOption(page: Page, label: string, option: string | R
   await page.getByRole("option", { name: option }).click();
 }
 
+export async function pay(page: Page, recipient: string | RegExp, amount: string) {
+  await chooseOption(page, "Получатель", recipient);
+  await page.getByLabel("Сумма, ₽").fill(amount);
+}
+
 export async function askTranche(page: Page, product: RegExp, amount: string) {
   await page.getByRole("button", { name: "Новый транш" }).click();
   await chooseOption(page, "Продукт", product);

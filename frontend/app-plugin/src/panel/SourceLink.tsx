@@ -8,7 +8,7 @@ interface SourceLinkProps extends HTMLAttributes<HTMLElement> {
 }
 
 const SAFE_URL = /^https?:\/\//i;
-const GATEWAY_PATH = /^\/reports\//;
+const GATEWAY_PATH = /^\/(?!\/)/;
 
 function sourceHref(url: string | null | undefined, apiBase: string | undefined): string | null {
   if (!url) {

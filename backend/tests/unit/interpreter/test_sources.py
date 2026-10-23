@@ -3,33 +3,10 @@ from datetime import date
 import pytest
 
 from apps.services.interpreter.context import sources
-from shared.contracts.schemas import ClientProfile, HouseViewClaim
+from scripts.prefilter_mocks import make_seed
+from tests.unit.interpreter.support import key_rate_claim
 
-PROFILE = ClientProfile(
-    client_id="client",
-    group_id=None,
-    group_members=[],
-    features={},
-    exposures={},
-    flags={},
-    version=1,
-)
-
-
-def claim(source_doc: str, page: int | None) -> HouseViewClaim:
-    return HouseViewClaim(
-        id="claim",
-        claim="Банк ждёт снижения ставки",
-        type="forecast",
-        subject="key_rate",
-        value="13,5%",
-        date=date(2026, 9, 14),
-        valid_until=None,
-        source_doc=source_doc,
-        page=page,
-        superseded_by=None,
-        status="approved",
-    )
+CLAIM = key_rate_claim("claim", "forecast", "13,5%", date(2026, 9, 14))
 
 
 @pytest.mark.parametrize(
@@ -45,5 +22,6 @@ def claim(source_doc: str, page: int | None) -> HouseViewClaim:
     ],
 )
 def test_bank_source_links_to_the_report_page(source_doc: str, page: int | None, url: str) -> None:
-    evidence = sources(PROFILE, None, [], [claim(source_doc, page)])
+    claim = CLAIM.model_copy(update={"source_doc": source_doc, "page": page})
+    evidence = sources(make_seed().profile, None, [], [claim])
     assert evidence["house_view:claim"].ref.url == url
