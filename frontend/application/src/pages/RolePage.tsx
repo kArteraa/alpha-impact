@@ -1,12 +1,10 @@
-import type { Role } from "@alpha-impact/plugin";
+import { ROLES, type Role } from "@alpha-impact/plugin";
 import { type FormEvent, useId, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
-import { ROLE_FOCUS, ROLE_LABELS } from "../session/roles";
+import { ROLE_FOCUS } from "../session/roles";
 import { loadUser, saveRole } from "../session/storage";
 import { AuthScreen } from "../ui/AuthScreen";
 import { Icon } from "../ui/Icon";
-
-const ROLES = Object.entries(ROLE_LABELS) as [Role, string][];
 
 export function RolePage() {
   const hintId = useId();
