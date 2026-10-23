@@ -34,8 +34,13 @@ function profile(industry: Feature): ClientProfile {
 
 const LOADED = profile(feature("wholesale", "inferred"));
 
-function renderProfile() {
-  renderWithCompany(<ProfilePage />, { path: "/profile", routes: <Route path="/" element={<h1>Главный экран</h1>} /> });
+function renderProfile(retry = vi.fn()) {
+  renderWithCompany(<ProfilePage />, {
+    path: "/profile",
+    routes: <Route path="/" element={<h1>Главный экран</h1>} />,
+    feed: { retry },
+  });
+  return retry;
 }
 
 function choose(scope: HTMLElement, option: string) {
@@ -100,6 +105,19 @@ describe("ProfilePage", () => {
     expect(JSON.parse(String(patch?.[1]?.body))).toEqual({ value: "logistics" });
   });
 
+  it("rebuilds the feed once the corrected profile is saved", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED], [PATCH_URL]: [200, profile(feature("logistics", "user"))] });
+    const retry = renderProfile();
+    const industry = await card("Отрасль");
+
+    fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
+    choose(industry, "Логистика");
+    fireEvent.click(within(industry).getByRole("button", { name: "Сохранить" }));
+
+    expect(await within(industry).findByText("изменено вами")).toBeTruthy();
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it("drops an edit on cancel", async () => {
     const fetchMock = stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
     renderProfile();
@@ -115,13 +133,14 @@ describe("ProfilePage", () => {
 
   it("says why a correction was not saved", async () => {
     stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED], [PATCH_URL]: [404, "unknown industry"] });
-    renderProfile();
+    const retry = renderProfile();
     const industry = await card("Отрасль");
 
     fireEvent.click(within(industry).getByRole("button", { name: "Изменить" }));
     fireEvent.click(within(industry).getByRole("button", { name: "Сохранить" }));
 
     expect((await screen.findByRole("alert")).textContent).toBe("Не удалось сохранить (404)");
+    expect(retry).not.toHaveBeenCalled();
   });
 
   it("saves the option shown in the list when the industry is unknown", async () => {

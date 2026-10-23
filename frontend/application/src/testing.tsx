@@ -1,11 +1,13 @@
-import { INTERPRET_DELAY_MS, type Role } from "@alpha-impact/plugin";
+import { INTERPRET_DELAY_MS, type InterpretState, type Role } from "@alpha-impact/plugin";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { vi } from "vitest";
 import { App } from "./App";
 import { CompanyContext } from "./company/context";
+import { feedOf } from "./dashboard/events.fixture";
 import { companyOf } from "./data/companies";
+import { FeedContext } from "./feed/context";
 import { SessionContext } from "./session/context";
 import { saveRole, saveUser } from "./session/storage";
 
@@ -51,6 +53,10 @@ export function placeholderSteps() {
   return Array.from(document.querySelectorAll(".placeholder-steps li"), (step) => step.getAttribute("data-done"));
 }
 
+export function answerFeed(init?: RequestInit): Reply {
+  return [200, feedOf(JSON.parse(String(init?.body)).client_id)];
+}
+
 export function askedContext(fetchMock: ReturnType<typeof stubApi>, call: number) {
   return JSON.parse(String(fetchMock.mock.calls[call][1]?.body)).action_context;
 }
@@ -62,20 +68,25 @@ export function signIn(userId = TEST_USER, role: Role = "cfo") {
 
 interface PageOptions {
   path?: string;
+  entry?: string;
   role?: Role;
   routes?: ReactNode;
+  feed?: Partial<InterpretState>;
 }
 
-export function renderWithCompany(node: ReactNode, { path = "/", role = "cfo", routes }: PageOptions = {}) {
+export function renderWithCompany(node: ReactNode, { path = "/", entry = path, role = "cfo", routes, feed }: PageOptions = {}) {
   const company = companyOf(TEST_CLIENT);
+  const value = { response: feedOf(TEST_CLIENT), pending: false, failed: false, retry: () => {}, ...feed };
   return render(
-    <MemoryRouter initialEntries={[path]}>
+    <MemoryRouter initialEntries={[entry]}>
       <SessionContext.Provider value={{ userId: TEST_USER, role }}>
         <CompanyContext.Provider value={{ company, companies: [company], select: () => {} }}>
-          <Routes>
-            <Route path={path} element={node} />
-            {routes}
-          </Routes>
+          <FeedContext.Provider value={value}>
+            <Routes>
+              <Route path={path} element={node} />
+              {routes}
+            </Routes>
+          </FeedContext.Provider>
         </CompanyContext.Provider>
       </SessionContext.Provider>
     </MemoryRouter>,

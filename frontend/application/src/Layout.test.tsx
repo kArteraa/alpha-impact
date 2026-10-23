@@ -1,6 +1,6 @@
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TEST_USER, chooseOption, renderApp, signIn, stubApi } from "./testing";
+import { TEST_USER, answerFeed, chooseOption, renderApp, signIn, stubApi } from "./testing";
 
 const SECTIONS = [
   ["Главная", "/"],
@@ -17,9 +17,11 @@ async function renderShell() {
 }
 
 describe("Layout", () => {
+  let fetchMock: ReturnType<typeof stubApi>;
+
   beforeEach(() => {
     signIn();
-    stubApi({ "GET /api/clients": [200, ["U_1941", "U_9250"]] });
+    fetchMock = stubApi({ "GET /api/clients": [200, ["U_1941", "U_9250"]], "POST /api/interpret": answerFeed });
   });
 
   afterEach(() => {
@@ -65,24 +67,32 @@ describe("Layout", () => {
     expect((await screen.findByText("U_1")).className).toBe("company-name");
   });
 
-  it("shows how many events the company has next to the events link", async () => {
+  it("shows how many events the company feed has next to the events link", async () => {
     await renderShell();
+    const count = () => screen.getByRole("link", { name: "События" }).querySelector(".nav-count")?.textContent;
 
-    expect(screen.getByRole("link", { name: "События" }).querySelector(".nav-count")?.textContent).toBe("4");
+    await waitFor(() => expect(count()).toBe("4"));
 
     chooseOption("Компания", /СтройЛизинг/);
 
-    expect(screen.getByRole("link", { name: "События" }).querySelector(".nav-count")?.textContent).toBe("3");
+    await waitFor(() => expect(count()).toBe("3"));
   });
 
-  it("switches the company and changes the feed", async () => {
+  it("switches the company and shows its own feed on the same screen", async () => {
     await renderShell();
-    expect(screen.getByText("Логистика в убытке")).toBeTruthy();
+    expect(await screen.findByText("Логистика в убытке")).toBeTruthy();
 
     chooseOption("Компания", /СтройЛизинг/);
 
+    expect(await screen.findByText("Цемент подорожал на 9%")).toBeTruthy();
     expect(screen.queryByText("Логистика в убытке")).toBeNull();
-    expect(screen.getByText("Цемент подорожал на 9%")).toBeTruthy();
+    const asked = fetchMock.mock.calls
+      .filter(([url]) => url === "/api/interpret")
+      .map(([, init]) => JSON.parse(String(init?.body)));
+    expect(asked.map((body) => [body.client_id, body.action_context.type])).toEqual([
+      ["U_1941", "dashboard"],
+      ["U_9250", "dashboard"],
+    ]);
   });
 
   it("sends a visitor without a session to the login screen", async () => {
