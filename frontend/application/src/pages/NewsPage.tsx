@@ -1,19 +1,26 @@
-import type { PageContext } from "@alpha-impact/plugin";
+import type { PageContext, PanelNotes } from "@alpha-impact/plugin";
 import { type FormEvent, useState } from "react";
 import { ActionPanel } from "../insight/ActionPanel";
 import { PanelPlaceholder } from "../insight/PanelPlaceholder";
 
 const NEWS_ROWS = 8;
 
+const NEWS_NOTES: PanelNotes = {
+  pending: "Размечаю новость и смотрю, что она значит для компании",
+  failed: "Не успел разобрать новость — модель не ответила вовремя или недоступна",
+  silent: "Ничего важного для компании в этой новости",
+};
+
 export function NewsPage() {
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [context, setContext] = useState<PageContext | null>(null);
   const news = text.trim();
+  const source = url.trim();
 
   function analyse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setContext({ type: "page", url: url.trim(), text: news });
+    setContext({ type: "page", url: source, text: news });
   }
 
   return (
@@ -44,15 +51,14 @@ export function NewsPage() {
         <aside>
           <ActionPanel
             context={context}
-            pendingNote="Размечаю новость и смотрю, что она значит для компании"
-            failedNote="Не успел разобрать новость — модель не ответила вовремя или недоступна"
+            notes={NEWS_NOTES}
             placeholder={
               <PanelPlaceholder
                 title="Разбор новости"
                 text="Вставьте новость — Alpha Impact разметит её и покажет, что она значит для компании, со ссылкой на то, как получен вывод"
                 steps={[
                   ["Текст новости", news !== ""],
-                  ["Ссылка — по желанию", url.trim() !== ""],
+                  ["Ссылка — по желанию", source !== ""],
                 ]}
               />
             }

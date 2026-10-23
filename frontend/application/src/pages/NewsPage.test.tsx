@@ -1,7 +1,7 @@
 import { mockResponses } from "@alpha-impact/plugin";
 import { cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { answer, askedContext, panelState, renderWithCompany, stubApi } from "../testing";
+import { answer, askedContext, panelState, placeholderSteps, renderWithCompany, stubApi } from "../testing";
 import { NewsPage } from "./NewsPage";
 
 const NEWS = "Банк России сохранил ключевую ставку\nСовет директоров сохранил ставку на уровне 14%.";
@@ -19,12 +19,12 @@ function link(url: string) {
   fireEvent.change(screen.getByLabelText("Ссылка на источник"), { target: { value: url } });
 }
 
-function analyse() {
-  fireEvent.click(screen.getByRole("button", { name: "Разобрать новость" }));
-}
-
 function analyseButton() {
   return screen.getByRole("button", { name: "Разобрать новость" }) as HTMLButtonElement;
+}
+
+function analyse() {
+  fireEvent.click(analyseButton());
 }
 
 describe("NewsPage", () => {
@@ -59,7 +59,8 @@ describe("NewsPage", () => {
     await answer();
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(document.querySelector(".panel-placeholder")).toBeTruthy();
+    expect(panelState()).toBeUndefined();
+    expect(placeholderSteps()).toEqual(["true", "true"]);
   });
 
   it("sends the trimmed text as a page without a link", async () => {
@@ -103,6 +104,17 @@ describe("NewsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Попробовать ещё раз" }));
     await answer();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("says calmly that the news does not matter for the company", async () => {
+    fetchMock = stubApi({ "POST /api/interpret": [200, mockResponses.silent] });
+    render();
+    paste(NEWS);
+    analyse();
+    await answer();
+
+    expect(panelState()).toBe("silent");
+    expect(screen.getByRole("status").textContent).toContain("Ничего важного для компании в этой новости");
   });
 
   it("shows the card with a link to its trace", async () => {

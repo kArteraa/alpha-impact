@@ -7,8 +7,8 @@ export const DEMO_NEWS = [
   "Совет директоров Банка России сохранил ключевую ставку на уровне 14% годовых. Регулятор отметил, что инфляция замедляется, но остаётся выше цели, и допустил снижение ставки в начале следующего года. Кредиты для бизнеса остаются дорогими, банки сохраняют высокие ставки по депозитам.",
 ].join("\n");
 
-export async function pasteNews(page: Page, text: string, url: string) {
-  await page.getByLabel("Ссылка на источник").fill(url);
-  await page.getByLabel("Текст новости").fill(text);
+export async function pasteDemoNews(page: Page) {
+  await page.getByLabel("Ссылка на источник").fill(DEMO_NEWS_URL);
+  await page.getByLabel("Текст новости").fill(DEMO_NEWS);
   await page.getByRole("button", { name: "Разобрать новость" }).click();
 }

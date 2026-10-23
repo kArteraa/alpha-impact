@@ -1,6 +1,6 @@
 export { companyName } from "./companies";
 export { ClaimTypeBadge } from "./panel/ClaimTypeBadge";
-export { InsightPanel, type InsightPanelProps } from "./panel/InsightPanel";
+export { InsightPanel, type InsightPanelProps, type PanelNotes } from "./panel/InsightPanel";
 export { SIGNIFICANCE_LEVELS, significanceLevel } from "./panel/labels";
 export { Significance } from "./panel/Significance";
 export { mockResponses } from "./mocks";
