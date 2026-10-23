@@ -170,12 +170,18 @@ def role_texts(card: InsightCard) -> dict[str, list[str]]:
     return {name: [item.text for item in getattr(card, name)] for name in ROLE_BLOCKS}
 
 
+def news_ids(card: InsightCard) -> set[str]:
+    return {source.id for source in card.basis if source.kind == "news"}
+
+
 def role_failures(case: Case, response: InterpretResponse, peer: InsightCard | None) -> list[str]:
     if peer is None:
         return [f"case {case.differs_from} gave no card to compare roles"]
     if not response.cards:
         return ["expected a card to compare roles, got none"]
     card = response.cards[0]
+    if not news_ids(card) & news_ids(peer):
+        return [f"card {card.id}: no news shared with card {peer.id} of {case.differs_from}"]
     mine, theirs = role_texts(card), role_texts(peer)
     return [
         f"card {card.id}: {name} repeats card {peer.id} of {case.differs_from}"
