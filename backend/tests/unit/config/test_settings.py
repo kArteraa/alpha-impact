@@ -7,7 +7,7 @@ from shared.config.settings import Settings
 def test_reads_every_variable_from_environment(settings_env: dict[str, str]) -> None:
     settings = Settings(_env_file=None)
     assert settings.DB_URL == settings_env["DB_URL"]
-    assert settings.MODEL_INTERPRET == "z-ai/glm-5.3-flash"
+    assert settings.MODEL_INTERPRET == "deepseek/deepseek-v4.1-flash"
     assert settings.RELEVANCE_THRESHOLD == 0.3
     assert settings.CACHE_TTL_SECONDS == 3600
     assert settings.NEWS_RSS_URLS == ["https://a.example/rss", "https://b.example/rss"]
