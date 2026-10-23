@@ -7,6 +7,7 @@ from time import perf_counter
 from pydantic import BaseModel
 from pydantic_core import to_jsonable_python
 
+from apps.services.interpreter.drafting import BuildNotes
 from shared.contracts.errors import ChargedModelError
 from shared.contracts.ports import Critic, LLMGateway
 from shared.contracts.schemas import HouseViewClaim, InsightCard, NewsItem, Trace, TraceStep
@@ -90,8 +91,9 @@ class Journal:
         card: InsightCard,
         house_view: list[HouseViewClaim],
         news: list[NewsItem],
-        notes: list[str],
+        notes: BuildNotes,
     ) -> list[str]:
+        self.record_build(round_number, card, notes)
         async with self._step(
             TraceStep(
                 step="critic",
@@ -104,9 +106,22 @@ class Journal:
             found, step.tokens_in, step.tokens_out, step.cost_rub = await critic.review(
                 card, house_view, news
             )
-            verdicts = [*notes, *found]
+            verdicts = [*notes.rewrite, *found]
             step.output_summary = json.dumps(verdicts, ensure_ascii=False)
-            self.trace.critic_verdicts.extend(
-                [f"{round_number}: {verdict}" for verdict in verdicts] or [f"{round_number}: ok"]
-            )
+            self.trace.critic_verdicts.extend(f"{round_number}: {verdict}" for verdict in found)
+            if not verdicts:
+                self.trace.critic_verdicts.append(f"{round_number}: ok")
             return verdicts
+
+    def record_build(self, round_number: int, card: InsightCard, notes: BuildNotes) -> None:
+        self.trace.critic_verdicts.extend(f"{round_number}: {note}" for note in notes.rewrite)
+        if notes.remarks:
+            self.trace.steps.append(
+                TraceStep(
+                    step="critic",
+                    name=f"round {round_number} build",
+                    input_summary=f"card {card.id}",
+                    output_summary=self.summary(notes.remarks),
+                    started_at=utc_now(),
+                )
+            )

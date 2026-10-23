@@ -148,8 +148,17 @@ async def test_first_words_of_bank_claim_give_the_full_quote(harness: Harness, b
     assert saved(harness).critic_verdicts == ["1: ok"]
 
 
-async def test_bank_claim_not_starting_like_its_quote_is_rewritten(harness: Harness) -> None:
-    harness.answers[1]["bank_view"] = [bank_claim("Банк обещает прибыль")]
+def with_other_claim(harness: Harness) -> str:
+    other = harness.seed.house_view[0].model_copy(
+        update={"id": "other", "claim": "Другая позиция банка: ставки по кредитам растут"}
+    )
+    harness.house_view.claims.return_value = [*harness.seed.house_view, other]
+    return "house_view:other"
+
+
+async def test_bank_claim_starting_like_another_claim_is_rewritten(harness: Harness) -> None:
+    other = with_other_claim(harness)
+    harness.answers[1]["bank_view"] = [bank_claim("Другая позиция банка")]
     harness.answers.append(draft_answer())
     response = await harness.agent.interpret(harness.request())
     card = response.cards[0]
@@ -162,16 +171,30 @@ async def test_bank_claim_not_starting_like_its_quote_is_rewritten(harness: Harn
     )
     assert redraft["previous_draft"]["bank_view"][0]["text"] == harness.seed.house_view[0].claim
     note = redraft["critic_verdicts"][0]
-    assert note.startswith("bank: ") and "Банк обещает прибыль" in note
+    assert note.startswith("bank: ") and other in note and QUOTED in note
     assert saved(harness).critic_verdicts == [f"1: {note}", "2: ok"]
 
 
-async def test_bank_claim_still_misquoted_after_rewrite_needs_review(harness: Harness) -> None:
-    harness.answers[1]["bank_view"] = [bank_claim("Банк обещает прибыль")]
+async def test_wrong_bank_reference_after_rewrite_needs_review(harness: Harness) -> None:
+    with_other_claim(harness)
+    harness.answers[1]["bank_view"] = [bank_claim("Другая позиция банка")]
     harness.answers.append(harness.answers[1])
     card = (await harness.agent.interpret(harness.request())).cards[0]
     assert card.needs_review
     assert card.bank_view[0].text == harness.seed.house_view[0].claim
+
+
+async def test_bank_claim_unlike_any_claim_is_traced_without_rewrite(harness: Harness) -> None:
+    with_other_claim(harness)
+    harness.answers[1]["bank_view"] = [bank_claim("Банк обещает прибыль")]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert card.bank_view[0].text == harness.seed.house_view[0].claim
+    assert not card.needs_review
+    trace = saved(harness)
+    assert trace.critic_verdicts == ["1: ok"]
+    build = next(step for step in trace.steps if step.name == "round 1 build")
+    assert build.step == "critic"
+    assert "Банк обещает прибыль" in build.output_summary
 
 
 async def test_retellings_of_one_bank_claim_give_one_quote(harness: Harness) -> None:
@@ -196,17 +219,28 @@ async def test_bank_view_quote_is_not_repeated_in_other_blocks(harness: Harness)
     assert [claim.text for claim in card.bank_view] == [harness.seed.house_view[0].claim]
 
 
-async def test_block_of_only_the_bank_view_quote_is_rewritten(harness: Harness) -> None:
+async def test_block_of_only_the_bank_view_quote_keeps_it_for_review(harness: Harness) -> None:
     harness.answers[1]["why_for_you"] = [bank_claim("Тестовая позиция банка")]
     harness.answers.append(harness.answers[1])
     card = (await harness.agent.interpret(harness.request())).cards[0]
-    assert card.why_for_you == []
+    assert [claim.text for claim in card.why_for_you] == [harness.seed.house_view[0].claim]
     assert card.needs_review
     verdicts = saved(harness).critic_verdicts
     assert [verdict.split(":")[:2] for verdict in verdicts] == [
         ["1", " why_for_you"],
         ["2", " why_for_you"],
     ]
+
+
+async def test_build_notes_are_traced_when_critic_fails(harness: Harness) -> None:
+    critic = harness.use_critic()
+    critic.review.side_effect = BudgetExceeded("spent")
+    harness.answers[1]["why_for_you"] = [bank_claim("Тестовая позиция банка")]
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert card.needs_review
+    verdicts = saved(harness).critic_verdicts
+    assert verdicts[0].startswith("1: why_for_you: ")
+    assert verdicts[1:] == ["1: error: BudgetExceeded"]
 
 
 @pytest.mark.parametrize(
