@@ -2,7 +2,8 @@ import { NavLink, Outlet } from "react-router";
 import { Brand } from "./Brand";
 import { CompanyProvider } from "./company/CompanyContext";
 import { useCompany } from "./company/context";
-import { EVENTS } from "./data/events";
+import { FeedProvider } from "./feed/FeedContext";
+import { useFeed } from "./feed/context";
 import { Icon, type IconName } from "./ui/Icon";
 import { stripLegalForm } from "./ui/listbox";
 import { Mark, Select } from "./ui/Select";
@@ -47,8 +48,7 @@ function CompanySwitcher() {
 }
 
 function MainNav() {
-  const { company } = useCompany();
-  const eventCount = EVENTS[company.id]?.length ?? 0;
+  const eventCount = useFeed().response?.cards?.length ?? 0;
   return (
     <nav className="main-nav" aria-label="Разделы">
       {NAV.map(([to, label, icon]) => (
@@ -75,19 +75,21 @@ function MainNav() {
 function Shell() {
   const { company } = useCompany();
   return (
-    <div className="shell">
-      <header className="shell-top">
-        <Brand />
-        <MainNav />
-        <div className="shell-top-end">
-          <span className="badge badge-warning">Тестовый режим</span>
-          <CompanySwitcher />
-        </div>
-      </header>
-      <main className="shell-main" key={company.id}>
-        <Outlet />
-      </main>
-    </div>
+    <FeedProvider key={company.id}>
+      <div className="shell">
+        <header className="shell-top">
+          <Brand />
+          <MainNav />
+          <div className="shell-top-end">
+            <span className="badge badge-warning">Тестовый режим</span>
+            <CompanySwitcher />
+          </div>
+        </header>
+        <main className="shell-main">
+          <Outlet />
+        </main>
+      </div>
+    </FeedProvider>
   );
 }
 

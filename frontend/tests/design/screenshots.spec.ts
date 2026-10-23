@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import path from "node:path";
-import { askTranche, CARD_TIMEOUT_MS, chooseOption } from "../support/panel";
+import { askTranche, CARD_TIMEOUT_MS, pay, waitForFeed } from "../support/panel";
 import { logIn } from "../support/session";
 
 const OUTPUT = path.join(__dirname, "..", "..", "..", "docs", "design");
@@ -14,7 +14,8 @@ test.beforeEach(async ({ page }) => {
 
 test("dashboard", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Что важно для вашего бизнеса" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Что изменилось вокруг ваших операций" })).toBeVisible();
+  await waitForFeed(page);
   await page.screenshot({ path: path.join(OUTPUT, "dashboard.png"), fullPage: true, animations: "disabled" });
 });
 
@@ -23,15 +24,15 @@ test.describe("dark theme", () => {
 
   test("dashboard", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "Что важно для вашего бизнеса" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Что изменилось вокруг ваших операций" })).toBeVisible();
+    await waitForFeed(page);
     await page.screenshot({ path: path.join(OUTPUT, "dashboard-dark.png"), fullPage: true, animations: "disabled" });
   });
 });
 
 test("payment with the panel", async ({ page }) => {
   await page.goto("/payments/new");
-  await chooseOption(page, "Получатель", /Северо-Западная логистика/);
-  await page.getByLabel("Сумма, ₽").fill("1500000");
+  await pay(page, /Северо-Западная логистика/, "1500000");
   await page.getByRole("heading", { name: "Платёж контрагенту" }).click();
   await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
   await page.screenshot({ path: path.join(OUTPUT, "payment.png"), fullPage: true, animations: "disabled" });
@@ -46,6 +47,7 @@ test("profile", async ({ page }) => {
 test("events", async ({ page }) => {
   await page.goto("/events");
   await expect(page.getByRole("heading", { name: "Все события" })).toBeVisible();
+  await waitForFeed(page);
   await page.screenshot({ path: path.join(OUTPUT, "events.png"), fullPage: true, animations: "disabled" });
 });
 
@@ -73,8 +75,12 @@ test("login", async ({ page }) => {
 });
 
 test("trace", async ({ page }) => {
-  await page.goto("/trace/trace-mock-1");
-  await page.getByText("План", { exact: true }).click();
+  test.setTimeout(2 * CARD_TIMEOUT_MS);
+  await page.goto("/payments/new");
+  await pay(page, /Северо-Западная логистика/, "1500000");
+  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
+  await page.getByRole("link", { name: "Как получен вывод" }).first().click();
+  await page.getByText("План агента", { exact: true }).first().click();
   await page.screenshot({ path: path.join(OUTPUT, "trace.png"), fullPage: true, animations: "disabled" });
 });
 

@@ -116,6 +116,16 @@ describe("DepositPage", () => {
     expect(screen.getByRole("region", { name: "Расчёт" })).toBeTruthy();
   });
 
+  it("leads the bank source to the page of the report through the API", async () => {
+    render();
+    setAmount("50000000");
+    await answer();
+
+    expect(screen.getByLabelText(/^Банк — источник: /).getAttribute("href")).toBe(
+      "/api/reports/ALFA-Macro_Insights-Policy_Rate_11Sep.pdf#page=1",
+    );
+  });
+
   it("keeps the panel while the amount is being typed", async () => {
     render();
     setAmount("1500");

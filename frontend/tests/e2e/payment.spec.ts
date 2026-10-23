@@ -1,11 +1,6 @@
-import { expect, type Page, test } from "@playwright/test";
-import { CARD_TIMEOUT_MS, chooseOption } from "../support/panel";
+import { expect, test } from "@playwright/test";
+import { CARD_TIMEOUT_MS, pay } from "../support/panel";
 import { logIn } from "../support/session";
-
-async function pay(page: Page, recipient: string, amount: string) {
-  await chooseOption(page, "Получатель", recipient);
-  await page.getByLabel("Сумма, ₽").fill(amount);
-}
 
 test("login, profile, carrier card with sources, silent stationery payment", async ({ page }) => {
   test.setTimeout(3 * CARD_TIMEOUT_MS);
@@ -13,7 +8,7 @@ test("login, profile, carrier card with sources, silent stationery payment", asy
 
   await expect(page.getByRole("listitem", { name: "Отрасль" })).toBeVisible();
   await page.getByRole("button", { name: "Всё верно" }).click();
-  await expect(page.getByRole("heading", { name: "Что важно для вашего бизнеса" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Что изменилось вокруг ваших операций" })).toBeVisible();
 
   await page.getByRole("link", { name: "Платежи" }).click();
   await pay(page, "ООО «Северо-Западная логистика»", "1500000");

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date
+from urllib.parse import quote
 
 from shared.contracts.schemas import (
     ClientProfile,
@@ -23,6 +24,11 @@ def current_claims(claims: list[HouseViewClaim], as_of: date) -> list[HouseViewC
 
 def source_key(ref: SourceRef) -> str:
     return f"{ref.kind}:{ref.id}"
+
+
+def report_url(claim: HouseViewClaim) -> str:
+    path = f"/reports/{quote(claim.source_doc)}"
+    return f"{path}#page={claim.page}" if claim.page else path
 
 
 @dataclass
@@ -84,6 +90,7 @@ def sources(
                     title=f"{claim.source_doc}, стр. {claim.page}"
                     if claim.page
                     else claim.source_doc,
+                    url=report_url(claim),
                 ),
                 claim.model_dump(mode="json"),
                 claim.claim,
@@ -114,7 +121,9 @@ def prompt_context(
         "counterparty": counterparty.model_dump() if counterparty is not None else None,
         "sources": {
             key: {
-                "ref": item.ref.model_dump(mode="json"),
+                "ref": item.ref.model_dump(
+                    mode="json", exclude={"url"} if item.ref.kind == "house_view" else None
+                ),
                 "value": item.value,
                 "factual": item.factual,
                 "bank_text": item.bank_text,

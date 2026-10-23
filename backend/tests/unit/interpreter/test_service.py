@@ -28,6 +28,7 @@ async def test_logistics_payment_returns_sourced_draft(harness: Harness) -> None
     assert card.what_happened[0].source_ref.id == "logistics-news"
     assert card.what_happened[0].source_ref.url == harness.seed.news[0].url
     assert card.bank_view[0].source_ref.id == "logistics-approved"
+    assert card.bank_view[0].source_ref.url == "/reports/synthetic-report#page=1"
     assert card.bank_view[0].text == harness.seed.house_view[0].claim
     for block in (
         card.what_happened,

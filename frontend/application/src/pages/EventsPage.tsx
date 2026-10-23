@@ -3,8 +3,9 @@ import { useId } from "react";
 import { Link } from "react-router";
 import { useCompany } from "../company/context";
 import { EventSummary } from "../dashboard/EventSummary";
+import { FeedStatus } from "../dashboard/FeedStatus";
 import { type EventGroup, groupBySignificance } from "../dashboard/groupEvents";
-import { EVENTS } from "../data/events";
+import { useFeed } from "../feed/context";
 import { Icon } from "../ui/Icon";
 import { plural } from "../ui/plural";
 
@@ -35,35 +36,39 @@ function Group({ group }: { group: EventGroup }) {
 
 export function EventsPage() {
   const { company } = useCompany();
-  const events = EVENTS[company.id] ?? [];
-  const groups = groupBySignificance(events);
+  const { response } = useFeed();
   return (
     <section>
       <div className="page-head">
         <h1>Все события</h1>
         <p className="page-sub">
-          <span>{company.name}</span> · {plural(events.length, EVENT_FORMS)}
+          <span>{company.name}</span>
+          {response && <> · {plural(response.cards?.length ?? 0, EVENT_FORMS)}</>}
         </p>
       </div>
-      {groups.length === 0 ? (
-        <div className="card empty-state">
-          <span className="check-mark" aria-hidden="true">
-            <Icon name="check" size={24} />
-          </span>
-          <h2>Пока ничего важного</h2>
-          <p className="muted">
-            Alpha Impact следит за новостями и позицией банка по признакам компании и сообщит, когда что-то коснётся
-            вашего бизнеса.
-          </p>
-          <Link to="/profile">Проверить профиль компании</Link>
-        </div>
-      ) : (
-        <div className="event-groups">
-          {groups.map((group) => (
-            <Group key={group.level} group={group} />
-          ))}
-        </div>
-      )}
+      <FeedStatus
+        empty={
+          <div className="card empty-state">
+            <span className="check-mark" aria-hidden="true">
+              <Icon name="check" size={24} />
+            </span>
+            <h2>Пока ничего важного</h2>
+            <p className="muted">
+              Alpha Impact следит за новостями и позицией банка по признакам компании и сообщит, когда что-то коснётся
+              вашего бизнеса.
+            </p>
+            <Link to="/profile">Проверить профиль компании</Link>
+          </div>
+        }
+      >
+        {(events) => (
+          <div className="event-groups">
+            {groupBySignificance(events).map((group) => (
+              <Group key={group.level} group={group} />
+            ))}
+          </div>
+        )}
+      </FeedStatus>
     </section>
   );
 }
