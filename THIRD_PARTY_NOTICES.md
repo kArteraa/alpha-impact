@@ -34,6 +34,7 @@ Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), my
 | react-router | MIT | маршрутизация макета Альфа-Бизнеса |
 | vite, @vitejs/plugin-react | MIT | сборка приложения, библиотеки и расширения |
 | typescript | Apache-2.0 | типы |
+| @types/chrome | MIT | типы API расширений Chrome |
 | vitest, happy-dom, @testing-library/react | MIT | тесты рендера |
 | @playwright/test | Apache-2.0 | e2e |
 | json-schema-to-typescript | MIT | типы фронта из `shared/contracts/openapi` |
