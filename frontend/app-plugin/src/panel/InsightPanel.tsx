@@ -7,8 +7,18 @@ import type { FeedbackHandler } from "./CardFooter";
 import { CheckIcon } from "./icons";
 
 const SKELETON_LINES = 3;
-const PENDING_NOTE = "Смотрю новости и позицию банка по этому действию";
-const FAILED_NOTE = "Не успел разобраться с этим действием";
+
+export interface PanelNotes {
+  pending: string;
+  failed: string;
+  silent: string;
+}
+
+const ACTION_NOTES: PanelNotes = {
+  pending: "Смотрю новости и позицию банка по этому действию",
+  failed: "Не успел разобраться с этим действием",
+  silent: "Ничего важного по этому действию",
+};
 
 export interface InsightPanelProps {
   actionContext: ActionContext;
@@ -17,8 +27,7 @@ export interface InsightPanelProps {
   pending?: boolean;
   failed?: boolean;
   compact?: boolean;
-  pendingNote?: string;
-  failedNote?: string;
+  notes?: PanelNotes;
   onRetry?: () => void;
   onFollowup?: (cardId: string) => void;
   onFeedback?: FeedbackHandler;
@@ -32,8 +41,7 @@ export function InsightPanel({
   pending = false,
   failed = false,
   compact = false,
-  pendingNote = PENDING_NOTE,
-  failedNote = FAILED_NOTE,
+  notes = ACTION_NOTES,
   onRetry,
   onFollowup,
   onFeedback,
@@ -47,7 +55,7 @@ export function InsightPanel({
   if (failed) {
     return (
       <section {...base} data-state="failed">
-        <p className="panel-note">{failedNote}</p>
+        <p className="panel-note">{notes.failed}</p>
         {onRetry && (
           <button type="button" className="button-secondary" onClick={onRetry}>
             Попробовать ещё раз
@@ -62,7 +70,7 @@ export function InsightPanel({
         {Array.from({ length: SKELETON_LINES }, (_, index) => (
           <span key={index} className="insight-skeleton" />
         ))}
-        <p className="panel-note">{pendingNote}</p>
+        <p className="panel-note">{notes.pending}</p>
       </section>
     );
   }
@@ -74,7 +82,7 @@ export function InsightPanel({
         {progress}
         <p className="panel-silent" role="status">
           <CheckIcon />
-          Ничего важного по этому действию
+          {notes.silent}
         </p>
         {response.silent_reason && <p className="panel-note">{response.silent_reason}</p>}
       </section>

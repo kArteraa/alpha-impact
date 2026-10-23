@@ -1,17 +1,15 @@
-import { type ActionContext, useInterpret } from "@alpha-impact/plugin";
+import { type ActionContext, type InsightPanelProps, useInterpret } from "@alpha-impact/plugin";
 import type { ReactNode } from "react";
 import { useSession } from "../session/context";
 import { Panel } from "./Panel";
 import { useInterpretFetcher } from "./useInterpretFetcher";
 
-interface ActionPanelProps {
+interface ActionPanelProps extends Pick<InsightPanelProps, "notes"> {
   context: ActionContext | null;
   placeholder: ReactNode;
-  pendingNote?: string;
-  failedNote?: string;
 }
 
-export function ActionPanel({ context, placeholder, pendingNote, failedNote }: ActionPanelProps) {
+export function ActionPanel({ context, placeholder, notes }: ActionPanelProps) {
   const { role } = useSession();
   const insight = useInterpret(context, useInterpretFetcher());
   if (context === null) {
@@ -24,8 +22,7 @@ export function ActionPanel({ context, placeholder, pendingNote, failedNote }: A
       response={insight.response}
       pending={insight.pending}
       failed={insight.failed}
-      pendingNote={pendingNote}
-      failedNote={failedNote}
+      notes={notes}
       onRetry={insight.retry}
     />
   );

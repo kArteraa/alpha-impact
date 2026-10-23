@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { DEMO_NEWS, DEMO_NEWS_URL, pasteNews } from "../support/news";
+import { pasteDemoNews } from "../support/news";
 import { CARD_TIMEOUT_MS } from "../support/panel";
 import { logIn } from "../support/session";
 
@@ -10,7 +10,7 @@ test("pasted news from the main screen: card with sources and its trace", async 
 
   await page.getByRole("link", { name: "Вставить новость" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Живая новость" })).toBeVisible();
-  await pasteNews(page, DEMO_NEWS, DEMO_NEWS_URL);
+  await pasteDemoNews(page);
 
   const panel = page.locator(".insight-panel");
   await expect(panel).toHaveAttribute("data-state", "cards", { timeout: CARD_TIMEOUT_MS });
