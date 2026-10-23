@@ -93,7 +93,7 @@ class Journal:
         news: list[NewsItem],
         notes: BuildNotes,
     ) -> list[str]:
-        self.record_build(round_number, card, notes)
+        self.record_rewrite(round_number, notes)
         async with self._step(
             TraceStep(
                 step="critic",
@@ -113,8 +113,14 @@ class Journal:
                 self.trace.critic_verdicts.append(f"{round_number}: ok")
             return verdicts
 
-    def record_build(self, round_number: int, card: InsightCard, notes: BuildNotes) -> None:
+    def record_rewrite(self, round_number: int, notes: BuildNotes) -> None:
         self.trace.critic_verdicts.extend(f"{round_number}: {note}" for note in notes.rewrite)
+
+    def build(
+        self, round_number: int, make: Callable[[], tuple[InsightCard, BuildNotes]]
+    ) -> tuple[InsightCard, BuildNotes]:
+        started, start = utc_now(), perf_counter()
+        card, notes = make()
         if notes.remarks:
             self.trace.steps.append(
                 TraceStep(
@@ -122,6 +128,8 @@ class Journal:
                     name=f"round {round_number} build",
                     input_summary=f"card {card.id}",
                     output_summary=self.summary(notes.remarks),
-                    started_at=utc_now(),
+                    duration_ms=int((perf_counter() - start) * 1000),
+                    started_at=started,
                 )
             )
+        return card, notes
