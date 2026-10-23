@@ -1,6 +1,6 @@
-import type { ClientProfile, Feature, InterpretRequest, InterpretResponse } from "@alpha-impact/plugin";
+import type { ClientProfile, Feature, InterpretRequest, InterpretResponse, Trace } from "@alpha-impact/plugin";
 
-const API_BASE = "/api";
+export const API_BASE = "/api";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -20,7 +20,7 @@ export function onUnauthorized(handler: () => void): () => void {
   };
 }
 
-async function request<T>(path: string, init: RequestInit): Promise<T> {
+async function send(path: string, init: RequestInit): Promise<Response> {
   const response = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
     headers: { "Content-Type": "application/json" },
@@ -32,7 +32,11 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   if (!response.ok) {
     throw new ApiError(response.status, await response.text());
   }
-  return (await response.json()) as T;
+  return response;
+}
+
+async function request<T>(path: string, init: RequestInit): Promise<T> {
+  return (await (await send(path, init)).json()) as T;
 }
 
 export const api = {
@@ -50,4 +54,8 @@ export const api = {
     }),
   interpret: (body: InterpretRequest, signal?: AbortSignal) =>
     request<InterpretResponse>("/interpret", { method: "POST", body: JSON.stringify(body), signal }),
+  trace: (traceId: string) => request<Trace>(`/trace/${encodeURIComponent(traceId)}`, { method: "GET" }),
+  feedback: async (cardId: string, useful: boolean) => {
+    await send("/feedback", { method: "POST", body: JSON.stringify({ card_id: cardId, useful }) });
+  },
 };

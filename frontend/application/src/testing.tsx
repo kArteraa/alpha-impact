@@ -13,8 +13,9 @@ import { saveRole, saveUser } from "./session/storage";
 
 export const TEST_USER = "user_cfo_wholesale";
 export const TEST_CLIENT = "U_1941";
+const NO_CONTENT = 204;
 
-type Reply = readonly [status: number, body: unknown];
+export type Reply = readonly [status: number, body: unknown];
 
 export function stubApi(routes: Record<string, Reply | ((init?: RequestInit) => Reply)>) {
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
@@ -24,7 +25,7 @@ export function stubApi(routes: Record<string, Reply | ((init?: RequestInit) => 
       return Promise.reject(new Error(`No stub for ${key}`));
     }
     const [status, body] = typeof route === "function" ? route(init) : route;
-    return Promise.resolve(new Response(JSON.stringify(body), { status }));
+    return Promise.resolve(new Response(status === NO_CONTENT ? null : JSON.stringify(body), { status }));
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import path from "node:path";
-import { askTranche, CARD_TIMEOUT_MS, chooseOption, waitForFeed } from "../support/panel";
+import { askTranche, CARD_TIMEOUT_MS, pay, waitForFeed } from "../support/panel";
 import { logIn } from "../support/session";
 
 const OUTPUT = path.join(__dirname, "..", "..", "..", "docs", "design");
@@ -32,8 +32,7 @@ test.describe("dark theme", () => {
 
 test("payment with the panel", async ({ page }) => {
   await page.goto("/payments/new");
-  await chooseOption(page, "Получатель", /Северо-Западная логистика/);
-  await page.getByLabel("Сумма, ₽").fill("1500000");
+  await pay(page, /Северо-Западная логистика/, "1500000");
   await page.getByRole("heading", { name: "Платёж контрагенту" }).click();
   await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
   await page.screenshot({ path: path.join(OUTPUT, "payment.png"), fullPage: true, animations: "disabled" });
@@ -76,8 +75,12 @@ test("login", async ({ page }) => {
 });
 
 test("trace", async ({ page }) => {
-  await page.goto("/trace/trace-mock-1");
-  await page.getByText("План", { exact: true }).click();
+  test.setTimeout(2 * CARD_TIMEOUT_MS);
+  await page.goto("/payments/new");
+  await pay(page, /Северо-Западная логистика/, "1500000");
+  await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });
+  await page.getByRole("link", { name: "Как получен вывод" }).first().click();
+  await page.getByText("План агента", { exact: true }).first().click();
   await page.screenshot({ path: path.join(OUTPUT, "trace.png"), fullPage: true, animations: "disabled" });
 });
 

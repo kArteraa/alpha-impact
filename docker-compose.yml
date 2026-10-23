@@ -44,6 +44,8 @@ services:
     environment:
       DB_URL: postgresql+asyncpg://alfa:alfa@db:5432/alfa
     command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - ./backend/data/raw:/app/data/raw:ro
     ports:
       - "8000:8000"
     depends_on:

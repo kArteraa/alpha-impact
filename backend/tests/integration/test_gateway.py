@@ -344,7 +344,7 @@ def test_openapi_matches_contracts(app: FastAPI) -> None:
     openapi = app.openapi()
     paths = openapi["paths"]
     documented = HTTP_ROW.findall(CONTRACTS.read_text(encoding="utf-8"))
-    assert len(documented) == 9
+    assert len(documented) == 10
     for method, path in documented:
         assert method.lower() in paths.get(path, {}), f"{method} {path}"
     json_body = ("requestBody", "content", "application/json", "schema")
@@ -359,6 +359,8 @@ def test_openapi_matches_contracts(app: FastAPI) -> None:
     assert set(openapi["components"]["schemas"][correction]["properties"]) == {"value"}
     clients = paths["/clients"]["get"]["responses"]["200"]["content"]["application/json"]
     assert clients["schema"]["items"]["type"] == "string"
+    report = paths["/reports/{source_doc}"]["get"]["responses"]["200"]["content"]
+    assert list(report) == ["application/pdf"]
 
 
 @pytest.mark.parametrize(
