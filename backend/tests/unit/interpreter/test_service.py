@@ -129,26 +129,53 @@ async def test_empty_house_view_does_not_invent_bank_position(harness: Harness) 
     assert response.cards[0].bank_view == []
 
 
+QUOTED = "house_view:logistics-approved"
+
+
+def bank_claim(text: str) -> dict[str, str]:
+    return {"text": text, "type": "bank", "source": QUOTED}
+
+
 @pytest.mark.parametrize("block", ["why_for_you", "bank_view"])
-async def test_retold_bank_claim_is_replaced_by_quoted_house_view(
-    harness: Harness, block: str
-) -> None:
-    retold = {
-        "text": "Банк обещает прибыль",
-        "type": "bank",
-        "source": "house_view:logistics-approved",
-    }
-    harness.answers[1][block] = [retold]
+async def test_first_words_of_bank_claim_give_the_full_quote(harness: Harness, block: str) -> None:
+    harness.answers[1]["bank_view"] = []
+    harness.answers[1][block] = [bank_claim("Тестовая позиция банка")]
     response = await harness.agent.interpret(harness.request())
     claim = getattr(response.cards[0], block)[0]
     assert claim.text == harness.seed.house_view[0].claim
     assert claim.source_ref.id == "logistics-approved"
+    assert saved(harness).critic_verdicts == ["1: ok"]
+
+
+async def test_bank_claim_not_starting_like_its_quote_is_rewritten(harness: Harness) -> None:
+    harness.answers[1]["bank_view"] = [bank_claim("Банк обещает прибыль")]
+    harness.answers.append(draft_answer())
+    response = await harness.agent.interpret(harness.request())
+    card = response.cards[0]
+    assert card.bank_view[0].text == harness.seed.house_view[0].claim
+    assert not card.needs_review
+    redraft = next(
+        json.loads(call.kwargs["user"])
+        for call in harness.llm.complete.await_args_list
+        if "previous_draft" in call.kwargs["user"]
+    )
+    assert redraft["previous_draft"]["bank_view"][0]["text"] == harness.seed.house_view[0].claim
+    note = redraft["critic_verdicts"][0]
+    assert note.startswith("bank: ") and "Банк обещает прибыль" in note
+    assert saved(harness).critic_verdicts == [f"1: {note}", "2: ok"]
+
+
+async def test_bank_claim_still_misquoted_after_rewrite_needs_review(harness: Harness) -> None:
+    harness.answers[1]["bank_view"] = [bank_claim("Банк обещает прибыль")]
+    harness.answers.append(harness.answers[1])
+    card = (await harness.agent.interpret(harness.request())).cards[0]
+    assert card.needs_review
+    assert card.bank_view[0].text == harness.seed.house_view[0].claim
 
 
 async def test_retellings_of_one_bank_claim_give_one_quote(harness: Harness) -> None:
     harness.answers[1]["bank_view"] = [
-        {"text": text, "type": "bank", "source": "house_view:logistics-approved"}
-        for text in ("Банк ждёт рост тарифов", "Тарифы вырастут")
+        bank_claim(text) for text in ("Тестовая позиция банка", "Тестовая позиция")
     ]
     response = await harness.agent.interpret(harness.request())
     assert [claim.text for claim in response.cards[0].bank_view] == [
@@ -162,29 +189,38 @@ async def test_bank_view_quote_is_not_repeated_in_other_blocks(harness: Harness)
         "type": "fact",
         "source": "graph:industry_class",
     }
-    harness.answers[1]["why_for_you"] = [
-        reason,
-        {
-            "text": "Банк ждёт рост тарифов",
-            "type": "bank",
-            "source": "house_view:logistics-approved",
-        },
-    ]
+    harness.answers[1]["why_for_you"] = [reason, bank_claim("Тестовая позиция банка")]
     card = (await harness.agent.interpret(harness.request())).cards[0]
     assert [claim.text for claim in card.why_for_you] == [reason["text"]]
     assert [claim.text for claim in card.bank_view] == [harness.seed.house_view[0].claim]
 
 
-async def test_block_of_only_the_bank_view_quote_keeps_it(harness: Harness) -> None:
-    harness.answers[1]["why_for_you"] = [
-        {
-            "text": "Банк ждёт рост тарифов",
-            "type": "bank",
-            "source": "house_view:logistics-approved",
-        }
-    ]
+async def test_block_of_only_the_bank_view_quote_is_rewritten(harness: Harness) -> None:
+    harness.answers[1]["why_for_you"] = [bank_claim("Тестовая позиция банка")]
+    harness.answers.append(harness.answers[1])
     card = (await harness.agent.interpret(harness.request())).cards[0]
-    assert [claim.text for claim in card.why_for_you] == [harness.seed.house_view[0].claim]
+    assert card.why_for_you == []
+    assert card.needs_review
+    verdicts = saved(harness).critic_verdicts
+    assert [verdict.split(":")[:2] for verdict in verdicts] == [
+        ["1", " why_for_you"],
+        ["2", " why_for_you"],
+    ]
+
+
+@pytest.mark.parametrize(
+    "claim",
+    [
+        {"text": "Тестовая позиция банка", "type": "bank", "source": "house_view"},
+        {"text": "Расчёт дохода", "type": "ai", "source": "calc"},
+    ],
+)
+async def test_bare_source_key_is_named_in_the_error(
+    harness: Harness, claim: dict[str, str]
+) -> None:
+    harness.answers[1]["consequences"] = [claim]
+    with pytest.raises(DomainError, match=f": {claim['source']}$"):
+        await harness.agent.interpret(harness.request())
 
 
 async def test_identical_claims_of_any_type_give_one_claim(harness: Harness) -> None:
