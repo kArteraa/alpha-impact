@@ -157,7 +157,11 @@ async def test_retellings_of_one_bank_claim_give_one_quote(harness: Harness) -> 
 
 
 async def test_bank_view_quote_is_not_repeated_in_other_blocks(harness: Harness) -> None:
-    reason = harness.answers[1]["why_for_you"][0]
+    reason = {
+        "text": "Получатель работает в логистике",
+        "type": "fact",
+        "source": "graph:industry_class",
+    }
     harness.answers[1]["why_for_you"] = [
         reason,
         {
@@ -184,7 +188,7 @@ async def test_block_of_only_the_bank_view_quote_keeps_it(harness: Harness) -> N
 
 
 async def test_identical_claims_of_any_type_give_one_claim(harness: Harness) -> None:
-    action = harness.answers[1]["actions"][0]
+    action = {"text": "Уточните срок поставки", "type": "ai", "source": "graph:industry_class"}
     harness.answers[1]["actions"] = [action, dict(action)]
     card = (await harness.agent.interpret(harness.request())).cards[0]
     assert [claim.text for claim in card.actions] == [action["text"]]
