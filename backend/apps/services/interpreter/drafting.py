@@ -29,6 +29,10 @@ class Draft(BaseModel):
     significance: float = Field(ge=0, le=1)
 
 
+def without_quoted(block: list[Claim], quoted: list[Claim]) -> list[Claim]:
+    return [claim for claim in block if claim not in quoted] or block
+
+
 def build_card(
     draft: Draft, evidence: dict[str, Evidence], card_id: str, trace_id: str
 ) -> InsightCard:
@@ -56,15 +60,16 @@ def build_card(
         return result
 
     blocks = {name: resolve(getattr(draft, name), name == "bank_view") for name in CLAIM_BLOCKS}
+    bank_view = blocks["bank_view"]
     return InsightCard(
         id=card_id,
         trace_id=trace_id,
         headline=draft.headline,
-        what_happened=blocks["what_happened"],
-        why_for_you=blocks["why_for_you"],
-        consequences=blocks["consequences"],
-        actions=blocks["actions"],
-        bank_view=blocks["bank_view"],
+        what_happened=without_quoted(blocks["what_happened"], bank_view),
+        why_for_you=without_quoted(blocks["why_for_you"], bank_view),
+        consequences=without_quoted(blocks["consequences"], bank_view),
+        actions=without_quoted(blocks["actions"], bank_view),
+        bank_view=bank_view,
         basis=list(basis.values()),
         significance=draft.significance,
     )
