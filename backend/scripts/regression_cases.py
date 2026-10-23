@@ -80,15 +80,16 @@ def load_cases(directory: Path) -> list[Case]:
         raise ValueError(f"Duplicate regression case ids: {', '.join(duplicates)}")
     seen: dict[str, Case] = {}
     for item in cases:
+        for reference in (item.followup_of, item.differs_from):
+            if reference is not None and reference not in seen:
+                raise ValueError(f"Case {item.id} refers to no earlier case {reference}")
         if item.differs_from is not None:
-            check_role_pair(item, seen.get(item.differs_from))
+            check_role_pair(item, seen[item.differs_from])
         seen[item.id] = item
     return cases
 
 
-def check_role_pair(case: Case, peer: Case | None) -> None:
-    if peer is None:
-        raise ValueError(f"Case {case.id} compares roles with no earlier case {case.differs_from}")
+def check_role_pair(case: Case, peer: Case) -> None:
     if case.request.role == peer.request.role:
         raise ValueError(f"Case {case.id} compares the same role as {peer.id}")
     if case.request.model_copy(update={"role": peer.request.role}) != peer.request:
@@ -166,8 +167,7 @@ def expectation_failures(
 
 
 def role_texts(card: InsightCard) -> dict[str, list[str]]:
-    blocks = {"why_for_you": card.why_for_you, "actions": card.actions}
-    return {name: [item.text for item in blocks[name]] for name in ROLE_BLOCKS}
+    return {name: [item.text for item in getattr(card, name)] for name in ROLE_BLOCKS}
 
 
 def role_failures(case: Case, response: InterpretResponse, peer: InsightCard | None) -> list[str]:

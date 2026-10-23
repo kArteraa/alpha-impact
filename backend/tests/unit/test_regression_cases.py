@@ -364,3 +364,15 @@ def test_role_pair_fails_without_peer_card() -> None:
 
 def test_role_pair_fails_on_silence() -> None:
     assert check(case(differs_from="cfo"), SILENT, CITED, CFO_CARD) != []
+
+
+def test_load_cases_rejects_followup_of_later_case(tmp_path: Path) -> None:
+    followup = (
+        "id: child\ntitle: Кейс\nfollowup_of: parent\nrequest:\n  user_id: u\n  client_id: c\n"
+        "  role: cfo\n  action_context: {type: followup, card_id: '', question: 'Почему'}\n"
+        "expect: {silent: false}\n"
+    )
+    write_cases(tmp_path, followup, role_case("parent", "cfo"))
+
+    with pytest.raises(ValueError, match="child"):
+        load_cases(tmp_path)
