@@ -4,9 +4,17 @@ from typing import Literal, Self
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from apps.services.interpreter.context import Evidence, news_without_text, sources
 from shared.config.house_view_topics import HOUSE_VIEW_SUBJECTS
 from shared.contracts.errors import DomainError
-from shared.contracts.schemas import HouseViewClaim
+from shared.contracts.schemas import (
+    ClientProfile,
+    CounterpartyContext,
+    HouseViewClaim,
+    InterpretRequest,
+    NewsItem,
+    PageContext,
+)
 
 PLANS_PATH = Path(__file__).with_name("plans.yaml")
 BUSINESS_ACTIONS = {"payment", "deposit", "fx", "loan", "payroll", "dashboard", "page"}
@@ -76,6 +84,18 @@ class Plan(BaseModel):
             if call.argument not in allowed or (call.tool, call.argument) in seen:
                 raise DomainError("Plan contains an unknown or duplicate tool argument")
             seen.add((call.tool, call.argument))
+
+
+def plan_sources(
+    request: InterpretRequest,
+    profile: ClientProfile,
+    counterparty: CounterpartyContext | None,
+    news: list[NewsItem],
+    house_view: list[HouseViewClaim],
+) -> dict[str, Evidence]:
+    if isinstance(request.action_context, PageContext):
+        return {**sources(profile, counterparty, [], house_view), **news_without_text(news)}
+    return sources(profile, counterparty, news, house_view)
 
 
 def load_config(path: Path) -> PlanConfig:
