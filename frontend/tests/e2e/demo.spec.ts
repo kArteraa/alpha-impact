@@ -1,19 +1,29 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Page, type Response, test } from "@playwright/test";
 import { pasteDemoNews } from "../support/news";
-import { CARD_TIMEOUT_MS, chooseOption, feedWidget, pay, waitForFeed } from "../support/panel";
-import { chooseRole, enter, logIn, logInAgain } from "../support/session";
+import { CARD_TIMEOUT_MS, chooseOption, feedHeadlines, feedWidget, pay, waitForCard } from "../support/panel";
+import { chooseRole, enter, logIn, logInWithSavedRole } from "../support/session";
 
 const CARRIER = "ООО «Северо-Западная логистика»";
 const DEMO_PAYMENT = "4500000";
 const DEMO_DEPOSIT = "50000000";
+const DEMO_STEPS = 20;
 
-function panelOf(page: Page) {
-  return page.locator(".insight-panel");
+type Asked = (body: { role: string; action_context: Record<string, unknown> }) => boolean;
+
+function section(page: Page, name: string) {
+  return page.getByRole("navigation", { name: "Разделы" }).getByRole("link", { name, exact: true });
 }
 
-async function headlines(page: Page) {
-  await waitForFeed(page);
-  return feedWidget(page).getByRole("heading", { level: 3 }).allTextContents();
+async function answered(page: Page, asked: Asked, act: () => Promise<void>): Promise<Response> {
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (reply) => reply.url().endsWith("/api/interpret") && asked(reply.request().postDataJSON()),
+      { timeout: CARD_TIMEOUT_MS },
+    ),
+    act(),
+  ]);
+  expect(response.ok()).toBeTruthy();
+  return response;
 }
 
 async function term(page: Page, label: string) {
@@ -21,68 +31,67 @@ async function term(page: Page, label: string) {
   await expect(page.getByRole("radio", { name: label })).toBeChecked();
 }
 
-async function answered(page: Page, act: () => Promise<void>) {
-  const response = page.waitForResponse((reply) => reply.url().endsWith("/api/interpret"), { timeout: CARD_TIMEOUT_MS });
-  await act();
-  expect((await response).ok()).toBeTruthy();
-}
+const deposit =
+  (days: number): Asked =>
+  ({ action_context }) =>
+    action_context.type === "deposit" && action_context.term_days === days;
 
-async function expectCard(panel: Locator) {
-  await expect(panel).toHaveAttribute("data-state", "cards", { timeout: CARD_TIMEOUT_MS });
-  await expect(panel).toHaveAttribute("aria-busy", "false", { timeout: CARD_TIMEOUT_MS });
-  await expect(panel.locator(".insight-sources li").first()).toBeVisible();
-}
-
-async function expectBankCard(panel: Locator) {
-  await expectCard(panel);
-  await expect(panel.getByLabel(/^Банк — источник: /).first()).toBeVisible();
-}
+const payment =
+  (role: string): Asked =>
+  ({ role: asked, action_context }) =>
+    asked === role && action_context.type === "payment";
 
 test("demo scenario: profile, feed, payment, silence, deposit, role, pasted news, trace", async ({ page }) => {
-  test.setTimeout(12 * CARD_TIMEOUT_MS);
-  const panel = panelOf(page);
+  test.setTimeout(DEMO_STEPS * CARD_TIMEOUT_MS);
+  const panel = page.locator(".insight-panel");
+  const bankBadge = panel.getByLabel(/^Банк — источник: /).first();
 
   await logIn(page);
   await expect(page.getByRole("listitem", { name: "Отрасль" })).toBeVisible();
   await page.getByRole("button", { name: "Всё верно" }).click();
 
-  const wholesale = await headlines(page);
-  expect(wholesale.length).toBeGreaterThanOrEqual(1);
+  const wholesale = await feedHeadlines(page);
   await feedWidget(page).getByRole("link", { name: "Все события" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Все события" })).toBeVisible();
-  await page.getByRole("link", { name: "Главная" }).click();
+  await section(page, "Главная").click();
   await chooseOption(page, "Компания", /СтройЛизинг/);
-  expect(await headlines(page)).not.toEqual(wholesale);
+  expect(await feedHeadlines(page)).not.toEqual(wholesale);
   await chooseOption(page, "Компания", /Северный опт/);
+  await feedHeadlines(page);
+  await feedWidget(page).getByRole("heading", { level: 3 }).first().getByRole("link").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Событие" })).toBeVisible();
+  await expect(page.locator(".insight-card")).toHaveCount(1);
 
-  await page.getByRole("link", { name: "Платежи" }).click();
-  await pay(page, CARRIER, DEMO_PAYMENT);
-  await expectBankCard(panel);
-  await expect(panel).toHaveAttribute("data-role", "cfo");
+  await section(page, "Платежи").click();
+  await answered(page, payment("cfo"), () => pay(page, CARRIER, DEMO_PAYMENT));
+  await waitForCard(panel);
+  await expect(bankBadge).toBeVisible();
 
   await enter(page, "user_cfo_nocard");
   await expect(feedWidget(page).getByText("Пока ничего важного для вашего бизнеса.")).toBeVisible({ timeout: CARD_TIMEOUT_MS });
 
-  await logInAgain(page);
-  await page.getByRole("link", { name: "Депозиты" }).click();
-  await page.getByLabel("Сумма, ₽").fill(DEMO_DEPOSIT);
-  await answered(page, () => term(page, "3 мес."));
-  await expectBankCard(panel);
+  await logInWithSavedRole(page);
+  await section(page, "Депозиты").click();
+  await term(page, "3 мес.");
+  await answered(page, deposit(90), () => page.getByLabel("Сумма, ₽").fill(DEMO_DEPOSIT));
+  await waitForCard(panel);
+  await expect(bankBadge).toBeVisible();
   await expect(panel.getByRole("region", { name: "Расчёт" }).first()).toBeVisible();
-  await answered(page, () => term(page, "6 мес."));
-  await expectBankCard(panel);
+  await answered(page, deposit(180), () => term(page, "6 мес."));
+  await waitForCard(panel);
+  await expect(bankBadge).toBeVisible();
+  await expect(panel.getByRole("region", { name: "Расчёт" }).first()).toBeVisible();
 
   await chooseRole(page, "Казначей");
-  await page.getByRole("link", { name: "Платежи" }).click();
-  await pay(page, CARRIER, DEMO_PAYMENT);
-  await expectCard(panel);
-  await expect(panel).toHaveAttribute("data-role", "treasurer");
+  await section(page, "Платежи").click();
+  await answered(page, payment("treasurer"), () => pay(page, CARRIER, DEMO_PAYMENT));
+  await waitForCard(panel);
 
   await chooseRole(page, "Финансовый директор");
-  await page.getByRole("link", { name: "Главная" }).click();
+  await section(page, "Главная").click();
   await page.getByRole("link", { name: "Вставить новость" }).click();
   await pasteDemoNews(page);
-  await expectCard(panel);
+  await waitForCard(panel);
 
   await panel.getByRole("link", { name: "Как получен вывод" }).first().click();
   await expect(page.getByRole("heading", { level: 1, name: "Как получен вывод" })).toBeVisible();
