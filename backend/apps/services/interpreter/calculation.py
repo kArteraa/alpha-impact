@@ -20,7 +20,7 @@ from shared.contracts.schemas import (
 
 KEY_RATE = "key_rate"
 RATE_DECIMALS = 2
-RATE_VALUE = re.compile(r"(\d+(?:,\d+)?)%")
+RATE_VALUE = re.compile(r"(\d+(?:[,.]\d+)?)\s*%")
 DEPOSIT_RATE = "ставка размещения следует ключевой ставке по позиции банка"
 LINEAR_PATH = "между прогнозами банка ключевая ставка меняется линейно"
 FIXED_SPREAD = "спред к ключевой ставке не меняется"
@@ -76,13 +76,11 @@ def key_rate_points(claims: list[HouseViewClaim], as_of: date) -> RatePoints | N
 
 
 def rate_path(points: RatePoints, as_of: date, months: int) -> list[float] | None:
+    days = [as_of + timedelta(days=month * DAYS_IN_MONTH) for month in range(months)]
+    if days and days[-1] > points.forecasts[-1][0]:
+        return None
     anchors = [(as_of, points.now), *points.forecasts]
-    path = [
-        _interpolate(anchors, as_of + timedelta(days=month * DAYS_IN_MONTH))
-        for month in range(months)
-    ]
-    rates = [rate for rate in path if rate is not None]
-    return rates if len(rates) == len(path) else None
+    return [_interpolate(anchors, day) for day in days]
 
 
 def plan_calculation(
@@ -93,7 +91,11 @@ def plan_calculation(
         return None
     if isinstance(action, DepositContext):
         return _deposit(action, points, as_of)
-    if isinstance(action, LoanContext) and action.rate_type == "floating":
+    if (
+        isinstance(action, LoanContext)
+        and action.product == "loan"
+        and action.rate_type == "floating"
+    ):
         return _loan(action, points, as_of, loan_horizon_months)
     return None
 
@@ -129,16 +131,14 @@ def _loan(action: LoanContext, points: RatePoints, as_of: date, months: int) -> 
         call=lambda whatif: whatif.rate_burden(action.amount, points.now, expected, months),
         assumptions=(
             FIXED_SPREAD,
-            f"ожидаемая ставка — средняя ключевая по позиции банка за {months} мес.",
-            LINEAR_PATH,
+            f"ожидаемая ставка — средняя ключевая за {months} мес. по позиции банка, линейной "
+            "между прогнозами; с ней итог тот же, что при помесячном пути",
         ),
     )
 
 
-def _interpolate(anchors: list[tuple[date, float]], day: date) -> float | None:
-    for (start, low), (end, high) in pairwise(anchors):
-        if start <= day <= end:
-            return round(
-                low + (high - low) * (day - start).days / (end - start).days, RATE_DECIMALS
-            )
-    return None
+def _interpolate(anchors: list[tuple[date, float]], day: date) -> float:
+    (start, low), (end, high) = next(
+        (left, right) for left, right in pairwise(anchors) if left[0] <= day <= right[0]
+    )
+    return round(low + (high - low) * (day - start).days / (end - start).days, RATE_DECIMALS)

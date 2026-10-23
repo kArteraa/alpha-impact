@@ -18,11 +18,11 @@ OFFER = s.ProductOffer(
     product="letter_of_credit", reason="Отрасль получателя в стрессе", rule_id="r1"
 )
 CALCULATION = s.WhatIfResult(
-    kind="deposit_terms",
-    value=12_500.0,
+    kind="rate_burden",
+    value=-290_000.0,
     unit="RUB",
-    formula="фиксация: 10 000 000 ₽ × 14% × 90/365 = 345 205,48 ₽",
-    assumptions=["ставка размещения следует ключевой ставке"],
+    formula="50 000 000 ₽ × (13,42% − 14%) × 12/12 мес. = −290 000 ₽",
+    assumptions=["спред к ключевой ставке не меняется"],
 )
 CARD = s.InsightCard(
     id="card-1",

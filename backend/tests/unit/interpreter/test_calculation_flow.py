@@ -4,14 +4,19 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from apps.services.interpreter.calculation import KEY_RATE
+from shared.contracts.errors import DomainError
 from shared.contracts.schemas import (
     ActionContext,
+    Claim,
+    ClaimType,
     DepositContext,
     Factor,
     HouseViewClaim,
     InterpretRequest,
     LoanContext,
     NewsItem,
+    SourceRef,
+    WhatIfResult,
 )
 from tests.unit.interpreter.followup_support import followup_request, prompt
 from tests.unit.interpreter.support import Harness, key_rate_claim, saved, tool_names
@@ -161,3 +166,39 @@ async def test_followup_answer_has_no_calculation(harness: Harness, rate: HouseV
     response = await harness.agent.interpret(followup_request())
     assert response.cards[0].calculation is None
     assert not any(name.startswith("whatif.") for name in tool_names(harness))
+
+
+async def test_invalid_deposit_fails_before_any_model_call(harness: Harness) -> None:
+    request = moment(harness, DepositContext(amount=1_000_000, term_days=0), None)
+    with pytest.raises(DomainError, match="term_days"):
+        await harness.agent.interpret(request)
+    harness.llm.complete.assert_not_awaited()
+
+
+async def test_followup_can_cite_calculation_of_original_card(
+    harness: Harness, rate: HouseViewClaim
+) -> None:
+    calculation = WhatIfResult(
+        kind="deposit_terms", value=0.0, unit="RUB", formula="разница 0 ₽", assumptions=["a"]
+    )
+    original = harness.traces.find_by_card.return_value
+    card = original.result.cards[0]
+    calc_ref = SourceRef(kind="calc", id="deposit_terms", title="Расчёт")
+    cited = card.model_copy(
+        update={
+            "calculation": calculation,
+            "consequences": [Claim(text="Разница 0 ₽", type=ClaimType.AI, source_ref=calc_ref)],
+            "basis": [*card.basis, calc_ref],
+        }
+    )
+    harness.traces.find_by_card.return_value = original.model_copy(
+        update={"result": original.result.model_copy(update={"cards": [cited]})}
+    )
+    harness.answers[1]["consequences"] = [
+        {"text": "Разница по расчёту 0 ₽", "type": "ai", "source": "calc:deposit_terms"}
+    ]
+    response = await harness.agent.interpret(followup_request())
+    answer = response.cards[0]
+    assert answer.consequences[0].source_ref.kind == "calc"
+    assert answer.calculation is None
+    assert "calc:deposit_terms" in draft_sources(harness)

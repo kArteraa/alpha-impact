@@ -190,7 +190,11 @@ class Agent:
             )
         news = [candidate.news for candidate in selection.candidates]
         house_view = selection.house_view
-        evidence = sources(profile, counterparty, news, house_view)
+        calculation = await self._calculation(journal, request.action_context, house_view, as_of)
+        evidence = {
+            **sources(profile, counterparty, news, house_view),
+            **calculation_evidence(calculation),
+        }
         plan = await self._plan(
             journal,
             PLAN_SYSTEM,
@@ -198,7 +202,6 @@ class Agent:
             {"context": prompt_context(request, profile, counterparty, evidence)},
         )
         current = await self._collect(journal, plan, house_view, as_of)
-        calculation = await self._calculation(journal, request.action_context, current, as_of)
         evidence = {
             **sources(profile, counterparty, news, current),
             **calculation_evidence(calculation),
