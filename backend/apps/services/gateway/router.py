@@ -1,14 +1,21 @@
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from apps.services.gateway.auth import SESSION_COOKIE, ContainerDep, CurrentUser, current_user
+from apps.services.gateway.auth import (
+    SESSION_COOKIE,
+    ContainerDep,
+    CurrentUser,
+    InterpretUser,
+    current_user,
+)
 from apps.services.gateway.errors import DomainErrorRoute
 from apps.services.gateway.reports import ReportFiles
 from apps.services.gateway.service import InterpretGateway
+from apps.services.gateway.tokens import SqlExtensionTokens
 from shared.contracts.errors import AccessDenied, NotFound
 from shared.contracts.ports import ProfileService, TraceStore
 from shared.contracts.schemas import (
@@ -31,6 +38,11 @@ class MockSession(BaseModel):
     user_id: str
 
 
+class ExtensionToken(BaseModel):
+    token: str
+    expires_at: datetime
+
+
 class FeatureCorrection(BaseModel):
     value: str | float | bool | list[str] | None
 
@@ -39,10 +51,6 @@ class CardFeedback(BaseModel):
     card_id: str
     useful: bool
     comment: str | None = None
-
-
-def not_implemented(task: str) -> HTTPException:
-    return HTTPException(status.HTTP_501_NOT_IMPLEMENTED, f"Not implemented: {task}")
 
 
 @router.get("/health")
@@ -68,7 +76,7 @@ async def clients(user_id: CurrentUser, container: ContainerDep) -> list[str]:
 
 @router.post("/interpret")
 async def interpret(
-    body: InterpretRequest, user_id: CurrentUser, container: ContainerDep
+    body: InterpretRequest, user_id: InterpretUser, container: ContainerDep
 ) -> InterpretResponse:
     return await container.resolve(InterpretGateway).interpret(user_id, body)
 
@@ -122,5 +130,6 @@ async def metrics(since: date, container: ContainerDep) -> dict[str, float]:
 
 
 @router.post("/auth/extension-token")
-async def extension_token() -> None:
-    raise not_implemented("AH-37")
+async def extension_token(user_id: CurrentUser, container: ContainerDep) -> ExtensionToken:
+    token, expires_at = await container.resolve(SqlExtensionTokens).issue(user_id)
+    return ExtensionToken(token=token, expires_at=expires_at)
