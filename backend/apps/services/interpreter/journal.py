@@ -88,6 +88,7 @@ class Journal:
         card: InsightCard,
         house_view: list[HouseViewClaim],
         news: list[NewsItem],
+        notes: list[str],
     ) -> list[str]:
         async with self._step(
             TraceStep(
@@ -98,9 +99,10 @@ class Journal:
                 started_at=utc_now(),
             )
         ) as step:
-            verdicts, step.tokens_in, step.tokens_out, step.cost_rub = await critic.review(
+            found, step.tokens_in, step.tokens_out, step.cost_rub = await critic.review(
                 card, house_view, news
             )
+            verdicts = [*notes, *found]
             step.output_summary = json.dumps(verdicts, ensure_ascii=False)
             self.trace.critic_verdicts.extend(
                 [f"{round_number}: {verdict}" for verdict in verdicts] or [f"{round_number}: ok"]

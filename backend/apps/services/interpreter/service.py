@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from apps.services.interpreter.calculation import calculation_evidence, plan_calculation
 from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
-from apps.services.interpreter.drafting import Draft, build_card
+from apps.services.interpreter.drafting import Draft, build_card, with_quotes
 from apps.services.interpreter.followup import (
     checked_followup,
     cited_house_view,
@@ -395,24 +395,29 @@ class Agent:
         house_view: list[HouseViewClaim],
         news: list[NewsItem],
     ) -> InsightCard:
-        card = build_card(draft, evidence, card_id=str(uuid4()), trace_id=journal.trace.id)
+        card, notes = build_card(draft, evidence, card_id=str(uuid4()), trace_id=journal.trace.id)
         round_number = 1
         try:
-            verdicts = await journal.review(round_number, self._critic, card, house_view, news)
+            verdicts = await journal.review(
+                round_number, self._critic, card, house_view, news, notes
+            )
             if not verdicts:
                 return card
             round_number = 2
+            previous = with_quotes(draft, evidence).model_dump()
             redraft = await journal.generate(
                 "redraft",
                 system,
                 json.dumps(
-                    {**payload, "previous_draft": draft.model_dump(), "critic_verdicts": verdicts},
+                    {**payload, "previous_draft": previous, "critic_verdicts": verdicts},
                     ensure_ascii=False,
                 ),
                 Draft,
             )
-            card = build_card(redraft, evidence, card_id=card.id, trace_id=journal.trace.id)
-            verdicts = await journal.review(round_number, self._critic, card, house_view, news)
+            card, notes = build_card(redraft, evidence, card_id=card.id, trace_id=journal.trace.id)
+            verdicts = await journal.review(
+                round_number, self._critic, card, house_view, news, notes
+            )
         except (DomainError, ValidationError) as error:
             journal.trace.critic_verdicts.append(f"{round_number}: error: {type(error).__name__}")
             return card.model_copy(update={"needs_review": True})
