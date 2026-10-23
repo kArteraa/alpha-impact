@@ -5,6 +5,11 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
+from apps.services.interpreter.calculation import (
+    KEY_RATE,
+    calculation_evidence,
+    plan_calculation,
+)
 from apps.services.interpreter.context import Evidence, current_claims, prompt_context, sources
 from apps.services.interpreter.drafting import Draft, build_card
 from apps.services.interpreter.followup import (
@@ -34,19 +39,24 @@ from shared.contracts.ports import (
     NewsService,
     ProfileService,
     TraceStore,
+    WhatIfService,
 )
 from shared.contracts.schemas import (
+    ActionContext,
     CounterpartyContext,
+    DepositContext,
     FollowupContext,
     HouseViewClaim,
     InsightCard,
     InterpretRequest,
     InterpretResponse,
+    LoanContext,
     NewsItem,
     PageContext,
     PaymentContext,
     Trace,
     TraceStep,
+    WhatIfResult,
 )
 
 
@@ -57,6 +67,7 @@ class Agent:
         counterparties: CounterpartyService,
         news: NewsService,
         house_view: HouseViewService,
+        whatif: WhatIfService,
         llm: LLMGateway,
         traces: TraceStore,
         critic: Critic,
@@ -69,6 +80,7 @@ class Agent:
         self._counterparties = counterparties
         self._news = news
         self._house_view = house_view
+        self._whatif = whatif
         self._llm = llm
         self._traces = traces
         self._critic = critic
@@ -177,7 +189,9 @@ class Agent:
                 silent=True, silent_reason="Нет значимых событий для этого действия"
             )
         news = [candidate.news for candidate in selection.candidates]
-        house_view = selection.house_view
+        house_view = await self._with_key_rate(
+            journal, request.action_context, selection.house_view, as_of
+        )
         evidence = sources(profile, counterparty, news, house_view)
         plan = await self._plan(
             journal,
@@ -186,7 +200,10 @@ class Agent:
             {"context": prompt_context(request, profile, counterparty, evidence)},
         )
         current = await self._collect(journal, plan, house_view, as_of)
+        calculation = await self._calculation(journal, request.action_context, current, as_of)
         evidence = sources(profile, counterparty, news, current)
+        if calculation is not None:
+            evidence.update(calculation_evidence(calculation))
         payload: dict[str, object] = {
             "plan": plan.model_dump(),
             "context": prompt_context(request, profile, counterparty, evidence),
@@ -195,7 +212,9 @@ class Agent:
             "draft", DRAFT_SYSTEM, json.dumps(payload, ensure_ascii=False), Draft
         )
         card = await self._reviewed(journal, DRAFT_SYSTEM, payload, draft, evidence, current, news)
-        return InterpretResponse(silent=False, cards=[card])
+        return InterpretResponse(
+            silent=False, cards=[card.model_copy(update={"calculation": calculation})]
+        )
 
     async def _followup(
         self, request: InterpretRequest, action: FollowupContext, journal: Journal
@@ -337,6 +356,32 @@ class Agent:
                 found = await self._chain(journal, call.argument, as_of)
             collected.update({claim.id: claim for claim in found})
         return [collected[key] for key in sorted(collected)]
+
+    async def _with_key_rate(
+        self, journal: Journal, action: ActionContext, house_view: list[HouseViewClaim], as_of: date
+    ) -> list[HouseViewClaim]:
+        if not isinstance(action, DepositContext | LoanContext):
+            return house_view
+        batch = await journal.tool(
+            "house_view.claims",
+            KEY_RATE,
+            self._house_view.claims(subject=KEY_RATE, as_of=as_of),
+        )
+        rates = current_claims([claim for claim in batch if claim.subject == KEY_RATE], as_of)
+        merged = {claim.id: claim for claim in [*house_view, *rates]}
+        return [merged[key] for key in sorted(merged)]
+
+    async def _calculation(
+        self, journal: Journal, action: ActionContext, house_view: list[HouseViewClaim], as_of: date
+    ) -> WhatIfResult | None:
+        if not isinstance(action, DepositContext | LoanContext):
+            return None
+        calculation = plan_calculation(action, house_view, as_of, self._config.loan_horizon_months)
+        if calculation is None:
+            return None
+        return await journal.tool(
+            f"whatif.{calculation.name}", calculation.summary, calculation.run(self._whatif)
+        )
 
     async def _pasted_news(self, request: InterpretRequest, journal: Journal) -> NewsItem | None:
         if not isinstance(request.action_context, PageContext):

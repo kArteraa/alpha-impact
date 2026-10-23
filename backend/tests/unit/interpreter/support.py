@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 from pydantic import BaseModel
 
-from apps.services import interpreter
+from apps.services import interpreter, whatif
 from scripts.prefilter_mocks import MockSeed, make_seed
 from shared.config.settings import Settings
 from shared.contracts.ports import (
@@ -142,6 +142,7 @@ def make_harness(settings: Settings) -> Harness:
         (Settings, settings),
     ):
         container.register(port, constant(service))
+    whatif.register(container)
     interpreter.register(container)
     return Harness(
         container, seed, profiles, counterparties, news, house_view, llm, traces, answers

@@ -83,6 +83,7 @@ export interface InsightCard {
   actions: Claim[];
   bank_view: Claim[];
   basis: SourceRef[];
+  calculation?: WhatIfResult | null;
   consequences: Claim[];
   headline: string;
   id: string;
@@ -104,6 +105,13 @@ export interface SourceRef {
   published_at?: string | null;
   title?: string | null;
   url?: string | null;
+}
+export interface WhatIfResult {
+  assumptions: string[];
+  formula: string;
+  kind: string;
+  unit: string;
+  value: number;
 }
 export interface ProductOffer {
   product: string;
