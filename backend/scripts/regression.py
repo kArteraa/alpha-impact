@@ -57,6 +57,7 @@ async def run_case(
     interpreter: Interpreter,
     house_view: ClaimChain,
     cards: dict[str, InsightCard],
+    green: dict[str, tuple[InsightCard, ...]],
 ) -> CaseResult:
     request = case.request
     if case.followup_of is not None:
@@ -73,8 +74,10 @@ async def run_case(
         if first is not None:
             cards[case.id] = first
         cited = await cited_claims(response, house_view)
-        peer = cards.get(case.differs_from) if case.differs_from is not None else None
-        failures = check(case, response, cited, peer)
+        peers = green.get(case.differs_from, ()) if case.differs_from is not None else ()
+        failures = check(case, response, cited, peers)
+        if not failures:
+            green[case.id] = tuple(response.cards)
     except Exception as error:
         failures = [f"{type(error).__name__}: {error}"]
     return CaseResult(case.id, case.title, tuple(failures), first.trace_id if first else None)
@@ -84,7 +87,8 @@ async def run_cases(
     cases: Sequence[Case], interpreter: Interpreter, house_view: ClaimChain
 ) -> list[CaseResult]:
     cards: dict[str, InsightCard] = {}
-    return [await run_case(case, interpreter, house_view, cards) for case in cases]
+    green: dict[str, tuple[InsightCard, ...]] = {}
+    return [await run_case(case, interpreter, house_view, cards, green) for case in cases]
 
 
 def cell(text: str) -> str:
