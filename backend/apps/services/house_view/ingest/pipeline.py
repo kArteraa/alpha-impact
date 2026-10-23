@@ -83,7 +83,7 @@ async def extract(
         if len(page.text) > config.max_page_chars:
             truncated.append(place(document, page.page))
         try:
-            answer, _, _ = await llm.complete(
+            answer, _, _, _ = await llm.complete(
                 config.llm_task,
                 config.prompt,
                 page_prompt(document, page.page, page.text, config),

@@ -1,4 +1,4 @@
-from shared.contracts.errors import DomainError
+from shared.contracts.errors import ChargedModelError, DomainError
 
 
 class ModelUnavailable(DomainError):
@@ -15,7 +15,7 @@ class ModelUnavailable(DomainError):
         self.cost_rub = cost_rub
 
 
-class ModelOutputInvalid(DomainError):
+class ModelOutputInvalid(ChargedModelError):
     pass
 
 

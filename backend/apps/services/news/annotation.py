@@ -1,7 +1,8 @@
 import hashlib
 from collections.abc import Callable, Sequence
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, JsonValue, field_validator
+from pydantic import BaseModel, Field, JsonValue, create_model, field_validator
 from pydantic.json_schema import JsonDict
 
 from apps.services.news.config import NewsConfig
@@ -106,6 +107,23 @@ def annotation_schema(config: NewsConfig) -> type[Annotation]:
     return NewsAnnotation
 
 
+class PageAnnotation(Annotation):
+    page_type: str
+
+
+def page_schema(config: NewsConfig) -> type[Annotation]:
+    page_type: Any = Literal[tuple(config.page_types)]
+    return create_model(
+        "KnownPage",
+        __base__=(annotation_schema(config), PageAnnotation),
+        page_type=(page_type, ...),
+    )
+
+
+def page_prompt(url: str, text: str, max_chars: int) -> str:
+    return f"Адрес: {url}\nТекст: {text[:max_chars]}"
+
+
 def news_id(title: str) -> str:
     return hashlib.sha256(name_key(title).encode()).hexdigest()[:ID_LENGTH]
 
@@ -130,16 +148,20 @@ def entry_prompt(title: str, text: str, max_chars: int) -> str:
     return f"Заголовок: {title}\nТекст: {text[:max_chars]}"
 
 
+async def ask(
+    llm: LLMGateway, task: str, system: str, prompt: str, schema: type[Annotation]
+) -> tuple[Annotation, int, int]:
+    answer, tokens_in, tokens_out, _ = await llm.complete(task, system, prompt, schema)
+    if not isinstance(answer, Annotation):
+        raise TypeError(f"LLM gateway returned {type(answer).__name__}, not {schema.__name__}")
+    return answer, tokens_in, tokens_out
+
+
 async def annotate(
     llm: LLMGateway, config: NewsConfig, schema: type[Annotation], title: str, text: str
 ) -> tuple[Annotation, int, int]:
     prompt = entry_prompt(title, text, config.max_text_chars)
-    answer, tokens_in, tokens_out = await llm.complete(
-        config.llm_task, config.prompt, prompt, schema
-    )
-    if not isinstance(answer, Annotation):
-        raise TypeError(f"LLM gateway returned {type(answer).__name__}, not {schema.__name__}")
-    return answer, tokens_in, tokens_out
+    return await ask(llm, config.llm_task, config.prompt, prompt, schema)
 
 
 def to_news_item(entry: FeedEntry, annotation: Annotation) -> NewsItem:

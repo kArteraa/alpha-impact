@@ -9,7 +9,7 @@ from shared.contracts.errors import DomainError
 from shared.contracts.schemas import HouseViewClaim
 
 PLANS_PATH = Path(__file__).with_name("plans.yaml")
-BUSINESS_ACTIONS = {"payment", "deposit", "fx", "loan", "payroll", "dashboard"}
+BUSINESS_ACTIONS = {"payment", "deposit", "fx", "loan", "payroll", "dashboard", "page"}
 
 
 class Template(BaseModel):
@@ -23,6 +23,11 @@ class PlanConfig(BaseModel):
     lookback_days: int = Field(gt=0)
     search_limit: int = Field(gt=0)
     max_tool_calls: int = Field(gt=0)
+    max_title_chars: int = Field(gt=0)
+    trace_summary_chars: int = Field(gt=0)
+    followup_focus: str = Field(min_length=1)
+    max_question_chars: int = Field(gt=0)
+    max_followup_depth: int = Field(gt=0)
     templates: dict[str, Template]
 
     @model_validator(mode="after")

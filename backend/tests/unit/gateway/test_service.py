@@ -229,3 +229,31 @@ async def test_broken_cache_write_does_not_break_response(
     assert (record.outcome, record.cached) == ("ok", False)
     assert "cache write failed" in caplog.text
     assert "cache is down" in caplog.text
+
+
+async def test_silent_response_is_cached(harness: Harness) -> None:
+    harness.interpreter.interpret.return_value = InterpretResponse(silent=True, silent_reason="x")
+    await harness.gateway.interpret(USER, request())
+    response = await harness.gateway.interpret(USER, request())
+    assert response.cached is True
+    harness.interpreter.interpret.assert_awaited_once()
+
+
+async def test_needs_review_response_is_not_cached(harness: Harness) -> None:
+    unchecked = card().model_copy(update={"needs_review": True})
+    harness.interpreter.interpret.return_value = InterpretResponse(silent=False, cards=[unchecked])
+    first = await harness.gateway.interpret(USER, request())
+    second = await harness.gateway.interpret(USER, request())
+    assert (first.cached, second.cached) == (False, False)
+    assert harness.cache.entries == {}
+    assert harness.interpreter.interpret.await_count == 2
+    assert [record.outcome for record in harness.journal.records] == ["ok", "ok"]
+
+
+async def test_response_with_any_needs_review_card_is_not_cached(harness: Harness) -> None:
+    unchecked = card().model_copy(update={"id": "c2", "needs_review": True})
+    harness.interpreter.interpret.return_value = InterpretResponse(
+        silent=False, cards=[card(), unchecked]
+    )
+    await harness.gateway.interpret(USER, request())
+    assert harness.cache.entries == {}

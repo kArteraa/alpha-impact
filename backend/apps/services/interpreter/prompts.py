@@ -42,3 +42,12 @@ CRITIC_SYSTEM = (
 reason — коротко, в чём противоречие. Противоречий нет — items=[].
 """
 )
+
+FOLLOWUP_NOTE = """Это вопрос пользователя question к исходной карточке card.
+Отвечай на question, опираясь на тезисы card и sources; headline — короткий ответ на вопрос.
+Ключ source в тезисах card может отсутствовать в sources: такой источник цитировать нельзя.
+"""
+
+FOLLOWUP_PLAN_SYSTEM = PLAN_SYSTEM + FOLLOWUP_NOTE
+
+FOLLOWUP_DRAFT_SYSTEM = DRAFT_SYSTEM + FOLLOWUP_NOTE

@@ -26,6 +26,8 @@ class NewsConfig(BaseModel):
     industry_hints: dict[str, str]
     product_hints: dict[str, str]
     system_prompt: str
+    page_types: dict[str, str]
+    page_instructions: str
 
     @model_validator(mode="after")
     def hints_cover_vocabularies(self) -> "NewsConfig":
@@ -38,6 +40,8 @@ class NewsConfig(BaseModel):
             )
         if set(self.product_hints) != set(PRODUCTS):
             raise ValueError(f"product_hints must describe exactly the products: {PRODUCTS}")
+        if not self.page_types:
+            raise ValueError("page_types must list at least one page type")
         return self
 
     @property
@@ -49,6 +53,11 @@ class NewsConfig(BaseModel):
             f"{self.system_prompt}\nФакторы:\n{factors}"
             f"\nОтрасли:\n{industries}\nПродукты:\n{products}"
         )
+
+    @property
+    def page_system(self) -> str:
+        page_types = "\n".join(f"- {name}: {hint}" for name, hint in self.page_types.items())
+        return f"{self.prompt}\n{self.page_instructions}Типы страниц:\n{page_types}"
 
 
 def load_config() -> NewsConfig:
