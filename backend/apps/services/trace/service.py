@@ -45,9 +45,9 @@ class TraceRepository:
             traces = [Trace.model_validate(payload) for payload in payloads]
             useful, rated = (
                 await session.execute(
-                    select(
-                        func.count().filter(FeedbackRow.useful), func.count(FeedbackRow.id)
-                    ).where(FeedbackRow.created_at >= start)
+                    select(func.count().filter(FeedbackRow.useful), func.count(FeedbackRow.id))
+                    .join(TraceRow, TraceRow.id == FeedbackRow.trace_id)
+                    .where(TraceRow.created_at >= start)
                 )
             ).one()
         shares = trace_metrics(traces)

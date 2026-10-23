@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime
 
 import pytest
-from sqlalchemy import select, text, update
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from apps.services.trace.service import TraceRepository
@@ -139,20 +139,15 @@ async def test_find_by_card_of_foreign_trace_is_denied(
         await store.find_by_card(user_id=user_id, client_id=client_id, card_id="card-a")
 
 
-async def test_useful_share_counts_feedback_of_the_period(
-    store: TraceRepository, sessions: async_sessionmaker[AsyncSession]
+async def test_useful_share_counts_feedback_on_traces_of_the_period(
+    store: TraceRepository,
 ) -> None:
     now = datetime.now(UTC)
-    for trace_id, card_id in (("t1", "card-a"), ("t2", "card-b"), ("t3", "card-c")):
-        await store.save(make_trace(trace_id, now, card_response(card_id)))
+    await store.save(make_trace("t1", now, card_response("card-a")))
+    await store.save(make_trace("t2", now, card_response("card-b")))
+    await store.save(make_trace("t3", datetime(2026, 1, 1, tzinfo=UTC), card_response("card-c")))
     await store.feedback(OWNER, "card-a", True, None)
     await store.feedback(OWNER, "card-b", True, None)
     await store.feedback(OWNER, "card-b", False, "Не про нас")
     await store.feedback(OWNER, "card-c", True, None)
-    async with sessions() as session, session.begin():
-        await session.execute(
-            update(FeedbackRow)
-            .where(FeedbackRow.card_id == "card-c")
-            .values(created_at=datetime(2026, 1, 1, tzinfo=UTC))
-        )
     assert (await store.metrics(now.date()))["useful_share"] == 0.5
