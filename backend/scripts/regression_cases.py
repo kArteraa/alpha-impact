@@ -20,6 +20,7 @@ from shared.contracts.schemas import (
 
 CASES_DIR = Path(__file__).resolve().parents[1] / "tests" / "regression" / "cases"
 SourceKind = Literal["news", "house_view", "profile", "graph", "calc"]
+ROLE_BLOCKS = ("why_for_you", "actions")
 
 
 class Expectations(BaseModel):
@@ -46,6 +47,7 @@ class Case(BaseModel):
     title: str
     request: InterpretRequest
     followup_of: str | None = None
+    differs_from: str | None = None
     expect: Expectations = Expectations()
     when_card: Expectations = Expectations()
 
@@ -54,6 +56,8 @@ class Case(BaseModel):
         is_followup = isinstance(self.request.action_context, FollowupContext)
         if is_followup != (self.followup_of is not None):
             raise ValueError("followup_of is set exactly for followup action contexts")
+        if self.followup_of is not None and self.differs_from is not None:
+            raise ValueError("a followup case cannot compare roles")
         if self.when_card.silent is not None:
             raise ValueError("when_card is checked only on cards and cannot set silent")
         return self
@@ -74,7 +78,21 @@ def load_cases(directory: Path) -> list[Case]:
     duplicates = sorted(case_id for case_id, count in counts.items() if count > 1)
     if duplicates:
         raise ValueError(f"Duplicate regression case ids: {', '.join(duplicates)}")
+    seen: dict[str, Case] = {}
+    for item in cases:
+        if item.differs_from is not None:
+            check_role_pair(item, seen.get(item.differs_from))
+        seen[item.id] = item
     return cases
+
+
+def check_role_pair(case: Case, peer: Case | None) -> None:
+    if peer is None:
+        raise ValueError(f"Case {case.id} compares roles with no earlier case {case.differs_from}")
+    if case.request.role == peer.request.role:
+        raise ValueError(f"Case {case.id} compares the same role as {peer.id}")
+    if case.request.model_copy(update={"role": peer.request.role}) != peer.request:
+        raise ValueError(f"Case {case.id} must repeat the request of {peer.id} except the role")
 
 
 def bank_claims(card: InsightCard) -> list[Claim]:
@@ -147,8 +165,34 @@ def expectation_failures(
     return [f"no card meets expectations: {reasons}"]
 
 
-def check(case: Case, response: InterpretResponse, cited: dict[str, HouseViewClaim]) -> list[str]:
+def role_texts(card: InsightCard) -> dict[str, list[str]]:
+    blocks = {"why_for_you": card.why_for_you, "actions": card.actions}
+    return {name: [item.text for item in blocks[name]] for name in ROLE_BLOCKS}
+
+
+def role_failures(case: Case, response: InterpretResponse, peer: InsightCard | None) -> list[str]:
+    if peer is None:
+        return [f"case {case.differs_from} gave no card to compare roles"]
+    if not response.cards:
+        return ["expected a card to compare roles, got none"]
+    card = response.cards[0]
+    mine, theirs = role_texts(card), role_texts(peer)
+    return [
+        f"card {card.id}: {name} repeats card {peer.id} of {case.differs_from}"
+        for name in ROLE_BLOCKS
+        if mine[name] == theirs[name]
+    ]
+
+
+def check(
+    case: Case,
+    response: InterpretResponse,
+    cited: dict[str, HouseViewClaim],
+    peer: InsightCard | None = None,
+) -> list[str]:
     failures = expectation_failures(case.expect, response, cited)
+    if case.differs_from is not None:
+        failures += role_failures(case, response, peer)
     for card in response.cards:
         failures += invariant_failures(card, cited)
     if response.cards:
