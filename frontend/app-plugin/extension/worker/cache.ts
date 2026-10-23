@@ -1,6 +1,8 @@
 import type { InterpretResponse, Role } from "../../src";
 import { CACHE_TTL_MS } from "../config";
 
+export const CACHE_KEY = "cache";
+
 interface CacheEntry {
   response: InterpretResponse;
   storedAt: number;

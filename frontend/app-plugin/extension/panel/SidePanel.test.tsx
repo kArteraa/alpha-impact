@@ -1,13 +1,13 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { InterpretResponse } from "../../src";
+import { INTERPRET_DELAY_MS, type InterpretResponse } from "../../src";
 import { mockResponses } from "../../src/mocks";
 import { AUTOSHOW_DEFAULT } from "../config";
 import type { DetectedPage, ExtensionState, Result, Send, Settings, WorkerRequest } from "../messages";
 import { type PanelHost, SidePanel } from "./SidePanel";
 
 const HEADLINE = "Логистика в убытке: платёж перевозчику";
-const UNRECOGNISED = "Страница не похожа на статью, карточку контрагента, тендер или курс валют";
+const UNRECOGNISED = "Молчу: страница не похожа на статью, карточку контрагента, тендер или курс валют";
 
 const article: DetectedPage = {
   pageType: "article",
@@ -29,7 +29,7 @@ function signedIn(settings: Partial<Settings> = {}): ExtensionState {
 
 function panelWith(
   state: ExtensionState,
-  detected: DetectedPage | null,
+  detected: DetectedPage | null | Promise<DetectedPage | null>,
   interpret: Result<InterpretResponse> = { ok: true, value: mockResponses.cards },
 ) {
   const world = { state, detected };
@@ -83,8 +83,7 @@ describe("SidePanel", () => {
   it("stays silent on an unrecognised page without asking for a card", async () => {
     const { interprets } = panelWith(signedIn(), null);
 
-    expect((await screen.findByRole("status")).textContent).toContain("Ничего важного");
-    expect(screen.getByText(UNRECOGNISED)).toBeTruthy();
+    expect((await screen.findByRole("status")).textContent).toBe(UNRECOGNISED);
     expect(interprets()).toEqual([]);
   });
 
@@ -105,24 +104,25 @@ describe("SidePanel", () => {
 
   it("keeps the latest tab when an earlier answer comes late", async () => {
     let late: (detected: DetectedPage) => void = () => {};
-    const host: PanelHost = {
-      activePage: vi
-        .fn<PanelHost["activePage"]>()
-        .mockReturnValueOnce(new Promise((resolve) => (late = resolve)))
-        .mockResolvedValue(null),
-      subscribe: (listener) => {
-        queueMicrotask(listener);
-        return () => {};
-      },
-    };
-    const send = vi.fn(async () => signedIn());
-    render(<SidePanel send={send as unknown as Send} host={host} />);
-    await screen.findByText(UNRECOGNISED);
+    const { change, interprets } = panelWith(signedIn(), new Promise((resolve) => (late = resolve)));
 
+    change({ detected: null });
+    await screen.findByText(UNRECOGNISED);
     await act(async () => late(article));
 
     expect(screen.queryByText(UNRECOGNISED)).toBeTruthy();
-    expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: "interpret" }));
+    expect(interprets()).toEqual([]);
+  });
+
+  it("keeps the card when only the text of the same page changes", async () => {
+    const { change, interprets } = panelWith(signedIn(), article);
+    await screen.findByText(HEADLINE);
+
+    change({ detected: { ...article, page: { ...article.page, text: `${article.page.text}\nОбновлено 1 мин назад` } } });
+    await new Promise((resolve) => setTimeout(resolve, INTERPRET_DELAY_MS * 2));
+
+    expect(interprets()).toHaveLength(1);
+    expect(screen.getByText(HEADLINE)).toBeTruthy();
   });
 
   it("asks again when another company is chosen", async () => {

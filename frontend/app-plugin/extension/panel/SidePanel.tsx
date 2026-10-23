@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { InsightPanel, type InterpretFetcher, type InterpretResponse, type PageContext, type Role, useInterpret } from "../../src";
+import { InsightPanel, type InterpretFetcher, type PageContext, type Role, useInterpret } from "../../src";
 import { API_BASE } from "../config";
 import type { DetectedPage, ExtensionState, Send } from "../messages";
 
@@ -13,16 +13,15 @@ interface View {
   detected: DetectedPage | null;
 }
 
-const UNRECOGNISED_PAGE: PageContext = { type: "page", url: "", text: "" };
-const UNRECOGNISED_RESPONSE: InterpretResponse = {
-  silent: true,
-  silent_reason: "Страница не похожа на статью, карточку контрагента, тендер или курс валют",
-  cards: [],
-  cached: false,
-};
+function sameView(previous: View | null, next: View): boolean {
+  return (
+    previous !== null &&
+    previous.detected?.page.url === next.detected?.page.url &&
+    JSON.stringify(previous.state) === JSON.stringify(next.state)
+  );
+}
 
 function PageInsight({ page, role, send }: { page: PageContext; role: Role; send: Send }) {
-  const context: PageContext = { ...page, type: "page" };
   const fetcher: InterpretFetcher = async () => {
     const reply = await send({ type: "interpret", page });
     if (!reply.ok) {
@@ -30,10 +29,10 @@ function PageInsight({ page, role, send }: { page: PageContext; role: Role; send
     }
     return reply.value;
   };
-  const insight = useInterpret(context, fetcher);
+  const insight = useInterpret(page, fetcher);
   return (
     <InsightPanel
-      actionContext={context}
+      actionContext={page}
       role={role}
       response={insight.response}
       pending={insight.pending}
@@ -55,7 +54,11 @@ function Content({ view, send }: { view: View; send: Send }) {
     return <p className="sidepanel-note">Выберите компанию и роль в окне расширения</p>;
   }
   if (detected === null) {
-    return <InsightPanel actionContext={UNRECOGNISED_PAGE} role={role} response={UNRECOGNISED_RESPONSE} compact />;
+    return (
+      <p className="sidepanel-note" role="status">
+        Молчу: страница не похожа на статью, карточку контрагента, тендер или курс валют
+      </p>
+    );
   }
   return <PageInsight key={JSON.stringify([clientId, role, detected.page.url])} page={detected.page} role={role} send={send} />;
 }
@@ -69,7 +72,7 @@ export function SidePanel({ send, host }: { send: Send; host: PanelHost }) {
       const run = ++latest;
       void Promise.all([send({ type: "state" }), host.activePage()]).then(([state, detected]) => {
         if (run === latest) {
-          setView({ state, detected });
+          setView((previous) => (sameView(previous, { state, detected }) ? previous : { state, detected }));
         }
       });
     }

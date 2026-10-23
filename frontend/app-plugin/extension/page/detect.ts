@@ -9,7 +9,7 @@ const PAGE_TYPES = Object.keys(PAGE_DOMAINS) as PageType[];
 
 interface Extracted {
   lines: string[];
-  entities: string[];
+  entities?: string[];
 }
 
 type Rule = (body: HTMLElement) => Extracted | null;
@@ -20,26 +20,35 @@ function pageTypeOf(hostname: string): PageType | undefined {
   );
 }
 
+function headed(body: HTMLElement): Extracted | null {
+  const title = heading(body);
+  return title === "" ? null : { lines: [title, ...textLines(body)] };
+}
+
 function article(body: HTMLElement): Extracted | null {
   const title = heading(body);
   const text = paragraphs(body);
   const length = text.reduce((sum, line) => sum + line.length, 0);
-  return title !== "" && length >= ARTICLE_MIN_CHARS ? { lines: [title, ...text], entities: [] } : null;
+  return title !== "" && length >= ARTICLE_MIN_CHARS ? { lines: [title, ...text] } : null;
 }
 
 function counterparty(body: HTMLElement): Extracted | null {
-  const title = heading(body);
-  const lines = textLines(body);
-  const inns = [...new Set(innsIn(lines.join("\n")))];
-  if (title === "" || inns.length === 0) {
+  const page = headed(body);
+  if (page === null) {
     return null;
   }
-  return { lines: [title, ...lines], entities: inns.map((inn) => `inn:${inn}`) };
+  const inns = [...new Set(innsIn(page.lines.join("\n")))];
+  return inns.length === 0 ? null : { ...page, entities: inns.map((inn) => `inn:${inn}`) };
 }
 
 function subjectOf(lines: string[]): string | undefined {
-  const index = lines.findIndex((line) => SUBJECT_LINE.test(line));
-  return index === -1 ? undefined : SUBJECT_LINE.exec(lines[index])?.[1] || lines[index + 1];
+  for (const [index, line] of lines.entries()) {
+    const match = SUBJECT_LINE.exec(line);
+    if (match !== null) {
+      return match[1] || lines[index + 1];
+    }
+  }
+  return undefined;
 }
 
 function tender(body: HTMLElement): Extracted | null {
@@ -49,15 +58,10 @@ function tender(body: HTMLElement): Extracted | null {
   if (number === undefined || subject === undefined) {
     return null;
   }
-  return { lines: [subject, `Закупка № ${number}`, ...lines], entities: [] };
+  return { lines: [subject, `Закупка № ${number}`, ...lines] };
 }
 
-function fxRate(body: HTMLElement): Extracted | null {
-  const title = heading(body);
-  return title !== "" ? { lines: [title, ...textLines(body)], entities: [] } : null;
-}
-
-const RULES: Record<PageType, Rule> = { article, counterparty, tender, fx_rate: fxRate };
+const RULES: Record<PageType, Rule> = { article, counterparty, tender, fx_rate: headed };
 
 export function detectPage(document: Document, url: string): DetectedPage | null {
   const pageType = pageTypeOf(new URL(url).hostname);
@@ -69,5 +73,5 @@ export function detectPage(document: Document, url: string): DetectedPage | null
     return null;
   }
   const text = extracted.lines.join("\n").slice(0, PAGE_TEXT_MAX_CHARS);
-  return { pageType, page: { url, text, entities: extracted.entities } };
+  return { pageType, page: { type: "page", url, text, entities: extracted.entities ?? [] } };
 }

@@ -1,4 +1,7 @@
+import { within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import controls from "../../src/styles/controls.css?raw";
+import tokens from "../../src/styles/tokens.css?raw";
 import type { Send, WorkerRequest } from "../messages";
 import { reportPage } from "./report";
 
@@ -8,22 +11,17 @@ function counterparty(): Document {
   return new DOMParser().parseFromString("<h1>ООО «ТрансЛогистик»</h1><p>ИНН 7707083893</p>", "text/html");
 }
 
-function worker(offer: boolean) {
-  return vi.fn(async (_request: WorkerRequest) => offer);
-}
-
 function notice(document: Document): ShadowRoot | null {
   return document.querySelector("alpha-impact-notice")?.shadowRoot ?? null;
 }
 
-function button(root: ShadowRoot, name: string): HTMLButtonElement {
-  const buttons = Array.from(root.querySelectorAll("button"));
-  return buttons.find((item) => (item.getAttribute("aria-label") ?? item.textContent) === name)!;
+function button(root: ShadowRoot, name: string): HTMLElement {
+  return within(root.querySelector<HTMLElement>(".notice")!).getByRole("button", { name });
 }
 
 async function reported(offer: boolean, url = COMPANY_URL) {
   const document = counterparty();
-  const send = worker(offer);
+  const send = vi.fn(async (_request: WorkerRequest) => offer);
   const openPanel = vi.fn();
   await reportPage(document, url, send as unknown as Send, openPanel);
   return { document, send, openPanel };
@@ -78,12 +76,11 @@ describe("reportPage", () => {
     expect(notice(document)).toBeNull();
   });
 
-  it("styles itself with the light design tokens on its own host", async () => {
+  it("takes the design tokens into its shadow root", async () => {
     const { document } = await reported(true);
 
     const style = notice(document)?.querySelector("style")?.textContent ?? "";
-    expect(style).toMatch(/^:host \{/);
-    expect(style).toContain("--accent:");
-    expect(style).not.toContain(":root");
+    expect(style).toContain(tokens);
+    expect(style).toContain(controls);
   });
 });

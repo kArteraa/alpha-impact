@@ -1,8 +1,8 @@
-import type { ContentRequest, PanelRequest, Send } from "./messages";
+import type { ContentRequest, PanelRequest } from "./messages";
 import { detectPage } from "./page/detect";
 import { reportPage } from "./page/report";
+import { send } from "./send";
 
-const send = ((request) => chrome.runtime.sendMessage(request)) as Send;
 const OPEN_PANEL: PanelRequest = { type: "open-panel" };
 
 chrome.runtime.onMessage.addListener((request: ContentRequest, _sender, reply) => {
