@@ -75,6 +75,7 @@ test("login", async ({ page }) => {
 });
 
 test("trace", async ({ page }) => {
+  test.setTimeout(2 * CARD_TIMEOUT_MS);
   await page.goto("/payments/new");
   await pay(page, /Северо-Западная логистика/, "1500000");
   await expect(page.locator(".insight-card").first()).toBeVisible({ timeout: CARD_TIMEOUT_MS });

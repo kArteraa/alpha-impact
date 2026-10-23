@@ -149,9 +149,13 @@ describe("InsightPanel card", () => {
     expect(within(basis).getByText("ALFA-Macro_Insights-Policy_Rate_11Sep.pdf, стр. 2")).toBeTruthy();
   });
 
-  it("never treats a protocol-relative url as a gateway path", () => {
+  it.each([
+    ["a protocol-relative url of a report", "house_view", "//evil.example/report.pdf"],
+    ["a backslash url of a report", "house_view", "/\\evil.example/report.pdf"],
+    ["a relative path of a news item", "news", "/news/123"],
+  ] as const)("never treats %s as a gateway path", (_, kind, url) => {
     const card = mockResponses.rates.cards[0];
-    const other = { ...card.basis[0], url: "//evil.example/report.pdf", title: "Чужой путь" };
+    const other = { ...card.basis[0], kind, url, title: "Чужой путь" };
     const response = { ...mockResponses.rates, cards: [{ ...card, basis: [other] }] };
     render(<InsightPanel actionContext={context} role="cfo" response={response} apiBase="/api" />);
 

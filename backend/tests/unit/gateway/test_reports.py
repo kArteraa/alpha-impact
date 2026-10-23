@@ -30,7 +30,16 @@ def test_report_is_a_pdf_in_the_reports_directory(reports: ReportFiles, name: st
 
 @pytest.mark.parametrize(
     "name",
-    ["missing.pdf", "df_Uid_data_hack.csv", "../outside.pdf", "nested/inner.pdf", "nested", ""],
+    [
+        "missing.pdf",
+        "df_Uid_data_hack.csv",
+        "../outside.pdf",
+        "nested/inner.pdf",
+        "nested",
+        "",
+        "a\x00b.pdf",
+        "a" * 300 + ".pdf",
+    ],
 )
 def test_anything_but_a_report_is_not_found(reports: ReportFiles, name: str) -> None:
     with pytest.raises(NotFound):

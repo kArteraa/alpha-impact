@@ -65,6 +65,16 @@ describe("TracePage", () => {
     expect(flat(profile?.querySelector(".trace-step-meta")?.textContent)).toBe("3 мс");
   });
 
+  it("does not round a cost below a kopeck to zero", async () => {
+    const steps = TRACE.steps.map((step) => (step.step === "critic" ? { ...step, cost_rub: 0.004 } : step));
+    renderTrace([200, { ...TRACE, steps }]);
+    await loaded();
+
+    const critic = screen.getByText("Критик, круг 2").closest("summary");
+    expect(flat(critic?.querySelector(".trace-step-meta")?.textContent)).toBe("1 700 мс · 1 590 → 30 токенов · 0,004 ₽");
+    expect(flat(document.querySelector(".trace-facts")?.textContent)).toContain("Стоимость0,498 ₽");
+  });
+
   it("opens the arguments of a tool call and the draft of the card", async () => {
     renderTrace();
     await loaded();
