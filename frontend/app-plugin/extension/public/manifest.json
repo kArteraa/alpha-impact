@@ -48,6 +48,8 @@
         "*://www.zakupki.gov.ru/*",
         "*://rts-tender.ru/*",
         "*://www.rts-tender.ru/*",
+        "*://223.rts-tender.ru/*",
+        "*://www.223.rts-tender.ru/*",
         "*://sberbank-ast.ru/*",
         "*://www.sberbank-ast.ru/*",
         "*://roseltorg.ru/*",
@@ -62,6 +64,8 @@
         "*://www.moex.com/*",
         "*://investing.com/*",
         "*://www.investing.com/*",
+        "*://ru.investing.com/*",
+        "*://www.ru.investing.com/*",
         "*://profinance.ru/*",
         "*://www.profinance.ru/*"
       ],

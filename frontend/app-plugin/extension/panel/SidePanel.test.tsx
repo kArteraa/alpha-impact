@@ -56,6 +56,17 @@ function panelWith(
 describe("SidePanel", () => {
   afterEach(cleanup);
 
+  it("says the extension restarted instead of staying blank when the worker does not answer", async () => {
+    const send = vi.fn(async () => {
+      throw new Error("The message port closed before a response was received.");
+    });
+    const host: PanelHost = { activePage: async () => article, subscribe: () => () => {} };
+    render(<SidePanel send={send as unknown as Send} host={host} />);
+
+    expect(await screen.findByText("Расширение перезапустилось — закройте и откройте панель")).toBeTruthy();
+    expect(document.querySelector(".sidepanel")?.getAttribute("aria-busy")).toBe("false");
+  });
+
   it("asks to sign in first", async () => {
     const { interprets } = panelWith({ signedIn: false }, article);
 
