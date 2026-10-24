@@ -119,10 +119,11 @@ async def test_floating_loan_uses_average_bank_rate_over_horizon() -> None:
     assert result.kind == "rate_burden"
     assert result.formula == "50 000 000 ₽ × (13,42% − 14%) × 12/12 мес. = −290 000 ₽"
     assert result.value == -290_000.0
+    assert result.assumptions[0] == "ожидаемая ставка действует весь срок"
     assert result.assumptions[-2:] == [
         "спред к ключевой ставке не меняется",
         "ожидаемая ставка — средняя ключевая за 12 мес. по позиции банка, линейной между "
-        "прогнозами; с ней итог тот же, что при помесячном пути",
+        "прогнозами, округлена до сотых процента; итог близок к помесячному пути",
     ]
 
 

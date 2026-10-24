@@ -11,7 +11,7 @@ const RATE_BURDEN: WhatIfResult = {
   value: -290_000,
   unit: "RUB",
   formula: "50 000 000 ₽ × (13,42% − 14%) × 12/12 мес. = −290 000 ₽",
-  assumptions: ["ставка меняется сразу и держится весь срок"],
+  assumptions: ["ожидаемая ставка действует весь срок"],
 };
 
 function withCalculation(calculation: WhatIfResult): InterpretResponse {

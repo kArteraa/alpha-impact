@@ -255,6 +255,14 @@ describe("InsightPanel card", () => {
     expect(within(basis).getAllByText("ALFA-7M26.pdf, стр. 1")).toHaveLength(1);
   });
 
+  it("spaces an opened collapsible block like an open one", () => {
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} compact />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Последствия" }));
+    const consequences = screen.getByRole("region", { name: "Последствия" });
+    expect(consequences.querySelector(".insight-block-body")?.querySelector(".insight-claims")).toBeTruthy();
+  });
+
   it("names the type of every source", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} />);
 
