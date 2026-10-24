@@ -43,6 +43,8 @@ services:
         required: false
     environment:
       DB_URL: postgresql+asyncpg://alfa:alfa@db:5432/alfa
+      METRICS_HOST: 0.0.0.0
+      METRICS_PORT: "9000"
     command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
     volumes:
       - ./backend/data/raw:/app/data/raw:ro
@@ -85,5 +87,66 @@ services:
       api:
         condition: service_healthy
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: ["monitoring"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --enable-feature=created-timestamp-zero-ingestion
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheusdata:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  loki:
+    image: grafana/loki:3.5.0
+    profiles: ["monitoring"]
+    command: ["-config.file=/etc/loki/local-config.yaml", "-reporting.enabled=false"]
+    volumes:
+      - lokidata:/loki
+
+  alloy:
+    image: grafana/alloy:v1.10.0
+    profiles: ["monitoring"]
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - --disable-reporting
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloydata:/var/lib/alloy/data
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: ["monitoring"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_VIEWERS_CAN_EDIT: "true"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_SERVER_DOMAIN: localhost
+      GF_SERVER_ENFORCE_DOMAIN: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/alpha-impact.json
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+
 volumes:
   dbdata:
+  prometheusdata:
+  lokidata:
+  alloydata:

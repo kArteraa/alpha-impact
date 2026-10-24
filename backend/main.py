@@ -2,11 +2,16 @@ import importlib
 import pkgutil
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from http import HTTPStatus
+from time import perf_counter
 from types import ModuleType
 from typing import Any
 
 from fastapi import APIRouter, FastAPI
+from fastapi.routing import APIRoute
+from prometheus_client import Counter, Histogram, start_http_server
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 import apps.services
 from shared.config.settings import Settings
@@ -14,6 +19,17 @@ from shared.contracts import ports
 from shared.db.engine import create_engine
 from shared.db.session import make_session_factory
 from shared.di.container import Container
+
+LATENCY_BUCKETS_SECONDS = (0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20, 40)
+HTTP_REQUESTS = Counter(
+    "http_requests", "HTTP requests by route and status", ["method", "route", "status"]
+)
+HTTP_DURATION = Histogram(
+    "http_request_duration_seconds",
+    "HTTP request duration by route",
+    ["method", "route"],
+    buckets=LATENCY_BUCKETS_SECONDS,
+)
 
 
 def discover_services() -> list[ModuleType]:
@@ -50,9 +66,40 @@ def build_container() -> Container:
     return container
 
 
+class HttpMetrics:
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self._app(scope, receive, send)
+            return
+        start = perf_counter()
+        status = HTTPStatus.INTERNAL_SERVER_ERROR.value
+
+        async def capture(message: Message) -> None:
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = message["status"]
+            await send(message)
+
+        try:
+            await self._app(scope, receive, capture)
+        finally:
+            route = scope.get("route")
+            if isinstance(route, APIRoute) and scope["method"] in (route.methods or ()):
+                labels = (scope["method"], route.path_format)
+                HTTP_REQUESTS.labels(*labels, str(status)).inc()
+                HTTP_DURATION.labels(*labels).observe(perf_counter() - start)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings = app.state.container.resolve(Settings)
+    server, _ = start_http_server(settings.METRICS_PORT, settings.METRICS_HOST)
     yield
+    server.shutdown()
+    server.server_close()
     await app.state.container.aclose()
 
 
@@ -61,6 +108,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Alpha Impact", lifespan=lifespan)
     app.state.container = container
     app.include_router(container.resolve(APIRouter))
+    app.add_middleware(HttpMetrics)
     return app
 
 

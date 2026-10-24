@@ -22,6 +22,7 @@
 | numpy | BSD-3-Clause | входы модели и нормировка векторов |
 | pypdf | BSD-3-Clause | страницы-картинки отчётов банка из PDF |
 | Pillow | MIT-CMU | перекодирование страниц отчётов для OCR; сборка анимации README из кадров Playwright |
+| prometheus-client | Apache-2.0 | метрики API и LLM-шлюза для Prometheus |
 | Tesseract OCR (системный пакет `tesseract-ocr`, `tesseract-ocr-rus`) | Apache-2.0 | распознавание текста отчётов банка |
 
 Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), mypy (MIT), import-linter (BSD-2-Clause), types-PyYAML (Apache-2.0).
@@ -51,6 +52,10 @@ Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), my
 | Docker Compose | Apache-2.0 | запуск одной командой |
 | образ `python:3.12-slim` (Python) | PSF-2.0 | основа образа бэкенда |
 | образ `node:22-alpine` (Node.js) | MIT | основа образа фронта |
+| Prometheus (образ `prom/prometheus`) | Apache-2.0 | сбор метрик, профиль `monitoring` |
+| Grafana Loki (образ `grafana/loki`) | AGPL-3.0 | хранение логов контейнеров, профиль `monitoring`; запускается отдельным неизменённым контейнером |
+| Grafana Alloy (образ `grafana/alloy`) | Apache-2.0 | сбор логов контейнеров через docker socket, профиль `monitoring` |
+| Grafana (образ `grafana/grafana`) | AGPL-3.0 | дашборд метрик и логов, профиль `monitoring`; запускается отдельным неизменённым контейнером |
 | GitHub Actions: `actions/checkout`, `actions/setup-node`, `actions/cache`, `astral-sh/setup-uv` | MIT | CI |
 
 ## Модели (генерация — только из allow-list кейса, эмбеддинги — локальная e5 по исключению из `AGENTS.md`; всё через `apps/services/llm`)

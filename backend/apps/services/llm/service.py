@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -16,11 +17,19 @@ from apps.services.llm.errors import (
     ModelUnavailable,
     UsageNotRecorded,
 )
+from apps.services.llm.metrics import CACHE, OK, count_call, count_spend
 from apps.services.llm.store import UsageStore
 from shared.contracts.errors import BudgetExceeded
 
 EMBED_TASK = "embed"
 REASONING_OFF = "reasoning_off"
+
+
+@dataclass(frozen=True)
+class Reservation:
+    id: int
+    task: str
+    model: str
 
 
 def pydantic_schema(schema: type | None) -> type[BaseModel] | None:
@@ -96,21 +105,21 @@ class ModelGateway:
         timeout_seconds = self._catalog.timeout(task)
         parts = (task, model, system, user, output_format)
         key = cache_key(*parts) if reasoning else cache_key(*parts, REASONING_OFF)
-        cached = await self._store.cached(key)
-        if cached is not None:
-            return parse(cached, output_schema), 0, 0, 0.0
-        reservation = await self._reserve(task, model)
-        completion = await self._chat(
-            reservation, model, system, user, output_format, reasoning, timeout_seconds
-        )
         try:
-            content = answer_text(completion.content, model)
-            result = parse(content, output_schema)
-        except ModelOutputInvalid as error:
-            error.tokens_in, error.tokens_out, error.cost_rub = spent(completion)
-            await self._record(reservation, *spent(completion))
+            cached = await self._store.cached(key)
+            if cached is not None:
+                answer = parse(cached, output_schema)
+                count_call(task, model, CACHE)
+                return answer, 0, 0, 0.0
+            reservation = await self._reserve(task, model)
+            completion = await self._chat(
+                reservation, system, user, output_format, reasoning, timeout_seconds
+            )
+            result = await self._accepted(reservation, key, completion, output_schema)
+        except Exception as error:
+            count_call(task, model, type(error).__name__)
             raise
-        await self._remembered(reservation, key, content, completion)
+        count_call(task, model, OK)
         return result, completion.tokens_in, completion.tokens_out, completion.cost_rub
 
     async def embed(self, text: str) -> list[float]:
@@ -127,18 +136,17 @@ class ModelGateway:
         spent = await self._store.spent_rub(self._today())
         return max(0.0, self._spendable_rub - spent)
 
-    async def _reserve(self, task: str, model: str) -> int:
+    async def _reserve(self, task: str, model: str) -> Reservation:
         reservation = await self._store.reserve(
             self._today(), task, model, self._call_reserve_rub, self._spendable_rub
         )
         if reservation is None:
             raise BudgetExceeded(f"daily LLM budget of {self._spendable_rub:.2f} RUB is spent")
-        return reservation
+        return Reservation(reservation, task, model)
 
     async def _chat(
         self,
-        reservation: int,
-        model: str,
+        reservation: Reservation,
         system: str,
         user: str,
         output_format: dict[str, Any] | None,
@@ -147,20 +155,38 @@ class ModelGateway:
     ) -> Completion:
         try:
             return await self._client.chat(
-                model, system, user, output_format, reasoning, timeout_seconds
+                reservation.model, system, user, output_format, reasoning, timeout_seconds
             )
         except ModelUnavailable as error:
             if error.cost_known:
                 await self._record(reservation, error.tokens_in, error.tokens_out, error.cost_rub)
             else:
                 error.cost_rub = self._call_reserve_rub
+                count_spend(reservation.task, reservation.model, 0, 0, self._call_reserve_rub)
             raise
         except BaseException:
-            await self._store.settle(reservation, 0, 0, 0.0)
+            await self._store.settle(reservation.id, 0, 0, 0.0)
             raise
 
+    async def _accepted(
+        self,
+        reservation: Reservation,
+        key: str,
+        completion: Completion,
+        schema: type[BaseModel] | None,
+    ) -> object:
+        try:
+            content = answer_text(completion.content, reservation.model)
+            result = parse(content, schema)
+        except ModelOutputInvalid as error:
+            error.tokens_in, error.tokens_out, error.cost_rub = spent(completion)
+            await self._record(reservation, *spent(completion))
+            raise
+        await self._remembered(reservation, key, content, completion)
+        return result
+
     async def _remembered(
-        self, reservation: int, key: str, content: str, completion: Completion
+        self, reservation: Reservation, key: str, content: str, completion: Completion
     ) -> None:
         try:
             await self._remember(key, content)
@@ -176,9 +202,12 @@ class ModelGateway:
             raise CacheNotWritten(f"cache entry {key} is not written") from error
 
     async def _record(
-        self, reservation: int, tokens_in: int, tokens_out: int, cost_rub: float
+        self, reservation: Reservation, tokens_in: int, tokens_out: int, cost_rub: float
     ) -> None:
         try:
-            await self._store.settle(reservation, tokens_in, tokens_out, cost_rub)
+            await self._store.settle(reservation.id, tokens_in, tokens_out, cost_rub)
         except Exception as error:
-            raise UsageNotRecorded(f"usage of reservation {reservation} is not recorded") from error
+            raise UsageNotRecorded(
+                f"usage of reservation {reservation.id} is not recorded"
+            ) from error
+        count_spend(reservation.task, reservation.model, tokens_in, tokens_out, cost_rub)
