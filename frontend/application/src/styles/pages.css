@@ -1,0 +1,304 @@
+.page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
+  gap: var(--s-4);
+  align-items: start;
+}
+
+.page-stack {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.page-grid > .form,
+.page-stack > .form,
+.deposit-result {
+  padding: var(--s-8);
+}
+
+.deposit-result,
+.deposit-now {
+  display: grid;
+  gap: var(--s-2);
+  align-content: start;
+}
+
+.deposit-terms {
+  display: grid;
+  gap: var(--s-3);
+  margin-top: var(--s-5);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--border-soft);
+}
+
+.deposit-terms .columns-plot {
+  height: 152px;
+}
+
+.deposit-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: var(--s-2);
+}
+
+.loans-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.loans-side {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.stat {
+  display: grid;
+  gap: var(--s-1);
+  align-content: start;
+  padding: var(--s-5);
+}
+
+.stat strong {
+  font-size: var(--fs-30);
+  line-height: var(--lh-36);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.45px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-main {
+  padding: var(--s-6);
+}
+
+.stat-main strong {
+  margin-bottom: var(--s-4);
+  font-size: var(--fs-40);
+  line-height: var(--lh-48);
+  letter-spacing: -0.8px;
+}
+
+.table-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-bottom: var(--s-4);
+}
+
+.table-head h2 {
+  margin: 0;
+}
+
+.table-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.tranche {
+  margin-top: var(--s-4);
+}
+
+.table-wrap {
+  margin: 0 calc(-1 * var(--s-3));
+  overflow-x: auto;
+}
+
+.portfolio {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
+}
+
+.portfolio th {
+  padding: var(--s-2) var(--s-3);
+  color: var(--text-secondary);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.portfolio td {
+  padding: var(--s-4) var(--s-3);
+  border-top: 1px solid var(--border-soft);
+}
+
+.portfolio td:first-child {
+  font-weight: var(--fw-medium);
+}
+
+.portfolio tbody tr {
+  transition: background var(--t-fast);
+}
+
+.portfolio tbody tr:hover {
+  background: var(--bg-neutral);
+}
+
+.portfolio .number {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-groups {
+  columns: 2 440px;
+  column-gap: var(--s-4);
+}
+
+.profile-group {
+  margin-bottom: var(--s-4);
+  break-inside: avoid;
+}
+
+.features {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--s-4);
+  padding: var(--s-3) 0;
+  border-top: 1px solid var(--border-soft);
+}
+
+.feature:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.feature:last-child {
+  padding-bottom: 0;
+}
+
+.feature-label {
+  flex-basis: 100%;
+  color: var(--text-secondary);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
+}
+
+.feature-value {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: var(--fs-18);
+  line-height: var(--lh-26);
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+}
+
+.feature .select {
+  flex: 1 1 100%;
+  margin: var(--s-1) 0;
+}
+
+.feature .error {
+  flex-basis: 100%;
+  margin-top: var(--s-2);
+}
+
+.feature-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-left: auto;
+}
+
+.feature-source {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--s-2);
+  border-radius: var(--r-sm);
+  background: var(--bg-neutral);
+  color: var(--text-secondary);
+  font-size: var(--fs-13);
+  line-height: var(--lh-18);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+
+.feature-source[data-source="bank"] {
+  background: var(--bg-bank);
+  color: var(--bank);
+}
+
+.feature-source[data-source="user"] {
+  background: var(--bg-info);
+  color: var(--link);
+}
+
+.feature-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-1);
+}
+
+.feature-meta .button-ghost {
+  height: var(--control-h-xs);
+  padding: 0 var(--s-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
+}
+
+@media (max-width: 960px) {
+  .page-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .loans-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .loans-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .loans-side .stat strong {
+    font-size: var(--fs-22);
+    line-height: var(--lh-26);
+    letter-spacing: -0.2px;
+  }
+
+  .stat-main strong {
+    font-size: var(--fs-30);
+    line-height: var(--lh-36);
+    letter-spacing: -0.45px;
+  }
+
+  .portfolio td {
+    white-space: nowrap;
+  }
+
+  .page-grid > .form,
+  .page-stack > .form,
+  .deposit-result {
+    padding: var(--s-6);
+  }
+}
+
+@media (max-width: 600px) {
+  .feature-meta {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 360px) {
+  .loans-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

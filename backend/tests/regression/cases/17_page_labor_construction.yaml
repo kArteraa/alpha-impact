@@ -1,0 +1,16 @@
+id: page_labor_construction
+title: Нехватка рабочих на стройках стройгруппе — позиция банка по рынку труда
+request:
+  user_id: user_cfo_construction
+  client_id: U_9250
+  role: cfo
+  action_context:
+    type: page
+    url: https://regression.example/construction-workers
+    text: |
+      Строительным компаниям не хватает рабочих, зарплаты растут двузначными темпами
+      Дефицит кадров в строительстве достиг рекорда: застройщики повышают зарплаты монтажникам и сварщикам на 15–20% и переносят сроки сдачи объектов. Безработица в стране остаётся на историческом минимуме.
+expect:
+  silent: false
+  bank_subject: labor_market
+  basis_kinds: [news, house_view]

@@ -1,0 +1,135 @@
+import json
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from time import perf_counter
+
+from pydantic import BaseModel
+from pydantic_core import to_jsonable_python
+
+from apps.services.interpreter.drafting import BuildNotes
+from shared.contracts.errors import ChargedModelError
+from shared.contracts.ports import Critic, LLMGateway
+from shared.contracts.schemas import HouseViewClaim, InsightCard, NewsItem, Trace, TraceStep
+
+
+def utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+class Journal:
+    def __init__(
+        self, trace: Trace, llm: LLMGateway, task: str, model: str, summary_chars: int
+    ) -> None:
+        self.trace = trace
+        self.llm = llm
+        self.task = task
+        self.model = model
+        self.summary_chars = summary_chars
+
+    def summary(self, value: object) -> str:
+        return json.dumps(to_jsonable_python(value), ensure_ascii=False)[: self.summary_chars]
+
+    @asynccontextmanager
+    async def _step(self, step: TraceStep) -> AsyncIterator[TraceStep]:
+        start = perf_counter()
+        self.trace.steps.append(step)
+        try:
+            yield step
+        except Exception as error:
+            step.output_summary = type(error).__name__
+            if isinstance(error, ChargedModelError):
+                step.tokens_in, step.tokens_out = error.tokens_in, error.tokens_out
+                step.cost_rub = error.cost_rub
+            raise
+        finally:
+            step.duration_ms = int((perf_counter() - start) * 1000)
+
+    async def tool[T](self, name: str, summary: str, operation: Awaitable[T]) -> T:
+        return await self.lookup(name, summary, operation, self.summary)
+
+    async def lookup[T](
+        self, name: str, summary: str, operation: Awaitable[T], describe: Callable[[T], str]
+    ) -> T:
+        async with self._step(
+            TraceStep(
+                step="tool",
+                name=name,
+                input_summary=summary,
+                output_summary="",
+                started_at=utc_now(),
+            )
+        ) as step:
+            result = await operation
+            step.output_summary = describe(result)
+            return result
+
+    async def generate[T: BaseModel](
+        self, name: str, system: str, user: str, schema: type[T], describe: Callable[[T], str]
+    ) -> T:
+        async with self._step(
+            TraceStep(
+                step="plan" if name == "plan" else "draft",
+                name=name,
+                input_summary=f"{len(user)} characters of structured context",
+                output_summary="",
+                model=self.model,
+                started_at=utc_now(),
+            )
+        ) as step:
+            raw, step.tokens_in, step.tokens_out, step.cost_rub = await self.llm.complete(
+                task=self.task, system=system, user=user, schema=schema
+            )
+            result = schema.model_validate(raw)
+            step.output_summary = describe(result)
+            return result
+
+    async def review(
+        self,
+        round_number: int,
+        critic: Critic,
+        card: InsightCard,
+        house_view: list[HouseViewClaim],
+        news: list[NewsItem],
+        notes: BuildNotes,
+    ) -> list[str]:
+        self.record_rewrite(round_number, notes)
+        async with self._step(
+            TraceStep(
+                step="critic",
+                name=f"round {round_number}",
+                input_summary=f"card {card.id}, {len(card.basis)} sources",
+                output_summary="",
+                started_at=utc_now(),
+            )
+        ) as step:
+            found, step.tokens_in, step.tokens_out, step.cost_rub = await critic.review(
+                card, house_view, news
+            )
+            verdicts = [*notes.rewrite, *found]
+            step.output_summary = json.dumps(verdicts, ensure_ascii=False)
+            self.trace.critic_verdicts.extend(f"{round_number}: {verdict}" for verdict in found)
+            if not verdicts:
+                self.trace.critic_verdicts.append(f"{round_number}: ok")
+            return verdicts
+
+    def record_rewrite(self, round_number: int, notes: BuildNotes) -> None:
+        self.trace.critic_verdicts.extend(f"{round_number}: {note}" for note in notes.rewrite)
+
+    def build(
+        self, round_number: int, make: Callable[[], tuple[InsightCard, BuildNotes]]
+    ) -> tuple[InsightCard, BuildNotes]:
+        started, start = utc_now(), perf_counter()
+        card, notes = make()
+        if notes.remarks:
+            self.trace.steps.append(
+                TraceStep(
+                    step="critic",
+                    name=f"round {round_number} build",
+                    input_summary=f"card {card.id}",
+                    output_summary=self.summary(notes.remarks),
+                    duration_ms=int((perf_counter() - start) * 1000),
+                    started_at=started,
+                )
+            )
+        return card, notes

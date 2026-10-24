@@ -1,0 +1,37 @@
+{
+  "properties": {
+    "direction": {
+      "enum": [
+        "up",
+        "down",
+        "neutral"
+      ],
+      "type": "string"
+    },
+    "horizon": {
+      "enum": [
+        "week",
+        "month",
+        "quarter",
+        "year"
+      ],
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "strength": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "name",
+    "direction",
+    "strength",
+    "horizon"
+  ],
+  "title": "Factor",
+  "type": "object"
+}

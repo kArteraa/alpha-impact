@@ -1,0 +1,20 @@
+{
+  "properties": {
+    "product": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "rule_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "product",
+    "reason",
+    "rule_id"
+  ],
+  "title": "ProductOffer",
+  "type": "object"
+}

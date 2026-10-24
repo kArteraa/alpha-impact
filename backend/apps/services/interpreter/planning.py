@@ -1,0 +1,102 @@
+from pathlib import Path
+from typing import Literal, Self
+
+import yaml
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from apps.services.interpreter.context import Evidence, news_without_text, sources
+from shared.config.house_view_topics import HOUSE_VIEW_SUBJECTS
+from shared.contracts.errors import DomainError
+from shared.contracts.schemas import (
+    ClientProfile,
+    CounterpartyContext,
+    HouseViewClaim,
+    InterpretRequest,
+    NewsItem,
+    PageContext,
+)
+
+PLANS_PATH = Path(__file__).with_name("plans.yaml")
+BUSINESS_ACTIONS = {"payment", "deposit", "fx", "loan", "payroll", "dashboard", "page"}
+
+
+class Template(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    focus: str = Field(min_length=1)
+    context: list[Literal["profile", "counterparty", "news", "house_view"]]
+    house_view_subjects: list[str]
+
+    @model_validator(mode="after")
+    def known_subjects(self) -> Self:
+        unknown = set(self.house_view_subjects) - set(HOUSE_VIEW_SUBJECTS)
+        if unknown:
+            raise ValueError(f"Unknown house view subjects: {sorted(unknown)}")
+        return self
+
+
+class PlanConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    lookback_days: int = Field(gt=0)
+    search_limit: int = Field(gt=0)
+    feed_cards: int = Field(gt=0)
+    feed_search_limit: int = Field(gt=0)
+    max_tool_calls: int = Field(gt=0)
+    max_title_chars: int = Field(gt=0)
+    trace_summary_chars: int = Field(gt=0)
+    followup_focus: str = Field(min_length=1)
+    max_question_chars: int = Field(gt=0)
+    max_followup_depth: int = Field(gt=0)
+    min_quote_words: int = Field(gt=0)
+    loan_horizon_months: int = Field(gt=0)
+    templates: dict[str, Template]
+
+    @model_validator(mode="after")
+    def complete_templates(self) -> Self:
+        if set(self.templates) != BUSINESS_ACTIONS:
+            raise ValueError("Templates must cover all business actions")
+        for action, template in self.templates.items():
+            required = {"profile", "news", "house_view"}
+            if action == "payment":
+                required.add("counterparty")
+            if set(template.context) != required or len(template.context) != len(required):
+                raise ValueError(f"Invalid context for {action}")
+        return self
+
+
+class ToolCall(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    tool: Literal["house_view.claims", "house_view.chain"]
+    argument: str = Field(min_length=1)
+
+
+class Plan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    focus: str = Field(min_length=1)
+    tools: list[ToolCall]
+
+    def validate_tools(self, config: PlanConfig, claims: list[HouseViewClaim]) -> None:
+        if len(self.tools) > config.max_tool_calls:
+            raise DomainError("Plan exceeds the configured tool limit")
+        known_claims = {claim.id for claim in claims}
+        seen: set[tuple[str, str]] = set()
+        for call in self.tools:
+            allowed = HOUSE_VIEW_SUBJECTS if call.tool == "house_view.claims" else known_claims
+            if call.argument not in allowed or (call.tool, call.argument) in seen:
+                raise DomainError("Plan contains an unknown or duplicate tool argument")
+            seen.add((call.tool, call.argument))
+
+
+def plan_sources(
+    request: InterpretRequest,
+    profile: ClientProfile,
+    counterparty: CounterpartyContext | None,
+    news: list[NewsItem],
+    house_view: list[HouseViewClaim],
+) -> dict[str, Evidence]:
+    if isinstance(request.action_context, PageContext):
+        return {**sources(profile, counterparty, [], house_view), **news_without_text(news)}
+    return sources(profile, counterparty, news, house_view)
+
+
+def load_config(path: Path) -> PlanConfig:
+    return PlanConfig.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")))

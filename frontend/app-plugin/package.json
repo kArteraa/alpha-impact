@@ -1,0 +1,42 @@
+{
+  "name": "@alpha-impact/plugin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./tokens.css": "./src/styles/tokens.css",
+    "./showcase": {
+      "types": "./src/dev/Showcase.tsx",
+      "default": "./src/dev/Showcase.tsx"
+    },
+    "./controls.css": "./src/styles/controls.css"
+  },
+  "scripts": {
+    "build": "tsc -b && vite build && vite build --mode extension && vite build --mode content",
+    "lint": "oxlint",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/chrome": "^0.3.6",
+    "@types/node": "^24.19.2",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "happy-dom": "^21.0.3",
+    "oxlint": "^1.88.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

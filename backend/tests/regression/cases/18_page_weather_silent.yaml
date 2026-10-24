@@ -1,0 +1,14 @@
+id: page_weather_silent
+title: Прогноз погоды на выходные автодилеру — молчание
+request:
+  user_id: user_cfo_autodealer
+  client_id: U_44245
+  role: cfo
+  action_context:
+    type: page
+    url: https://regression.example/weekend-weather
+    text: |
+      В Москве на выходных ожидается солнечная погода до +12 градусов
+      Синоптики обещают сухую и тёплую погоду в субботу и воскресенье, ночью местами возможны заморозки. Жителям советуют взять зонт в начале следующей недели.
+expect:
+  silent: true

@@ -1,0 +1,13 @@
+id: fx_wholesale_cny
+title: Покупка юаней казначеем оптовика под импорт из Китая — при карточке новость в основании
+request:
+  user_id: user_cfo_wholesale
+  client_id: U_1941
+  role: treasurer
+  action_context:
+    type: fx
+    currency: CNY
+    country: CN
+    amount: 20000000
+when_card:
+  basis_kinds: [news]

@@ -1,0 +1,181 @@
+import xml.etree.ElementTree as ElementTree
+from collections.abc import Sequence
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+
+import httpx
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from apps.services.news.annotation import (
+    Annotation,
+    annotate,
+    annotation_schema,
+    news_id,
+    to_news_item,
+)
+from apps.services.news.config import NewsConfig
+from apps.services.news.dedup import is_duplicate, numbers
+from apps.services.news.feed import FeedEntry, FeedTooLarge, fetch_feed
+from apps.services.news.repository import (
+    MANUAL_SOURCE,
+    add_news,
+    known,
+    neighbours,
+    news_count,
+)
+from shared.contracts.errors import BudgetExceeded, DomainError
+from shared.contracts.ports import LLMGateway
+from shared.contracts.schemas import NewsItem
+from shared.db.models import NewsRow
+
+
+@dataclass(frozen=True)
+class IngestResult:
+    added: int
+    duplicates: int
+    failed: tuple[str, ...]
+    failed_feeds: tuple[str, ...]
+    tokens_in: int
+    tokens_out: int
+    total: int
+
+
+@dataclass(frozen=True)
+class Indexed:
+    repeat: NewsRow | None
+    item: NewsItem | None
+    added: bool
+    tokens_in: int
+    tokens_out: int
+
+
+def body(title: str, text: str) -> str:
+    return f"{title}\n{text}".strip()
+
+
+async def collect(
+    http: httpx.AsyncClient, urls: Sequence[str], max_bytes: int
+) -> tuple[list[FeedEntry], tuple[str, ...]]:
+    entries: list[FeedEntry] = []
+    failed: list[str] = []
+    for url in urls:
+        try:
+            entries.extend(await fetch_feed(http, url, max_bytes))
+        except (httpx.HTTPError, ElementTree.ParseError, FeedTooLarge):
+            failed.append(url)
+    return entries, tuple(failed)
+
+
+def fresh(entries: Sequence[FeedEntry], since: datetime) -> list[FeedEntry]:
+    by_id: dict[str, FeedEntry] = {}
+    urls: set[str] = set()
+    for entry in sorted(entries, key=lambda entry: entry.published_at):
+        key = news_id(entry.title)
+        if entry.published_at >= since and key not in by_id and entry.url not in urls:
+            by_id[key] = entry
+            urls.add(entry.url)
+    return list(by_id.values())
+
+
+async def unseen(
+    sessions: async_sessionmaker[AsyncSession], entries: Sequence[FeedEntry]
+) -> list[FeedEntry]:
+    async with sessions() as session:
+        ids, urls = await known(
+            session, [news_id(entry.title) for entry in entries], [entry.url for entry in entries]
+        )
+    return [entry for entry in entries if news_id(entry.title) not in ids and entry.url not in urls]
+
+
+async def repeat_of(
+    sessions: async_sessionmaker[AsyncSession],
+    entry: FeedEntry,
+    vector: list[float],
+    config: NewsConfig,
+) -> NewsRow | None:
+    window = timedelta(hours=config.dedup_window_hours)
+    async with sessions() as session:
+        nearby = await neighbours(
+            session,
+            vector,
+            entry.published_at,
+            window,
+            config.dedup_candidates,
+            include_manual=entry.source == MANUAL_SOURCE,
+        )
+    own = numbers(body(entry.title, entry.text))
+    return next(
+        (
+            row
+            for row, similarity in nearby
+            if is_duplicate(
+                similarity, own, numbers(body(row.title, row.text)), config.dedup_threshold
+            )
+        ),
+        None,
+    )
+
+
+async def index_entry(
+    sessions: async_sessionmaker[AsyncSession],
+    llm: LLMGateway,
+    config: NewsConfig,
+    schema: type[Annotation],
+    entry: FeedEntry,
+    key: str,
+) -> Indexed:
+    vector = await llm.embed(body(entry.title, entry.text))
+    repeat = await repeat_of(sessions, entry, vector, config)
+    if repeat is not None and repeat.source != MANUAL_SOURCE:
+        return Indexed(repeat, None, False, 0, 0)
+    if repeat is None:
+        annotation, tokens_in, tokens_out = await annotate(
+            llm, config, schema, entry.title, entry.text
+        )
+        item = to_news_item(entry, annotation).model_copy(update={"id": key})
+    else:
+        tokens_in = tokens_out = 0
+        item = NewsItem.model_validate(repeat, from_attributes=True).model_copy(
+            update={
+                "id": key,
+                "title": entry.title,
+                "text": entry.text,
+                "url": entry.url,
+                "published_at": entry.published_at,
+            }
+        )
+    async with sessions() as session, session.begin():
+        added = await add_news(session, item, vector)
+    return Indexed(None, item, added, tokens_in, tokens_out)
+
+
+async def ingest_news(
+    sessions: async_sessionmaker[AsyncSession],
+    llm: LLMGateway,
+    http: httpx.AsyncClient,
+    urls: Sequence[str],
+    config: NewsConfig,
+    now: datetime,
+) -> IngestResult:
+    entries, failed_feeds = await collect(http, urls, config.max_feed_bytes)
+    candidates = await unseen(sessions, fresh(entries, now - timedelta(days=config.max_age_days)))
+    schema = annotation_schema(config)
+    added = duplicates = tokens_in = tokens_out = 0
+    failed: list[str] = []
+    for entry in candidates:
+        try:
+            indexed = await index_entry(sessions, llm, config, schema, entry, news_id(entry.title))
+        except BudgetExceeded:
+            raise
+        except DomainError:
+            failed.append(entry.url)
+            continue
+        duplicates += indexed.repeat is not None
+        added += indexed.added
+        tokens_in += indexed.tokens_in
+        tokens_out += indexed.tokens_out
+    async with sessions() as session:
+        total = await news_count(session)
+    return IngestResult(
+        added, duplicates, tuple(failed), failed_feeds, tokens_in, tokens_out, total
+    )

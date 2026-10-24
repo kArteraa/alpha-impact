@@ -1,0 +1,32 @@
+{
+  "properties": {
+    "amount": {
+      "type": "number"
+    },
+    "country": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "currency": {
+      "type": "string"
+    },
+    "type": {
+      "const": "fx",
+      "default": "fx",
+      "type": "string"
+    }
+  },
+  "required": [
+    "currency",
+    "amount"
+  ],
+  "title": "FxContext",
+  "type": "object"
+}

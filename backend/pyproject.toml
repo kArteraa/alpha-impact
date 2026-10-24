@@ -1,0 +1,85 @@
+[project]
+name = "alpha-impact"
+version = "0.1.0"
+description = "Alpha Impact — персональные бизнес-инсайты из новостей и аналитики Альфа-Банка в интернет-банке Альфа-Бизнес"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic>=2",
+    "pydantic-settings",
+    "sqlalchemy[asyncio]>=2",
+    "asyncpg",
+    "alembic",
+    "pgvector",
+    "httpx",
+    "pyyaml",
+    "python-multipart",
+    "onnxruntime>=1.31.0",
+    "tokenizers>=0.23.3",
+    "numpy>=2.5.4",
+    "pypdf",
+    "pillow",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "import-linter",
+    "httpx",
+    "types-pyyaml>=6.0.12.20260906",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["shared/db/migrations/versions", "*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+disable_error_code = ["type-abstract"]
+warn_unused_configs = true
+exclude = ['^\.venv/']
+
+[[tool.mypy.overrides]]
+module = ["onnxruntime"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests/unit", "tests/integration"]
+pythonpath = ["."]
+
+[tool.importlinter]
+root_packages = ["apps", "shared"]
+exclude_type_checking_imports = false
+
+[[tool.importlinter.contracts]]
+name = "Services never import each other"
+type = "independence"
+modules = ["apps.services.*"]
+
+[[tool.importlinter.contracts]]
+name = "Services may import only shared.contracts, shared.config, shared.db and the DI container"
+type = "forbidden"
+source_modules = ["apps.services"]
+forbidden_modules = ["shared.db.migrations"]
+
+[[tool.importlinter.contracts]]
+name = "shared never depends on services"
+type = "layers"
+layers = ["apps.services", "shared"]

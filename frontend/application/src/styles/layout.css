@@ -1,0 +1,229 @@
+.shell {
+  min-height: 100vh;
+}
+
+.shell-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s-6);
+  height: var(--shell-top-h);
+  padding: 0 var(--s-8);
+  background: color-mix(in srgb, var(--bg-page) 84%, transparent);
+  backdrop-filter: blur(16px);
+}
+
+.shell-top-end {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.brand {
+  font-size: var(--fs-22);
+  line-height: var(--lh-26);
+  font-weight: var(--fw-bold);
+  letter-spacing: -0.4px;
+  white-space: nowrap;
+}
+
+.brand-light {
+  font-weight: var(--fw-regular);
+  color: var(--text-secondary);
+}
+
+.shell-main {
+  width: 100%;
+  padding: var(--s-4) var(--s-8) var(--s-12);
+}
+
+.nav-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.nav-count {
+  position: absolute;
+  top: -6px;
+  right: -9px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--accent-active);
+  color: var(--on-accent);
+  font-size: var(--fs-11);
+  line-height: var(--lh-18);
+  font-weight: var(--fw-bold);
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bg-card);
+}
+
+.company {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  height: var(--control-h-sm);
+  padding: 0 var(--s-3) 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--bg-card);
+}
+
+.company-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--control-h-xs);
+  height: var(--control-h-xs);
+  border-radius: var(--r-pill);
+  background: var(--bg-dark);
+  color: var(--text-on-dark);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
+  font-weight: 600;
+}
+
+.company-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
+  font-weight: var(--fw-medium);
+}
+
+.main-nav {
+  display: flex;
+  gap: 2px;
+  padding: var(--s-1);
+  border-radius: var(--r-pill);
+  background: var(--bg-card);
+}
+
+.main-nav a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-pill);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: var(--fs-16);
+  line-height: var(--lh-24);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+  transition:
+    background var(--t-fast),
+    color var(--t-fast);
+}
+
+.main-nav a:hover {
+  background: var(--bg-neutral);
+  color: var(--text-primary);
+}
+
+.main-nav a.active {
+  width: auto;
+  padding: 0 var(--s-4) 0 var(--s-3);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.main-nav a.active:has(.nav-count) {
+  gap: var(--s-4);
+}
+
+@media (max-width: 1200px) {
+  .shell-top {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .shell-top .main-nav {
+    justify-self: center;
+  }
+
+  .shell-top .badge {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  :root {
+    --shell-top-h: 64px;
+  }
+
+  .shell-top {
+    display: flex;
+    gap: var(--s-3);
+    padding: 0 var(--s-4);
+    background: var(--bg-page);
+    backdrop-filter: none;
+  }
+
+  .shell-top-end {
+    margin-left: auto;
+  }
+
+  .shell-main {
+    padding: var(--s-2) var(--s-4) calc(112px + env(safe-area-inset-bottom));
+  }
+
+  .main-nav {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--s-4) + env(safe-area-inset-bottom));
+    z-index: 10;
+    max-width: calc(100vw - var(--s-6));
+    overflow-x: auto;
+    transform: translateX(-50%);
+    padding: 6px;
+    box-shadow: var(--shadow-raised);
+  }
+
+  .main-nav a {
+    flex: none;
+    width: var(--control-h-sm);
+    height: var(--control-h-sm);
+  }
+}
+
+@media (max-width: 420px) {
+  .main-nav {
+    gap: 0;
+    padding: var(--s-1);
+  }
+
+  .main-nav a {
+    width: 40px;
+    height: 40px;
+  }
+
+  .main-nav a.active {
+    padding: 0 var(--s-3) 0 10px;
+    font-size: var(--fs-14);
+  }
+}
+
+@media (max-width: 360px) {
+  .main-nav a {
+    width: 36px;
+    height: 36px;
+  }
+
+  .main-nav a.active {
+    padding: 0 var(--s-2);
+    font-size: var(--fs-13);
+  }
+}

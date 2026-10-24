@@ -1,0 +1,56 @@
+name: backend
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+jobs:
+  backend:
+    name: backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: alfa
+          POSTGRES_PASSWORD: alfa
+          POSTGRES_DB: alfa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U alfa -d alfa_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    env:
+      DB_URL: postgresql+asyncpg://alfa:alfa@localhost:5432/alfa_test
+      TEST_DB_URL: postgresql+asyncpg://alfa:alfa@localhost:5432/alfa_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-rus
+
+      - run: cp .env.example .env
+        working-directory: .
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy --strict shared
+      - run: uv run mypy apps main.py scripts tests
+      - run: uv run lint-imports
+      - uses: actions/cache@v4
+        with:
+          path: backend/models
+          key: embedder-${{ hashFiles('backend/apps/services/llm/embedder.json') }}
+      - run: uv run python -m scripts.download_embedder
+      - run: uv run pytest

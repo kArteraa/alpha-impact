@@ -1,0 +1,77 @@
+{
+  "manifest_version": 3,
+  "name": "Alpha Impact",
+  "version": "0.1.0",
+  "description": "Alpha Impact: события, значимые для вашей компании, на странице новости или контрагента",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://kommersant.ru/*",
+        "*://www.kommersant.ru/*",
+        "*://vedomosti.ru/*",
+        "*://www.vedomosti.ru/*",
+        "*://interfax.ru/*",
+        "*://www.interfax.ru/*",
+        "*://rbc.ru/*",
+        "*://www.rbc.ru/*",
+        "*://tass.ru/*",
+        "*://www.tass.ru/*",
+        "*://forbes.ru/*",
+        "*://www.forbes.ru/*",
+        "*://frankmedia.ru/*",
+        "*://www.frankmedia.ru/*",
+        "*://expert.ru/*",
+        "*://www.expert.ru/*",
+        "*://rusprofile.ru/*",
+        "*://www.rusprofile.ru/*",
+        "*://checko.ru/*",
+        "*://www.checko.ru/*",
+        "*://list-org.com/*",
+        "*://www.list-org.com/*",
+        "*://focus.kontur.ru/*",
+        "*://www.focus.kontur.ru/*",
+        "*://zachestnyibiznes.ru/*",
+        "*://www.zachestnyibiznes.ru/*",
+        "*://sbis.ru/*",
+        "*://www.sbis.ru/*",
+        "*://zakupki.gov.ru/*",
+        "*://www.zakupki.gov.ru/*",
+        "*://rts-tender.ru/*",
+        "*://www.rts-tender.ru/*",
+        "*://223.rts-tender.ru/*",
+        "*://www.223.rts-tender.ru/*",
+        "*://sberbank-ast.ru/*",
+        "*://www.sberbank-ast.ru/*",
+        "*://roseltorg.ru/*",
+        "*://www.roseltorg.ru/*",
+        "*://b2b-center.ru/*",
+        "*://www.b2b-center.ru/*",
+        "*://fabrikant.ru/*",
+        "*://www.fabrikant.ru/*",
+        "*://cbr.ru/*",
+        "*://www.cbr.ru/*",
+        "*://moex.com/*",
+        "*://www.moex.com/*",
+        "*://investing.com/*",
+        "*://www.investing.com/*",
+        "*://ru.investing.com/*",
+        "*://www.ru.investing.com/*",
+        "*://profinance.ru/*",
+        "*://www.profinance.ru/*"
+      ],
+      "js": ["content.js"]
+    }
+  ],
+  "permissions": ["sidePanel", "storage", "activeTab"],
+  "host_permissions": ["http://127.0.0.1:8000/*"]
+}

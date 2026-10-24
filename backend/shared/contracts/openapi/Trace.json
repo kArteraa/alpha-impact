@@ -1,0 +1,673 @@
+{
+  "$defs": {
+    "Claim": {
+      "properties": {
+        "source_ref": {
+          "$ref": "#/$defs/SourceRef"
+        },
+        "text": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ClaimType"
+        }
+      },
+      "required": [
+        "text",
+        "type",
+        "source_ref"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "ClaimType": {
+      "enum": [
+        "fact",
+        "bank",
+        "ai"
+      ],
+      "title": "ClaimType",
+      "type": "string"
+    },
+    "DashboardContext": {
+      "properties": {
+        "type": {
+          "const": "dashboard",
+          "default": "dashboard",
+          "type": "string"
+        }
+      },
+      "title": "DashboardContext",
+      "type": "object"
+    },
+    "DepositContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "term_days": {
+          "type": "integer"
+        },
+        "type": {
+          "const": "deposit",
+          "default": "deposit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "term_days"
+      ],
+      "title": "DepositContext",
+      "type": "object"
+    },
+    "FollowupContext": {
+      "properties": {
+        "card_id": {
+          "type": "string"
+        },
+        "question": {
+          "type": "string"
+        },
+        "type": {
+          "const": "followup",
+          "default": "followup",
+          "type": "string"
+        }
+      },
+      "required": [
+        "card_id",
+        "question"
+      ],
+      "title": "FollowupContext",
+      "type": "object"
+    },
+    "FxContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "country": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "currency": {
+          "type": "string"
+        },
+        "type": {
+          "const": "fx",
+          "default": "fx",
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "amount"
+      ],
+      "title": "FxContext",
+      "type": "object"
+    },
+    "InsightCard": {
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "type": "array"
+        },
+        "bank_view": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "type": "array"
+        },
+        "basis": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "type": "array"
+        },
+        "calculation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WhatIfResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "consequences": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "type": "array"
+        },
+        "headline": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "needs_review": {
+          "default": false,
+          "type": "boolean"
+        },
+        "product_offer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProductOffer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "significance": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "trace_id": {
+          "type": "string"
+        },
+        "what_happened": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "type": "array"
+        },
+        "why_for_you": {
+          "items": {
+            "$ref": "#/$defs/Claim"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "headline",
+        "what_happened",
+        "why_for_you",
+        "consequences",
+        "actions",
+        "bank_view",
+        "basis",
+        "significance",
+        "trace_id"
+      ],
+      "title": "InsightCard",
+      "type": "object"
+    },
+    "InterpretRequest": {
+      "properties": {
+        "action_context": {
+          "discriminator": {
+            "mapping": {
+              "dashboard": "#/$defs/DashboardContext",
+              "deposit": "#/$defs/DepositContext",
+              "followup": "#/$defs/FollowupContext",
+              "fx": "#/$defs/FxContext",
+              "loan": "#/$defs/LoanContext",
+              "page": "#/$defs/PageContext",
+              "payment": "#/$defs/PaymentContext",
+              "payroll": "#/$defs/PayrollContext"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PaymentContext"
+            },
+            {
+              "$ref": "#/$defs/DepositContext"
+            },
+            {
+              "$ref": "#/$defs/FxContext"
+            },
+            {
+              "$ref": "#/$defs/LoanContext"
+            },
+            {
+              "$ref": "#/$defs/PayrollContext"
+            },
+            {
+              "$ref": "#/$defs/DashboardContext"
+            },
+            {
+              "$ref": "#/$defs/PageContext"
+            },
+            {
+              "$ref": "#/$defs/FollowupContext"
+            }
+          ]
+        },
+        "client_id": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "user_id",
+        "client_id",
+        "role",
+        "action_context"
+      ],
+      "title": "InterpretRequest",
+      "type": "object"
+    },
+    "InterpretResponse": {
+      "properties": {
+        "cached": {
+          "default": false,
+          "type": "boolean"
+        },
+        "cards": {
+          "items": {
+            "$ref": "#/$defs/InsightCard"
+          },
+          "type": "array"
+        },
+        "silent": {
+          "type": "boolean"
+        },
+        "silent_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "silent"
+      ],
+      "title": "InterpretResponse",
+      "type": "object"
+    },
+    "LoanContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "product": {
+          "enum": [
+            "loan",
+            "leasing",
+            "guarantee"
+          ],
+          "type": "string"
+        },
+        "rate_type": {
+          "anyOf": [
+            {
+              "enum": [
+                "floating",
+                "fixed"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "loan",
+          "default": "loan",
+          "type": "string"
+        }
+      },
+      "required": [
+        "product",
+        "amount"
+      ],
+      "title": "LoanContext",
+      "type": "object"
+    },
+    "PageContext": {
+      "properties": {
+        "entities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "text": {
+          "type": "string"
+        },
+        "type": {
+          "const": "page",
+          "default": "page",
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "text"
+      ],
+      "title": "PageContext",
+      "type": "object"
+    },
+    "PaymentContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "beneficiary_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "currency": {
+          "default": "RUB",
+          "type": "string"
+        },
+        "inn": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "payment",
+          "default": "payment",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount"
+      ],
+      "title": "PaymentContext",
+      "type": "object"
+    },
+    "PayrollContext": {
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "headcount": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "const": "payroll",
+          "default": "payroll",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount"
+      ],
+      "title": "PayrollContext",
+      "type": "object"
+    },
+    "ProductOffer": {
+      "properties": {
+        "product": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "product",
+        "reason",
+        "rule_id"
+      ],
+      "title": "ProductOffer",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "owner",
+        "ceo",
+        "cfo",
+        "treasurer",
+        "chief_accountant"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "SourceRef": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "news",
+            "house_view",
+            "profile",
+            "graph",
+            "calc"
+          ],
+          "type": "string"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    },
+    "TraceStep": {
+      "properties": {
+        "cost_rub": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "duration_ms": {
+          "default": 0,
+          "type": "integer"
+        },
+        "input_summary": {
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "name": {
+          "type": "string"
+        },
+        "output_summary": {
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "step": {
+          "enum": [
+            "prefilter",
+            "plan",
+            "tool",
+            "draft",
+            "critic",
+            "final"
+          ],
+          "type": "string"
+        },
+        "tokens_in": {
+          "default": 0,
+          "type": "integer"
+        },
+        "tokens_out": {
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "step",
+        "name",
+        "input_summary",
+        "output_summary",
+        "started_at"
+      ],
+      "title": "TraceStep",
+      "type": "object"
+    },
+    "WhatIfResult": {
+      "properties": {
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "value",
+        "unit",
+        "formula",
+        "assumptions"
+      ],
+      "title": "WhatIfResult",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "critic_verdicts": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "id": {
+      "type": "string"
+    },
+    "request": {
+      "$ref": "#/$defs/InterpretRequest"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/InterpretResponse"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/TraceStep"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "request",
+    "steps",
+    "critic_verdicts",
+    "result",
+    "created_at"
+  ],
+  "title": "Trace",
+  "type": "object"
+}

@@ -1,0 +1,54 @@
+:host {
+  all: initial;
+}
+
+.notice {
+  position: fixed;
+  right: var(--s-4);
+  bottom: var(--s-4);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  max-width: 360px;
+  padding: var(--s-3) var(--s-3) var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-raised);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: var(--fs-14);
+  line-height: var(--lh-20);
+}
+
+.notice-text {
+  margin: 0;
+}
+
+.notice-open {
+  flex: none;
+  height: var(--control-h-xs);
+  padding: 0 var(--s-3);
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--on-accent);
+  font: inherit;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+
+.notice-open:hover {
+  background: var(--accent-hover);
+}
+
+.notice .icon-button {
+  flex: none;
+  font-size: var(--fs-18);
+}
+
+.notice button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

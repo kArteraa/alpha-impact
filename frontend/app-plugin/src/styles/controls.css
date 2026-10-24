@@ -1,0 +1,56 @@
+.button-secondary,
+.button-ghost,
+.icon-button {
+  font: inherit;
+  cursor: pointer;
+}
+
+.button-secondary,
+.button-ghost,
+.icon-button {
+  border: 0;
+  color: var(--text-primary);
+  transition: background var(--t-fast);
+}
+
+.button-secondary {
+  height: var(--control-h-sm);
+  padding: 0 var(--s-5);
+  border-radius: var(--r-md);
+  background: var(--bg-neutral-strong);
+  font-size: var(--fs-16);
+  font-weight: var(--fw-medium);
+}
+
+.button-secondary:hover {
+  background: var(--bg-neutral);
+  box-shadow: inset 0 0 0 1px var(--border-soft);
+}
+
+.button-ghost {
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--link);
+  font-size: var(--fs-16);
+}
+
+.button-ghost:hover,
+.icon-button:hover {
+  background: var(--bg-neutral);
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: var(--s-8);
+  height: var(--s-8);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.icon-button[aria-pressed="true"] {
+  background: var(--bg-neutral-strong);
+  color: var(--text-primary);
+}

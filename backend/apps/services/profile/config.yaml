@@ -1,0 +1,59 @@
+confidence:
+  bank: 0.9
+  inferred: 0.7
+  user: 1.0
+
+products:
+  CL_PRODUCT_RKO_MARK: settlement
+  CL_PRODUCT_GAR_MARK: guarantee
+  CL_PRODUCT_LOA_MARK: loan
+  CL_PRODUCT_LEA_MARK: leasing
+  CL_PRODUCT_DEP_MARK: deposit
+  CL_PRODUCT_ZPP_MARK: payroll
+  FACTORING_MARK: factoring
+
+foreign_ownership:
+  - СОВМЕСТНАЯ ЧАСТНАЯ И ИНОСТРАННАЯ СОБСТВЕННОСТЬ
+  - СОБСТВЕННОСТЬ ИНОСТРАННЫХ ГРАЖДАН И ЛИЦ БЕЗ ГРАЖДАНСТВА
+  - СОБСТВЕННОСТЬ ИНОСТРАННЫХ ЮРИДИЧЕСКИХ ЛИЦ
+  - СМЕШАННАЯ ИНОСТРАННАЯ СОБСТВЕННОСТЬ
+
+state_ownership:
+  - ФЕДЕРАЛЬНАЯ СОБСТВЕННОСТЬ
+  - СОБСТВЕННОСТЬ СУБЪЕКТОВ РОССИЙСКОЙ ФЕДЕРАЦИИ
+  - МУНИЦИПАЛЬНАЯ СОБСТВЕННОСТЬ
+  - СМЕШАННАЯ РОССИЙСКАЯ СОБСТВЕННОСТЬ С ДОЛЕЙ ФЕДЕРАЛЬНОЙ СОБСТВЕННОСТИ
+  - СМЕШАННАЯ РОССИЙСКАЯ СОБСТВЕННОСТЬ С ДОЛЕЙ СОБСТВЕННОСТИ СУБЪЕКТОВ РОССИЙСКОЙ ФЕДЕРАЦИИ
+
+workers_scale:
+  Менее 15: 0.0
+  16-100: 0.2
+  101-250: 0.4
+  Более 251: 0.7
+
+countries_cap: 3
+
+exposures:
+  key_rate:
+    products: {loan: 0.4, leasing: 0.3, factoring: 0.1, guarantee: 0.1}
+    industries: {construction: 0.2, real_estate: 0.2, leasing: 0.2}
+  fx_rate:
+    importer: 0.5
+    per_country: 0.1
+    foreign_owned: 0.2
+  trade_logistics:
+    importer: 0.4
+    industries: {logistics: 0.6, wholesale: 0.3, fuel: 0.3, auto_dealer: 0.2, agro: 0.2}
+  commodity_prices:
+    industries: {fuel: 0.8, energy: 0.6, agro: 0.6, chemicals: 0.5}
+  construction_demand:
+    industries: {construction: 0.8, real_estate: 0.6}
+  consumer_demand:
+    industries: {retail: 0.7, auto_dealer: 0.7, food: 0.5, horeca: 0.6}
+  labor_market:
+    workers: 1.0
+    products: {payroll: 0.2}
+  regulation:
+    state_owned: 0.3
+    foreign_owned: 0.3
+    industries: {pharma: 0.5, energy: 0.4, finance: 0.4}

@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "Feature": {
+      "properties": {
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "source": {
+          "enum": [
+            "bank",
+            "graph",
+            "inferred",
+            "user"
+          ],
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "source",
+        "confidence",
+        "updated_at"
+      ],
+      "title": "Feature",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "client_id": {
+      "type": "string"
+    },
+    "exposures": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "type": "object"
+    },
+    "features": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Feature"
+      },
+      "type": "object"
+    },
+    "flags": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "type": "object"
+    },
+    "group_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "group_members": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "version": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "client_id",
+    "group_id",
+    "group_members",
+    "features",
+    "exposures",
+    "flags",
+    "version"
+  ],
+  "title": "ClientProfile",
+  "type": "object"
+}

@@ -1,0 +1,89 @@
+name: alpha-impact
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: alfa
+      POSTGRES_PASSWORD: alfa
+      POSTGRES_DB: alfa
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alfa -d alfa"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  db_test:
+    image: pgvector/pgvector:pg16
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: alfa
+      POSTGRES_PASSWORD: alfa
+      POSTGRES_DB: alfa_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alfa -d alfa_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    build:
+      context: ./backend
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
+    environment:
+      DB_URL: postgresql+asyncpg://alfa:alfa@db:5432/alfa
+    command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - ./backend/data/raw:/app/data/raw:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  front:
+    build:
+      context: ./frontend
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  seed:
+    build:
+      context: ./backend
+    profiles: ["seed"]
+    env_file:
+      - path: .env.example
+      - path: .env
+        required: false
+    environment:
+      DB_URL: postgresql+asyncpg://alfa:alfa@db:5432/alfa
+    command: python -m scripts.seed
+    volumes:
+      - ./backend/data/raw:/app/data/raw:ro
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  dbdata:

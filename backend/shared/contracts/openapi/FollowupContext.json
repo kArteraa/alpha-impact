@@ -1,0 +1,21 @@
+{
+  "properties": {
+    "card_id": {
+      "type": "string"
+    },
+    "question": {
+      "type": "string"
+    },
+    "type": {
+      "const": "followup",
+      "default": "followup",
+      "type": "string"
+    }
+  },
+  "required": [
+    "card_id",
+    "question"
+  ],
+  "title": "FollowupContext",
+  "type": "object"
+}
