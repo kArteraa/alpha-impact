@@ -5,15 +5,18 @@ import {
   PAGE_TEXT_MAX_CHARS,
   type PageType,
   TENDER_SUBJECT_LABELS,
+  TRACKING_PARAMS,
+  TRACKING_PREFIX,
 } from "../config";
 import type { DetectedPage } from "../messages";
-import { innsIn } from "./inn";
+import { hidePersonInns, innsIn } from "./inn";
 import { heading, paragraphs, textLines } from "./text";
 
 const PURCHASE_NUMBER = /№\s*(\d{11,19})(?!\d)/;
 const CURRENCY = new RegExp(`\\b(?:${FX_CURRENCY_CODES.join("|")})\\b`);
 const SUBJECT_LINE = new RegExp(`^(?:${TENDER_SUBJECT_LABELS.join("|")})\\s*(?::\\s*(.*))?$`);
 const PAGE_TYPES = Object.keys(PAGE_DOMAINS) as PageType[];
+const LEGAL_INN_LENGTH = 10;
 
 interface Extracted {
   lines: string[];
@@ -45,7 +48,7 @@ function counterparty(body: HTMLElement): Extracted | null {
   if (page === null) {
     return null;
   }
-  const [inn] = innsIn(page.lines.join("\n"));
+  const inn = innsIn(page.lines.join("\n")).find((value) => value.length === LEGAL_INN_LENGTH);
   return inn === undefined ? null : { ...page, entities: [`inn:${inn}`] };
 }
 
@@ -79,6 +82,11 @@ const RULES: Record<PageType, Rule> = { article, counterparty, tender, fx_rate: 
 export function detectPage(document: Document, url: string): DetectedPage | null {
   const address = new URL(url);
   address.hash = "";
+  for (const name of [...address.searchParams.keys()]) {
+    if (name.startsWith(TRACKING_PREFIX) || TRACKING_PARAMS.includes(name)) {
+      address.searchParams.delete(name);
+    }
+  }
   const pageType = pageTypeOf(address.hostname);
   if (pageType === undefined || document.body === null) {
     return null;
@@ -87,6 +95,6 @@ export function detectPage(document: Document, url: string): DetectedPage | null
   if (extracted === null) {
     return null;
   }
-  const text = extracted.lines.join("\n").slice(0, PAGE_TEXT_MAX_CHARS);
+  const text = hidePersonInns(extracted.lines.join("\n")).slice(0, PAGE_TEXT_MAX_CHARS);
   return { pageType, page: { type: "page", url: address.href, text, entities: extracted.entities ?? [] } };
 }

@@ -109,6 +109,9 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
   async function login(userId: string): Promise<ExtensionState> {
     const user = await api.authMock(userId);
     const [{ token, expires_at }, clients] = await Promise.all([api.extensionToken(), api.clients()]);
+    if (!(Date.parse(expires_at) > now())) {
+      throw new Error(`Extension token expires at ${expires_at || "an unreadable time"}`);
+    }
     const created: Session = { userId: user.user_id, token, expiresAt: expires_at, clients };
     await session.set(SESSION_KEY, created);
     return signedIn(created, await settingsOf(created));
