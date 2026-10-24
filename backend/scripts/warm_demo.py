@@ -31,7 +31,9 @@ def load_steps(path: Path) -> list[DemoStep]:
     return TypeAdapter(list[DemoStep]).validate_python(raw)
 
 
-def outcome(response: InterpretResponse) -> Literal["card", "silent"]:
+def outcome(response: InterpretResponse) -> Literal["card", "silent", "unchecked"]:
+    if any(card.needs_review for card in response.cards):
+        return "unchecked"
     return "card" if response.cards else "silent"
 
 

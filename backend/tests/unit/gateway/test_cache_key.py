@@ -50,3 +50,22 @@ def test_context_hash_is_canonical_and_hides_page_text() -> None:
     assert digest == context_hash(second)
     assert len(digest) == 64
     assert "secret" not in digest
+
+
+def page(text: str) -> InterpretRequest:
+    return InterpretRequest(
+        user_id="user",
+        client_id="U_1",
+        role=Role.CFO,
+        action_context=PageContext(url="https://news.example/rate", text=text),
+    )
+
+
+def test_page_text_edges_do_not_change_the_key() -> None:
+    news = "Ставка сохранена\nЦБ сохранил ставку."
+    assert cache_key(page(f"\n{news}\n  "), PROFILE, VERSION) == cache_key(
+        page(news), PROFILE, VERSION
+    )
+    assert cache_key(page(f"{news} Кредиты подешевеют."), PROFILE, VERSION) != cache_key(
+        page(news), PROFILE, VERSION
+    )
