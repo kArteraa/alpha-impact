@@ -142,6 +142,20 @@ describe("detectPage on a counterparty check service", () => {
     expect(detectPage(person, "https://www.rusprofile.ru/person/ivanov-500100732259")).toBeNull();
   });
 
+  it("ignores a person's page even when it lists the person's companies", () => {
+    const person = page(`<h1>Иванов Иван Иванович</h1><p>ИНН 500100732259</p><p>Руководитель ООО «Ромашка», ИНН 7707083893</p>`);
+
+    expect(detectPage(person, "https://www.rusprofile.ru/person/ivanov-500100732259")).toBeNull();
+  });
+
+  it("keeps the from parameter of a rates or tender page", () => {
+    const rates = page(`<h1>Курс USD/RUB</h1><p>USD 92,50</p>`);
+
+    expect(detectPage(rates, "https://ru.investing.com/currencies/usd-rub?from=2026-01-01")?.page.url).toBe(
+      "https://ru.investing.com/currencies/usd-rub?from=2026-01-01",
+    );
+  });
+
   it("hides a person's INN in the text it sends", () => {
     const founders = page(`
       <h1>ООО «ТрансЛогистик»</h1><p>ИНН 7707083893</p>

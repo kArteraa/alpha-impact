@@ -30,6 +30,14 @@ describe("DashboardPage", () => {
     expect(within(widget()).getAllByRole("heading", { level: 3 }).length).toBe(3);
   });
 
+  it("shows progress over a silent feed while it is rebuilt, inside the widget", () => {
+    renderDashboard({ response: SILENT_FEED, pending: true });
+
+    const progress = within(widget()).getByRole("progressbar", { name: "Обновляю ленту" });
+    expect(progress.parentElement?.classList.contains("feed-current")).toBe(true);
+    expect(within(widget()).getByText(/Пока ничего важного/)).toBeTruthy();
+  });
+
   it("offers to paste a news item from the feed widget", () => {
     renderDashboard();
 
