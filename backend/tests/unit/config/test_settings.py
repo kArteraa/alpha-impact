@@ -12,6 +12,7 @@ def test_reads_every_variable_from_environment(settings_env: dict[str, str]) -> 
     assert settings.RELEVANCE_THRESHOLD == 0.3
     assert settings.CACHE_TTL_SECONDS == 3600
     assert settings.NEWS_RSS_URLS == ["https://a.example/rss", "https://b.example/rss"]
+    assert settings.METRICS_PORT == 0
 
 
 @pytest.mark.parametrize(
@@ -24,6 +25,15 @@ def test_duration_must_be_positive(
 ) -> None:
     monkeypatch.setenv(name, value)
     with pytest.raises(ValidationError, match=name):
+        Settings(_env_file=None)
+
+
+@pytest.mark.parametrize("value", ["-1", "65536"])
+def test_metrics_port_must_be_a_tcp_port(
+    settings_env: dict[str, str], monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setenv("METRICS_PORT", value)
+    with pytest.raises(ValidationError, match="METRICS_PORT"):
         Settings(_env_file=None)
 
 

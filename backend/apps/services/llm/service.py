@@ -16,8 +16,9 @@ from apps.services.llm.errors import (
     ModelUnavailable,
     UsageNotRecorded,
 )
+from apps.services.llm.metrics import CACHE, OK, observe
 from apps.services.llm.store import UsageStore
-from shared.contracts.errors import BudgetExceeded
+from shared.contracts.errors import BudgetExceeded, ChargedModelError, DomainError
 
 EMBED_TASK = "embed"
 REASONING_OFF = "reasoning_off"
@@ -89,15 +90,29 @@ class ModelGateway:
     async def complete(
         self, task: str, system: str, user: str, schema: type | None = None
     ) -> tuple[object, int, int, float]:
+        model = self._catalog.route(task)
+        try:
+            return await self._complete(task, model, system, user, schema)
+        except ChargedModelError as error:
+            outcome = type(error).__name__
+            observe(task, model, outcome, error.tokens_in, error.tokens_out, error.cost_rub)
+            raise
+        except DomainError as error:
+            observe(task, model, type(error).__name__, 0, 0, 0.0)
+            raise
+
+    async def _complete(
+        self, task: str, model: str, system: str, user: str, schema: type | None
+    ) -> tuple[object, int, int, float]:
         output_schema = pydantic_schema(schema)
         output_format = response_format(output_schema)
-        model = self._catalog.route(task)
         reasoning = self._catalog.reasoning(task)
         timeout_seconds = self._catalog.timeout(task)
         parts = (task, model, system, user, output_format)
         key = cache_key(*parts) if reasoning else cache_key(*parts, REASONING_OFF)
         cached = await self._store.cached(key)
         if cached is not None:
+            observe(task, model, CACHE, 0, 0, 0.0)
             return parse(cached, output_schema), 0, 0, 0.0
         reservation = await self._reserve(task, model)
         completion = await self._chat(
@@ -111,6 +126,7 @@ class ModelGateway:
             await self._record(reservation, *spent(completion))
             raise
         await self._remembered(reservation, key, content, completion)
+        observe(task, model, OK, *spent(completion))
         return result, completion.tokens_in, completion.tokens_out, completion.cost_rub
 
     async def embed(self, text: str) -> list[float]:

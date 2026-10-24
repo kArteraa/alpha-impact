@@ -22,6 +22,7 @@ dependencies = [
     "numpy>=2.5.4",
     "pypdf",
     "pillow",
+    "prometheus-client>=0.26.0",
 ]
 
 [dependency-groups]
