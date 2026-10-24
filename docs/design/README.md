@@ -67,7 +67,7 @@
 | Панель в side panel расширения, 320 px, `compact` | `panel-320.png` |
 | Главный экран и полная карточка события — анимация в начале README (1000 px, 110 мс на кадр) | `alpha-impact.gif` |
 
-`alpha-impact.gif` собран один раз из кадров Playwright (1440 × 980, вход за `user_cfo_wholesale`, лента из прогретого кэша, наведение на плитки, переход в полную карточку события и обратно) и Pillow из окружения бэкенда; в тестах его съёмки нет.
+`alpha-impact.gif` пересобирается против прогретого стенда: кадры снимает `tests/design/animation.spec.ts` (1440 × 980, вход за `user_cfo_wholesale`, лента, наведение на плитки, полная карточка события и обратно) в `frontend/test-results/readme-frames`, гифку собирает `tests/design/make_gif.py` на Pillow из окружения бэкенда: `cd frontend && npx playwright test -c playwright.design.config.ts animation.spec.ts && cd ../backend && uv run python ../frontend/tests/design/make_gif.py ../frontend/test-results/readme-frames ../docs/design/alpha-impact.gif 1000`.
 
 Все состояния панели собраны на витрине `/showcase` (`frontend/app-plugin/src/dev/Showcase.tsx`).
 
