@@ -1,6 +1,4 @@
-import re
 from collections.abc import AsyncIterator
-from pathlib import Path
 from typing import Any
 
 import httpx
@@ -25,8 +23,18 @@ from shared.db.models import GatewayCallRow, UserClientRow, UserRow
 USER = "user_cfo_wholesale"
 OTHER_USER = "user_owner_retail"
 COLLEAGUE = "user_treasurer_wholesale"
-CONTRACTS = Path(__file__).resolve().parents[3] / "docs" / "CONTRACTS.md"
-HTTP_ROW = re.compile(r"^\| (GET|POST|PATCH|PUT|DELETE) \| `([^`]+)` \|", re.MULTILINE)
+ROUTES = (
+    ("POST", "/interpret"),
+    ("GET", "/profile/{client_id}"),
+    ("PATCH", "/profile/{client_id}/features/{name}"),
+    ("GET", "/clients"),
+    ("POST", "/feedback"),
+    ("GET", "/trace/{trace_id}"),
+    ("GET", "/reports/{source_doc}"),
+    ("GET", "/metrics"),
+    ("POST", "/auth/mock"),
+    ("POST", "/auth/extension-token"),
+)
 
 
 class FakeInterpreter:
@@ -347,10 +355,8 @@ def schema_ref(operation: dict[str, Any], *path: str) -> str:
 def test_openapi_matches_contracts(app: FastAPI) -> None:
     openapi = app.openapi()
     paths = openapi["paths"]
-    documented = HTTP_ROW.findall(CONTRACTS.read_text(encoding="utf-8"))
-    assert len(documented) == 10
-    for method, path in documented:
-        assert method.lower() in paths.get(path, {}), f"{method} {path}"
+    served = {(method.upper(), path) for path, item in paths.items() for method in item}
+    assert served - {("GET", "/health")} == set(ROUTES)
     json_body = ("requestBody", "content", "application/json", "schema")
     ok_body = ("responses", "200", "content", "application/json", "schema")
     interpret = paths["/interpret"]["post"]

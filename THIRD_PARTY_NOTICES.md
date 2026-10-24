@@ -1,6 +1,6 @@
 # THIRD_PARTY_NOTICES
 
-Сторонние компоненты, модели и смоделированные интеграции проекта Alpha Impact. Точные версии — в `uv.lock` и `package-lock.json`. Новая зависимость = строка здесь (см. «Definition of done» в `AGENTS.md`).
+Сторонние компоненты, модели и смоделированные интеграции проекта Alpha Impact. Точные версии — в `uv.lock` и `package-lock.json`. Новая зависимость = строка здесь.
 
 ## Бэкенд (Python, `backend/pyproject.toml`)
 
@@ -53,7 +53,7 @@ Dev: pytest (MIT), pytest-asyncio (Apache-2.0), pytest-cov (MIT), ruff (MIT), my
 | образ `node:22-alpine` (Node.js) | MIT | основа образа фронта |
 | GitHub Actions: `actions/checkout`, `actions/setup-node`, `actions/cache`, `astral-sh/setup-uv` | MIT | CI |
 
-## Модели (генерация — только из allow-list кейса, эмбеддинги — локальная e5 по исключению из `AGENTS.md`; всё через `apps/services/llm`)
+## Модели (генерация — только из allow-list кейса, эмбеддинги — локальная e5: у ключа кейса нет модели эмбеддингов; всё через `apps/services/llm`)
 
 | Модель | Лицензия по карточке модели | Задача |
 |---|---|---|
