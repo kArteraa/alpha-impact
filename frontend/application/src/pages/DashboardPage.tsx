@@ -18,7 +18,7 @@ const BEST_RATE = Math.max(...Object.values(DEPOSIT_RATES));
 
 const TILE_META: Record<string, readonly [string, string]> = {
   "/deposits/new": [`до ${RATE.format(BEST_RATE)}%`, "годовых · демо-ставки"],
-  "/loans": [RUB_WHOLE.format(LOANS_TOTAL), `в портфеле · ${plural(LOANS.length, PRODUCTS)}`],
+  "/loans": [RUB_WHOLE.format(LOANS_TOTAL), `в портфеле · ${plural(LOANS.length, PRODUCTS)} · демо-данные`],
 };
 
 const QUICK_ACTIONS: readonly (readonly [string, string, string, IconName, string])[] = [

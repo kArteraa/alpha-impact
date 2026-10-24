@@ -9,7 +9,7 @@ interface FeedStatusProps {
 }
 
 export function FeedStatus({ empty, children }: FeedStatusProps) {
-  const { response, failed, retry } = useFeed();
+  const { response, pending, failed, retry } = useFeed();
   if (failed) {
     return (
       <div className="feed-status" data-state="failed">
@@ -35,5 +35,10 @@ export function FeedStatus({ empty, children }: FeedStatusProps) {
       </div>
     );
   }
-  return children(cards);
+  return (
+    <>
+      {pending && <div className="insight-progress" role="progressbar" aria-label="Обновляю ленту" />}
+      {children(cards)}
+    </>
+  );
 }
