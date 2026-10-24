@@ -58,6 +58,15 @@ describe("ProfilePage", () => {
     vi.unstubAllGlobals();
   });
 
+  it("shows the current role and leads to the role choice", async () => {
+    stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
+    renderProfile();
+
+    const role = await screen.findByRole("link", { name: "Сменить роль" });
+    expect(role.getAttribute("href")).toBe("/role");
+    expect(screen.getByText("Роль: Финансовый директор")).toBeTruthy();
+  });
+
   it("shows what the bank knows about the company", async () => {
     stubApi({ [`GET ${PROFILE_URL}`]: [200, LOADED] });
     renderProfile();

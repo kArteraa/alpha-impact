@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PageContext } from "../../src";
 import { mockResponses } from "../../src/mocks";
 import { CACHE_TTL_MS } from "../config";
@@ -62,6 +62,10 @@ async function signedInAs(role: "cfo" | null = "cfo") {
   return context;
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("extension worker session", () => {
   it("is signed out before login", async () => {
     const { worker } = setup();
@@ -104,9 +108,13 @@ describe("extension worker session", () => {
   });
 
   it("signs out and forgets cached cards when the token expires", async () => {
-    const { advance, api, worker } = await signedInAs();
+    const { advance, api, worker } = setup();
+    const shortToken = CACHE_TTL_MS / 2;
+    api.extensionToken.mockResolvedValueOnce({ token: "t-short", expires_at: new Date(NOW + shortToken).toISOString() });
+    await worker({ type: "login", userId: "user_cfo" });
+    await worker({ type: "settings", patch: { role: "cfo" } });
     await worker({ type: "interpret", page });
-    advance(TOKEN_TTL_MS);
+    advance(shortToken);
 
     expect(await worker({ type: "state" })).toEqual(signedOut);
     expect(await worker({ type: "interpret", page })).toEqual({ ok: false, error: "signed_out" });
@@ -265,12 +273,14 @@ describe("extension worker interpret", () => {
     expect(await worker({ type: "interpret", page })).toEqual({ ok: false, error: "failed" });
   });
 
-  it("treats a token without a readable expiry as expired", async () => {
+  it("refuses to sign in with a token that is already expired or has no readable expiry", async () => {
     const { api, worker } = setup();
+    vi.spyOn(console, "error").mockImplementation(() => {});
     api.extensionToken.mockResolvedValueOnce({ token: "t-1", expires_at: "" });
+    api.extensionToken.mockResolvedValueOnce({ token: "t-2", expires_at: new Date(NOW - 1).toISOString() });
 
-    await worker({ type: "login", userId: "user_cfo" });
-
+    expect(await worker({ type: "login", userId: "user_cfo" })).toEqual({ ok: false, error: "failed" });
+    expect(await worker({ type: "login", userId: "user_cfo" })).toEqual({ ok: false, error: "failed" });
     expect(await worker({ type: "state" })).toEqual(signedOut);
   });
 

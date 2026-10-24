@@ -55,6 +55,19 @@ describe("detectPage on a business media article", () => {
     expect(detectPage(rubric, "https://www.kommersant.ru/rubric/3")).toBeNull();
   });
 
+  it("drops tracking labels from the address but keeps the page's own parameters", () => {
+    const detected = detectPage(article, "https://www.kommersant.ru/doc/1?utm_source=tg&from=main&id=7&yclid=5");
+
+    expect(detected?.page.url).toBe("https://www.kommersant.ru/doc/1?id=7");
+  });
+
+  it("recognises the named subdomains of rates and tender sites", () => {
+    const rates = page(`<h1>Курс USD/RUB</h1><p>USD 92,50</p>`);
+    expect(detectPage(rates, "https://ru.investing.com/currencies/usd-rub")?.pageType).toBe("fx_rate");
+    const tender = page(`<div>№ 0373200041524000123</div><section><span>Предмет договора</span><span>Ремонт кровли</span></section>`);
+    expect(detectPage(tender, "https://223.rts-tender.ru/supplier/auction/1")?.pageType).toBe("tender");
+  });
+
   it("drops the fragment from the address", () => {
     expect(detectPage(article, "https://www.kommersant.ru/doc/7000001#comments")?.page.url).toBe(
       "https://www.kommersant.ru/doc/7000001",
@@ -121,6 +134,37 @@ describe("detectPage on a counterparty check service", () => {
     const twice = page(`<h1>ООО «ТрансЛогистик»</h1><p>ИНН 7707083893</p><p>ИНН организации 7707083893</p>`);
 
     expect(detectPage(twice, "https://checko.ru/company/1")?.page.entities).toEqual(["inn:7707083893"]);
+  });
+
+  it("ignores a person's page: only a legal entity with a ten-digit INN is a counterparty", () => {
+    const person = page(`<h1>Иванов Иван Иванович</h1><p>ИНН 500100732259</p><p>Учредитель 3 компаний</p>`);
+
+    expect(detectPage(person, "https://www.rusprofile.ru/person/ivanov-500100732259")).toBeNull();
+  });
+
+  it("ignores a person's page even when it lists the person's companies", () => {
+    const person = page(`<h1>Иванов Иван Иванович</h1><p>ИНН 500100732259</p><p>Руководитель ООО «Ромашка», ИНН 7707083893</p>`);
+
+    expect(detectPage(person, "https://www.rusprofile.ru/person/ivanov-500100732259")).toBeNull();
+  });
+
+  it("keeps the from parameter of a rates or tender page", () => {
+    const rates = page(`<h1>Курс USD/RUB</h1><p>USD 92,50</p>`);
+
+    expect(detectPage(rates, "https://ru.investing.com/currencies/usd-rub?from=2026-01-01")?.page.url).toBe(
+      "https://ru.investing.com/currencies/usd-rub?from=2026-01-01",
+    );
+  });
+
+  it("hides a person's INN in the text it sends", () => {
+    const founders = page(`
+      <h1>ООО «ТрансЛогистик»</h1><p>ИНН 7707083893</p>
+      <section><h2>Учредители</h2><p>Иванов Иван Иванович, ИНН 500100732259</p></section>
+    `);
+
+    const text = detectPage(founders, "https://www.rusprofile.ru/id/123")!.page.text;
+    expect(text).not.toContain("500100732259");
+    expect(text).toContain("7707083893");
   });
 
   it("ignores a page without a valid INN", () => {

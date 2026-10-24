@@ -26,7 +26,11 @@ export function Block({ title, collapsible, className, children }: BlockProps) {
             {title}
           </button>
         </h4>
-        {open && <div id={contentId}>{children}</div>}
+        {open && (
+          <div id={contentId} className="insight-block-body">
+            {children}
+          </div>
+        )}
       </section>
     );
   }

@@ -1,7 +1,6 @@
 export type FeatureGroup = "company" | "geography" | "scale" | "bank";
 
 export interface FeatureSpec {
-  label: string;
   group: FeatureGroup;
   labels?: Record<string, string>;
   editable?: boolean;
@@ -51,17 +50,17 @@ const CLIENT_TYPES: Record<string, string> = {
 };
 
 export const FEATURES: Record<string, FeatureSpec> = {
-  industry_class: { label: "Отрасль", group: "company", labels: INDUSTRIES, editable: true },
-  okved_name: { label: "Основной вид деятельности", group: "company" },
-  okved_code: { label: "Код ОКВЭД", group: "company" },
-  company_age: { label: "Возраст компании, лет", group: "company" },
-  eco_stage: { label: "Стадия развития", group: "company" },
-  ownership: { label: "Форма собственности", group: "company" },
-  region: { label: "Регион", group: "geography" },
-  city: { label: "Город", group: "geography" },
-  import_countries: { label: "Страны импорта", group: "geography" },
-  revenue_rub: { label: "Выручка", group: "scale", money: true },
-  workers: { label: "Сотрудников", group: "scale" },
-  cl_type: { label: "Статус клиента", group: "bank", labels: CLIENT_TYPES },
-  products: { label: "Продукты банка", group: "bank", labels: PRODUCTS },
+  industry_class: { group: "company", labels: INDUSTRIES, editable: true },
+  okved_name: { group: "company" },
+  okved_code: { group: "company" },
+  company_age: { group: "company" },
+  eco_stage: { group: "company" },
+  ownership: { group: "company" },
+  region: { group: "geography" },
+  city: { group: "geography" },
+  import_countries: { group: "geography" },
+  revenue_rub: { group: "scale", money: true },
+  workers: { group: "scale" },
+  cl_type: { group: "bank", labels: CLIENT_TYPES },
+  products: { group: "bank", labels: PRODUCTS },
 };
