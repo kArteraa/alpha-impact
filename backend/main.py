@@ -75,11 +75,12 @@ class HttpMetrics:
             await self._app(scope, receive, send)
             return
         start = perf_counter()
-        statuses: list[int] = []
+        status = HTTPStatus.INTERNAL_SERVER_ERROR.value
 
         async def capture(message: Message) -> None:
+            nonlocal status
             if message["type"] == "http.response.start":
-                statuses.append(message["status"])
+                status = message["status"]
             await send(message)
 
         try:
@@ -87,11 +88,9 @@ class HttpMetrics:
         finally:
             route = scope.get("route")
             if isinstance(route, APIRoute):
-                status = statuses[0] if statuses else HTTPStatus.INTERNAL_SERVER_ERROR.value
-                HTTP_REQUESTS.labels(scope["method"], route.path_format, str(status)).inc()
-                HTTP_DURATION.labels(scope["method"], route.path_format).observe(
-                    perf_counter() - start
-                )
+                labels = (scope["method"], route.path_format)
+                HTTP_REQUESTS.labels(*labels, str(status)).inc()
+                HTTP_DURATION.labels(*labels).observe(perf_counter() - start)
 
 
 @asynccontextmanager

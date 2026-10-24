@@ -43,13 +43,6 @@ def register(container: Container) -> None:
 
 
 @pytest.fixture
-def app(settings_env: dict[str, str]) -> FastAPI:
-    from main import create_app
-
-    return create_app()
-
-
-@pytest.fixture
 def extra_services_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     monkeypatch.setattr(apps.services, "__path__", [*apps.services.__path__, str(tmp_path)])
     yield tmp_path

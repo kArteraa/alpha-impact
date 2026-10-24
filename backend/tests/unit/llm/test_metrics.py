@@ -1,20 +1,16 @@
 import httpx
 import pytest
-from prometheus_client import REGISTRY
 from pydantic import BaseModel
 
-from apps.services.llm.errors import ModelOutputInvalid, ModelUnavailable
+from apps.services.llm.errors import CacheNotWritten, ModelOutputInvalid, ModelUnavailable
 from shared.contracts.errors import BudgetExceeded
+from tests.unit.conftest import sample
 from tests.unit.llm.fakes import ROUTES, TODAY, MemoryStore, ModelServer, Usage, make_gateway
 
 
 class Verdict(BaseModel):
     ok: bool
     reason: str
-
-
-def sample(name: str, **labels: str) -> float:
-    return REGISTRY.get_sample_value(name, labels) or 0.0
 
 
 def usage(task: str, outcome: str) -> dict[str, float]:
@@ -74,6 +70,23 @@ async def test_answer_outside_schema_counts_charged_tokens() -> None:
         )
     assert grown(before, usage("critic", "ModelOutputInvalid")) == pytest.approx(
         {"calls": 1, "tokens_in": 30, "tokens_out": 5, "cost_rub": 0.1}
+    )
+
+
+class BrokenCacheStore(MemoryStore):
+    async def remember(self, key: str, content: str) -> None:
+        raise RuntimeError("database is down")
+
+
+async def test_paid_answer_that_cannot_be_cached_still_counts_its_spend() -> None:
+    server = ModelServer(tokens_in=40, tokens_out=9, cost_rub=0.2)
+    before = usage("annotate", "CacheNotWritten")
+    with pytest.raises(CacheNotWritten):
+        await make_gateway(server.http_client(), BrokenCacheStore()).complete(
+            "annotate", "sys", "usr"
+        )
+    assert grown(before, usage("annotate", "CacheNotWritten")) == pytest.approx(
+        {"calls": 1, "tokens_in": 40, "tokens_out": 9, "cost_rub": 0.2}
     )
 
 

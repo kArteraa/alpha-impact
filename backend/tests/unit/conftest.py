@@ -1,4 +1,6 @@
 import pytest
+from fastapi import FastAPI
+from prometheus_client import REGISTRY
 
 SETTINGS_ENV = {
     "DB_URL": "postgresql+asyncpg://alfa:alfa@localhost:5432/alfa",
@@ -27,3 +29,14 @@ def settings_env(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     for name, value in SETTINGS_ENV.items():
         monkeypatch.setenv(name, value)
     return SETTINGS_ENV
+
+
+@pytest.fixture
+def app(settings_env: dict[str, str]) -> FastAPI:
+    from main import create_app
+
+    return create_app()
+
+
+def sample(name: str, **labels: str) -> float:
+    return REGISTRY.get_sample_value(name, labels) or 0.0

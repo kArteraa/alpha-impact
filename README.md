@@ -149,7 +149,7 @@ cd frontend && npm ci && npx playwright install chromium && npx playwright test 
 | `RELEVANCE_THRESHOLD` | порог значимости события для компании |
 | `EXTENSION_TOKEN_TTL_SECONDS` | срок токена расширения |
 | `NEWS_RSS_URLS` | ленты деловых СМИ для индекса новостей |
-| `METRICS_PORT` | порт, на котором API отдаёт метрики Prometheus внутри сети compose |
+| `METRICS_PORT` | порт, на котором API отдаёт метрики Prometheus; в compose задан у сервиса `api`, в `.env` нужен для запусков на хосте |
 
 ## Команда
 

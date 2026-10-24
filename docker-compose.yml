@@ -43,6 +43,7 @@ services:
         required: false
     environment:
       DB_URL: postgresql+asyncpg://alfa:alfa@db:5432/alfa
+      METRICS_PORT: "9000"
     command: sh -c "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"
     volumes:
       - ./backend/data/raw:/app/data/raw:ro
@@ -93,9 +94,6 @@ services:
       - prometheusdata:/prometheus
     ports:
       - "127.0.0.1:9090:9090"
-    depends_on:
-      api:
-        condition: service_healthy
 
   loki:
     image: grafana/loki:3.5.0
@@ -109,13 +107,13 @@ services:
     profiles: ["monitoring"]
     command:
       - run
-      - --server.http.listen-addr=0.0.0.0:12345
       - --storage.path=/var/lib/alloy/data
       - --disable-reporting
       - /etc/alloy/config.alloy
     volumes:
       - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloydata:/var/lib/alloy/data
     depends_on:
       - loki
 
@@ -143,3 +141,4 @@ volumes:
   dbdata:
   prometheusdata:
   lokidata:
+  alloydata:

@@ -5,16 +5,7 @@ import pytest
 from fastapi import FastAPI
 from prometheus_client import REGISTRY, generate_latest
 
-
-@pytest.fixture
-def app(settings_env: dict[str, str]) -> FastAPI:
-    from main import create_app
-
-    return create_app()
-
-
-def sample(name: str, **labels: str) -> float:
-    return REGISTRY.get_sample_value(name, labels) or 0.0
+from tests.unit.conftest import sample
 
 
 def exposition() -> str:
