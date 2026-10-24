@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from shared.db.models import ExtensionTokenRow
+from shared.db.models import ExtensionTokenRow, UserRow
 
 INTERPRET_SCOPE = "interpret:read"
 TOKEN_BYTES = 32
@@ -40,10 +40,14 @@ class SqlExtensionTokens:
         return token, expires_at
 
     async def user(self, token: str) -> str | None:
-        statement = select(ExtensionTokenRow.user_id).where(
-            ExtensionTokenRow.token_hash == token_hash(token),
-            ExtensionTokenRow.scope == INTERPRET_SCOPE,
-            ExtensionTokenRow.expires_at > func.now(),
+        statement = (
+            select(ExtensionTokenRow.user_id)
+            .join(UserRow, UserRow.id == ExtensionTokenRow.user_id)
+            .where(
+                ExtensionTokenRow.token_hash == token_hash(token),
+                ExtensionTokenRow.scope == INTERPRET_SCOPE,
+                ExtensionTokenRow.expires_at > func.now(),
+            )
         )
         async with self._sessions() as session:
             return await session.scalar(statement)

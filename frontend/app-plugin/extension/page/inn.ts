@@ -3,6 +3,7 @@ const WEIGHTS = [3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8];
 const CHECK_POSITIONS: Record<number, number[]> = { 10: [9], 12: [10, 11] };
 const NO_REGION = "00";
 const PERSON_INN_LENGTH = 12;
+const LEGAL_INN_LENGTH = 10;
 const HIDDEN_INN = "ИНН скрыт";
 
 function checkDigit(digits: string): string {
@@ -23,4 +24,8 @@ export function innsIn(text: string): string[] {
 
 export function hidePersonInns(text: string): string {
   return text.replace(CANDIDATE, (value) => (value.length === PERSON_INN_LENGTH && validInn(value) ? HIDDEN_INN : value));
+}
+
+export function legalInnsIn(text: string): string[] {
+  return innsIn(text).filter((value) => value.length === LEGAL_INN_LENGTH);
 }

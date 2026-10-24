@@ -9,14 +9,13 @@ import {
   TRACKING_PREFIX,
 } from "../config";
 import type { DetectedPage } from "../messages";
-import { hidePersonInns, innsIn } from "./inn";
+import { hidePersonInns, legalInnsIn } from "./inn";
 import { heading, paragraphs, textLines } from "./text";
 
 const PURCHASE_NUMBER = /№\s*(\d{11,19})(?!\d)/;
 const CURRENCY = new RegExp(`\\b(?:${FX_CURRENCY_CODES.join("|")})\\b`);
 const SUBJECT_LINE = new RegExp(`^(?:${TENDER_SUBJECT_LABELS.join("|")})\\s*(?::\\s*(.*))?$`);
 const PAGE_TYPES = Object.keys(PAGE_DOMAINS) as PageType[];
-const LEGAL_INN_LENGTH = 10;
 
 interface Extracted {
   lines: string[];
@@ -48,7 +47,7 @@ function counterparty(body: HTMLElement): Extracted | null {
   if (page === null) {
     return null;
   }
-  const inn = innsIn(page.lines.join("\n")).find((value) => value.length === LEGAL_INN_LENGTH);
+  const [inn] = legalInnsIn(page.lines.join("\n"));
   return inn === undefined ? null : { ...page, entities: [`inn:${inn}`] };
 }
 

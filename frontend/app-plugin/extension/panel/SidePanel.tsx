@@ -97,7 +97,7 @@ export function SidePanel({ send, host }: { send: Send; host: PanelHost }) {
   return (
     <main className="sidepanel" aria-busy={view === null && !lost}>
       {lost ? (
-        <p className="panel-note" role="alert">
+        <p className="sidepanel-note" role="alert">
           Расширение перезапустилось — закройте и откройте панель
         </p>
       ) : (

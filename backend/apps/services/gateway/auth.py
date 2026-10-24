@@ -20,18 +20,15 @@ def bearer_token(authorization: str) -> str:
     return token.strip() if scheme.lower() == "bearer" else ""
 
 
-async def known_user(container: Container, user_id: str) -> bool:
-    sessions = container.resolve(async_sessionmaker)
-    async with sessions() as session:
-        return await session.get(UserRow, user_id) is not None
-
-
 async def current_user(container: ContainerDep, session_id: SessionCookie = None) -> str:
     if session_id is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "no session")
-    if not await known_user(container, session_id):
+    sessions = container.resolve(async_sessionmaker)
+    async with sessions() as session:
+        user = await session.get(UserRow, session_id)
+    if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "unknown session")
-    return session_id
+    return user.id
 
 
 async def interpret_user(
@@ -43,7 +40,7 @@ async def interpret_user(
         return await current_user(container, session_id)
     token = bearer_token(authorization)
     user_id = await container.resolve(SqlExtensionTokens).user(token) if token else None
-    if user_id is None or not await known_user(container, user_id):
+    if user_id is None:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "invalid or expired token",
