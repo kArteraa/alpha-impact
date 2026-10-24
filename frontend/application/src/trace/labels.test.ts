@@ -62,6 +62,7 @@ describe("verdictLabel", () => {
 describe("requestLabel", () => {
   it.each([
     [{ type: "payment", amount: 1_500_000, beneficiary_id: "U_96105" }, "Платёж 1 500 000 ₽"],
+    [{ type: "payment", amount: 20_000, currency: "CNY", beneficiary_id: "U_96105" }, "Платёж 20 000 CNY"],
     [{ type: "deposit", amount: 10_000_000, term_days: 90 }, "Депозит 10 000 000 ₽ на 90 дней"],
     [{ type: "deposit", amount: 5_000_000, term_days: 1 }, "Депозит 5 000 000 ₽ на 1 день"],
     [{ type: "loan", amount: 50_000_000, product: "loan", rate_type: "floating" }, "Кредит 50 000 000 ₽, плавающая ставка"],

@@ -23,6 +23,13 @@ describe("DashboardPage", () => {
     expect(document.querySelector(".dashboard-grid")?.firstElementChild).toBe(widget());
   });
 
+  it("shows progress over the old feed while it is rebuilt", () => {
+    renderDashboard({ pending: true });
+
+    expect(within(widget()).getByRole("progressbar", { name: "Обновляю ленту" })).toBeTruthy();
+    expect(within(widget()).getAllByRole("heading", { level: 3 }).length).toBe(3);
+  });
+
   it("offers to paste a news item from the feed widget", () => {
     renderDashboard();
 
@@ -93,7 +100,7 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("link", { name: /^Депозит/ }).textContent).toContain("до 15,2%");
     const loans = screen.getByRole("link", { name: /^Кредиты/ }).textContent;
     expect(loans).toContain(RUB_WHOLE.format(173_400_000));
-    expect(loans).toContain("в портфеле · 3 продукта");
+    expect(loans).toContain("в портфеле · 3 продукта · демо-данные");
   });
 
   it("shows the balance trend on the account tile", () => {
