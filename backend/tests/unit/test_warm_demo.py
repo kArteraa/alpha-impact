@@ -63,3 +63,12 @@ async def test_warm_without_mismatches_returns_nothing() -> None:
     cards = {key(step): [CARD] for step in STEPS if step.expect == "card"}
 
     assert await warm(FakeGateway(cards, failing=set()), STEPS) == []
+
+
+async def test_warm_reports_a_card_that_waits_for_review_as_not_cached() -> None:
+    card_steps = [step for step in STEPS if step.expect == "card"]
+    unchecked = CARD.model_copy(update={"needs_review": True})
+    cards = {key(step): [CARD] for step in card_steps}
+    cards[key(card_steps[0])] = [CARD, unchecked]
+
+    assert await warm(FakeGateway(cards, failing=set()), STEPS) == [card_steps[0].title]

@@ -2,6 +2,8 @@ import { type ActionContext, type InterpretRequest, type LoanContext, ROLE_LABEL
 import { NUMBER, RUB_WHOLE } from "../money";
 import { DAYS, plural } from "../ui/plural";
 
+const RUB_CODE = "RUB";
+
 const STEP_NAMES: Record<string, string> = {
   "profile.get_profile": "Профиль компании",
   "counterparty.context": "Агрегаты получателя",
@@ -76,7 +78,9 @@ const RATE_TYPES: Record<NonNullable<LoanContext["rate_type"]>, string> = {
 function actionLabel(action: ActionContext): string {
   switch (action.type) {
     case "payment":
-      return `Платёж ${RUB_WHOLE.format(action.amount)}`;
+      return action.currency && action.currency !== RUB_CODE
+        ? `Платёж ${NUMBER.format(action.amount)} ${action.currency}`
+        : `Платёж ${RUB_WHOLE.format(action.amount)}`;
     case "deposit":
       return `Депозит ${RUB_WHOLE.format(action.amount)} на ${plural(action.term_days, DAYS)}`;
     case "loan": {

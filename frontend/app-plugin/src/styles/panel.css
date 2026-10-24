@@ -163,7 +163,8 @@
   letter-spacing: -0.2px;
 }
 
-.insight-block {
+.insight-block,
+.insight-block-body {
   display: grid;
   gap: var(--s-2);
 }

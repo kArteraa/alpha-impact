@@ -6,6 +6,18 @@ function roleKey(userId: string): string {
   return `alpha-impact.role.${userId}`;
 }
 
+function companyKey(userId: string): string {
+  return `alpha-impact.company.${userId}`;
+}
+
+export function saveCompany(userId: string, companyId: string) {
+  localStorage.setItem(companyKey(userId), companyId);
+}
+
+export function loadCompany(userId: string): string | null {
+  return localStorage.getItem(companyKey(userId));
+}
+
 function isRole(value: string | null): value is Role {
   return value !== null && Object.hasOwn(ROLE_LABELS, value);
 }

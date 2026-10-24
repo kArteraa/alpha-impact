@@ -460,3 +460,11 @@
     font-size: var(--fs-20);
   }
 }
+
+.feed-current {
+  position: relative;
+}
+
+.feed-current > .insight-progress {
+  inset: 0 0 auto;
+}

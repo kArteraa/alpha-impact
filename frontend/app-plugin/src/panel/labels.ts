@@ -14,6 +14,36 @@ export const SOURCE_KINDS: Record<SourceRef["kind"], { label: string; icon: stri
   calc: { label: "расчёт", icon: "∑", trait: false },
 };
 
+export const FEATURE_LABELS: Record<string, string> = {
+  industry_class: "Отрасль",
+  okved_name: "Основной вид деятельности",
+  okved_code: "Код ОКВЭД",
+  company_age: "Возраст компании, лет",
+  eco_stage: "Стадия развития",
+  ownership: "Форма собственности",
+  region: "Регион",
+  city: "Город",
+  import_countries: "Страны импорта",
+  revenue_rub: "Выручка",
+  workers: "Сотрудников",
+  cl_type: "Статус клиента",
+  products: "Продукты банка",
+};
+
+export const COUNTERPARTY_LABELS: Record<string, string> = {
+  industry_class: "Отрасль получателя",
+  region: "Регион получателя",
+  size_bucket: "Размер получателя",
+  share_of_client_outflow: "Доля сегмента получателя в оттоке компании",
+  share_of_counterparty_inflow: "Доля компании в поступлениях сегмента получателя",
+  confidence: "Надёжность оценки получателя",
+};
+
+const NAMED_SOURCES: Partial<Record<SourceRef["kind"], Record<string, string>>> = {
+  profile: FEATURE_LABELS,
+  graph: COUNTERPARTY_LABELS,
+};
+
 export const CALCULATION_TITLES = new Map([
   ["deposit_terms", "Выгода фиксации ставки против помесячного переразмещения"],
   ["rate_burden", "Изменение процентных расходов при плавающей ставке"],
@@ -24,13 +54,20 @@ export const SIGNIFICANCE_LEVELS = 3;
 const DATE = new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC" });
 const KOPECK_DIGITS = 2;
 const CURRENCY_CODE = /^[A-Z]{3}$/;
+const HYPHEN_MINUS = "-";
+const MINUS_SIGN = "−";
 
 export function significanceLevel(significance: number): number {
   return Math.min(SIGNIFICANCE_LEVELS, Math.max(1, Math.ceil(significance * SIGNIFICANCE_LEVELS)));
 }
 
+export function knownTitle(source: SourceRef): string | null {
+  const names = NAMED_SOURCES[source.kind];
+  return names && Object.hasOwn(names, source.id) ? names[source.id] : (source.title ?? null);
+}
+
 export function sourceTitle(source: SourceRef): string {
-  return source.title ?? source.id;
+  return knownTitle(source) ?? source.id;
 }
 
 export function formatValue(value: number, unit: string): string {
@@ -40,10 +77,10 @@ export function formatValue(value: number, unit: string): string {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   };
-  if (CURRENCY_CODE.test(unit)) {
-    return new Intl.NumberFormat("ru-RU", { ...number, style: "currency", currency: unit }).format(value);
-  }
-  return `${new Intl.NumberFormat("ru-RU", number).format(value)} ${unit}`;
+  const text = CURRENCY_CODE.test(unit)
+    ? new Intl.NumberFormat("ru-RU", { ...number, style: "currency", currency: unit }).format(value)
+    : `${new Intl.NumberFormat("ru-RU", number).format(value)} ${unit}`;
+  return text.replace(HYPHEN_MINUS, MINUS_SIGN);
 }
 
 export function formatDate(iso: string): string | null {

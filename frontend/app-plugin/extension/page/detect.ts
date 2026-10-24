@@ -5,9 +5,11 @@ import {
   PAGE_TEXT_MAX_CHARS,
   type PageType,
   TENDER_SUBJECT_LABELS,
+  TRACKING_PARAMS,
+  TRACKING_PREFIX,
 } from "../config";
 import type { DetectedPage } from "../messages";
-import { innsIn } from "./inn";
+import { companyInnOf, hidePersonInns } from "./inn";
 import { heading, paragraphs, textLines } from "./text";
 
 const PURCHASE_NUMBER = /№\s*(\d{11,19})(?!\d)/;
@@ -45,7 +47,7 @@ function counterparty(body: HTMLElement): Extracted | null {
   if (page === null) {
     return null;
   }
-  const [inn] = innsIn(page.lines.join("\n"));
+  const inn = companyInnOf(page.lines.join("\n"));
   return inn === undefined ? null : { ...page, entities: [`inn:${inn}`] };
 }
 
@@ -83,10 +85,17 @@ export function detectPage(document: Document, url: string): DetectedPage | null
   if (pageType === undefined || document.body === null) {
     return null;
   }
+  if (pageType === "article") {
+    for (const name of [...address.searchParams.keys()]) {
+      if (name.startsWith(TRACKING_PREFIX) || TRACKING_PARAMS.includes(name)) {
+        address.searchParams.delete(name);
+      }
+    }
+  }
   const extracted = RULES[pageType](document.body);
   if (extracted === null) {
     return null;
   }
-  const text = extracted.lines.join("\n").slice(0, PAGE_TEXT_MAX_CHARS);
+  const text = hidePersonInns(extracted.lines.join("\n")).slice(0, PAGE_TEXT_MAX_CHARS);
   return { pageType, page: { type: "page", url: address.href, text, entities: extracted.entities ?? [] } };
 }

@@ -8,7 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from shared.contracts.schemas import InterpretRequest, InterpretResponse
+from shared.contracts.schemas import ActionContext, InterpretRequest, InterpretResponse, PageContext
 from shared.db.models import InterpretCacheRow
 
 
@@ -21,8 +21,14 @@ def context_hash(context: BaseModel) -> str:
     return sha256(context.model_dump(mode="json"))
 
 
+def normalized(context: ActionContext) -> ActionContext:
+    if isinstance(context, PageContext):
+        return context.model_copy(update={"text": context.text.strip()})
+    return context
+
+
 def cache_key(request: InterpretRequest, profile_version: int, house_view_version: str) -> str:
-    context = request.action_context
+    context = normalized(request.action_context)
     return sha256(
         [
             request.user_id,

@@ -1,6 +1,6 @@
-import type { ClientProfile, Feature } from "@alpha-impact/plugin";
+import { type ClientProfile, FEATURE_LABELS, type Feature, ROLE_LABELS } from "@alpha-impact/plugin";
 import { useCallback, useId, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { ApiError, api } from "../api/client";
 import { useLoad } from "../api/useLoad";
 import { useCompany } from "../company/context";
@@ -8,6 +8,7 @@ import { FEATURES } from "../data/profile";
 import { useFeed } from "../feed/context";
 import { type FeatureSection, featureText, groupFeatures, isEditable } from "../profile/features";
 import { Alert } from "../ui/Alert";
+import { useSession } from "../session/context";
 import { Select } from "../ui/Select";
 
 const SOURCE_LABELS: Record<Feature["source"], string> = {
@@ -54,13 +55,13 @@ function FeatureRow({ name, feature, onSave }: FeatureRowProps) {
   return (
     <li className="feature" aria-labelledby={labelId}>
       <span id={labelId} className={draft === null ? "feature-label" : "visually-hidden"}>
-        {spec.label}
+        {FEATURE_LABELS[name]}
       </span>
       {options === undefined || draft === null ? (
         <span className="feature-value">{featureText(name, feature.value)}</span>
       ) : (
         <Select
-          label={spec.label}
+          label={FEATURE_LABELS[name]}
           value={draft}
           options={Object.entries(options).map(([value, text]) => ({ value, label: text }))}
           onChange={setDraft}
@@ -146,6 +147,7 @@ function FeatureList({ profile, onSave }: FeatureListProps) {
 
 export function ProfilePage() {
   const { company } = useCompany();
+  const { role } = useSession();
   const navigate = useNavigate();
   const { retry: refreshFeed } = useFeed();
   const [profile, setProfile] = useLoad(useCallback(() => api.profile(company.id), [company.id]));
@@ -166,6 +168,9 @@ export function ProfilePage() {
         <h1>Профиль компании</h1>
         <p className="page-sub">
           Проверьте, что банк знает о компании: по этим признакам Alpha Impact отбирает события
+        </p>
+        <p className="page-sub">
+          <span>Роль: {ROLE_LABELS[role]}</span> · <Link to="/role">Сменить роль</Link>
         </p>
       </div>
       {profile.status === "failed" && <Alert text="Не удалось загрузить профиль" />}

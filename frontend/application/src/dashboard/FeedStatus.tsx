@@ -9,7 +9,7 @@ interface FeedStatusProps {
 }
 
 export function FeedStatus({ empty, children }: FeedStatusProps) {
-  const { response, failed, retry } = useFeed();
+  const { response, pending, failed, retry } = useFeed();
   if (failed) {
     return (
       <div className="feed-status" data-state="failed">
@@ -28,12 +28,16 @@ export function FeedStatus({ empty, children }: FeedStatusProps) {
     );
   }
   const cards = response.cards ?? [];
-  if (response.silent || cards.length === 0) {
-    return (
-      <div className="feed-status" data-state="silent" role="status">
-        {empty}
-      </div>
-    );
-  }
-  return children(cards);
+  return (
+    <div className="feed-current">
+      {pending && <div className="insight-progress" role="progressbar" aria-label="Обновляю ленту" />}
+      {response.silent || cards.length === 0 ? (
+        <div className="feed-status" data-state="silent" role="status">
+          {empty}
+        </div>
+      ) : (
+        children(cards)
+      )}
+    </div>
+  );
 }

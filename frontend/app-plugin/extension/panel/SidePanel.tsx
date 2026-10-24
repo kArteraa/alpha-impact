@@ -66,16 +66,25 @@ function Content({ view, send }: { view: View; send: Send }) {
 
 export function SidePanel({ send, host }: { send: Send; host: PanelHost }) {
   const [view, setView] = useState<View | null>(null);
+  const [lost, setLost] = useState(false);
 
   useEffect(() => {
     let latest = 0;
     function refresh() {
       const run = ++latest;
-      void Promise.all([send({ type: "state" }), host.activePage()]).then(([state, detected]) => {
-        if (run === latest) {
-          setView((previous) => (sameView(previous, { state, detected }) ? previous : { state, detected }));
-        }
-      });
+      Promise.all([send({ type: "state" }), host.activePage()]).then(
+        ([state, detected]) => {
+          if (run === latest) {
+            setLost(false);
+            setView((previous) => (sameView(previous, { state, detected }) ? previous : { state, detected }));
+          }
+        },
+        () => {
+          if (run === latest) {
+            setLost(true);
+          }
+        },
+      );
     }
     refresh();
     const unsubscribe = host.subscribe(refresh);
@@ -86,8 +95,14 @@ export function SidePanel({ send, host }: { send: Send; host: PanelHost }) {
   }, [send, host]);
 
   return (
-    <main className="sidepanel" aria-busy={view === null}>
-      {view !== null && <Content view={view} send={send} />}
+    <main className="sidepanel" aria-busy={view === null && !lost}>
+      {lost ? (
+        <p className="sidepanel-note" role="alert">
+          Расширение перезапустилось — закройте и откройте панель
+        </p>
+      ) : (
+        view !== null && <Content view={view} send={send} />
+      )}
     </main>
   );
 }

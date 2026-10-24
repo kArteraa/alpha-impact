@@ -78,6 +78,17 @@ describe("Layout", () => {
     await waitFor(() => expect(count()).toBe("3"));
   });
 
+  it("keeps the chosen company after the role is changed", async () => {
+    await renderShell();
+    chooseOption("Компания", /СтройЛизинг/);
+    expect(await screen.findByText("Цемент подорожал на 9%")).toBeTruthy();
+    cleanup();
+
+    await renderShell();
+    expect(await screen.findByText("Цемент подорожал на 9%")).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Компания" }).textContent).toContain("СтройЛизинг");
+  });
+
   it("switches the company and shows its own feed on the same screen", async () => {
     await renderShell();
     expect(await screen.findByText("Логистика в убытке")).toBeTruthy();

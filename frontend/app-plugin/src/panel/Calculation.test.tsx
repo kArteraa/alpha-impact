@@ -11,7 +11,7 @@ const RATE_BURDEN: WhatIfResult = {
   value: -290_000,
   unit: "RUB",
   formula: "50 000 000 ₽ × (13,42% − 14%) × 12/12 мес. = −290 000 ₽",
-  assumptions: ["ставка меняется сразу и держится весь срок"],
+  assumptions: ["ожидаемая ставка действует весь срок"],
 };
 
 function withCalculation(calculation: WhatIfResult): InterpretResponse {
@@ -28,7 +28,10 @@ function spaced(text: string | null | undefined) {
 }
 
 describe("InsightPanel calculation", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it("shows what was calculated, the signed sum, the formula and every assumption", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} />);
@@ -47,7 +50,7 @@ describe("InsightPanel calculation", () => {
 
     const block = calculation();
     expect(within(block).getByText("Изменение процентных расходов при плавающей ставке")).toBeTruthy();
-    expect(spaced(block.querySelector(".calc-value")?.textContent)).toMatch(/^[−-]290 000 ₽$/);
+    expect(spaced(block.querySelector(".calc-value")?.textContent)).toBe("−290 000 ₽");
   });
 
   it.each(["fx_exposure", "constructor"])("shows no caption for a calculation it does not know: %s", (kind) => {
@@ -76,7 +79,6 @@ describe("InsightPanel calculation", () => {
     const assumptions = within(calculation()).getByRole("list", { name: "Допущения" });
     expect(assumptions.querySelectorAll("li").length).toBe(2);
     expect(error).not.toHaveBeenCalled();
-    error.mockRestore();
   });
 
   it("has no calculation block when the card carries none", () => {

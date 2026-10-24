@@ -30,11 +30,23 @@ export const PAGE_DOMAINS: Record<PageType, readonly string[]> = {
     "expert.ru",
   ],
   counterparty: ["rusprofile.ru", "checko.ru", "list-org.com", "focus.kontur.ru", "zachestnyibiznes.ru", "sbis.ru"],
-  tender: ["zakupki.gov.ru", "rts-tender.ru", "sberbank-ast.ru", "roseltorg.ru", "b2b-center.ru", "fabrikant.ru"],
-  fx_rate: ["cbr.ru", "moex.com", "investing.com", "profinance.ru"],
+  tender: [
+    "zakupki.gov.ru",
+    "rts-tender.ru",
+    "223.rts-tender.ru",
+    "sberbank-ast.ru",
+    "roseltorg.ru",
+    "b2b-center.ru",
+    "fabrikant.ru",
+  ],
+  fx_rate: ["cbr.ru", "moex.com", "investing.com", "ru.investing.com", "profinance.ru"],
 };
 
 export const PAGE_TEXT_MAX_CHARS = 2000;
+
+export const TRACKING_PARAMS = ["from", "yclid", "gclid", "fbclid", "_openstat"];
+
+export const TRACKING_PREFIX = "utm_";
 
 export const ARTICLE_MIN_CHARS = 300;
 
