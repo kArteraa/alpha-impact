@@ -87,7 +87,7 @@ class HttpMetrics:
             await self._app(scope, receive, capture)
         finally:
             route = scope.get("route")
-            if isinstance(route, APIRoute):
+            if isinstance(route, APIRoute) and scope["method"] in (route.methods or ()):
                 labels = (scope["method"], route.path_format)
                 HTTP_REQUESTS.labels(*labels, str(status)).inc()
                 HTTP_DURATION.labels(*labels).observe(perf_counter() - start)
@@ -95,7 +95,8 @@ class HttpMetrics:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    server, _ = start_http_server(app.state.container.resolve(Settings).METRICS_PORT)
+    settings = app.state.container.resolve(Settings)
+    server, _ = start_http_server(settings.METRICS_PORT, settings.METRICS_HOST)
     yield
     server.shutdown()
     server.server_close()

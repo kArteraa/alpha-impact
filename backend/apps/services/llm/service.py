@@ -19,7 +19,7 @@ from apps.services.llm.errors import (
 )
 from apps.services.llm.metrics import CACHE, OK, count_call, count_spend
 from apps.services.llm.store import UsageStore
-from shared.contracts.errors import BudgetExceeded, DomainError
+from shared.contracts.errors import BudgetExceeded
 
 EMBED_TASK = "embed"
 REASONING_OFF = "reasoning_off"
@@ -105,17 +105,18 @@ class ModelGateway:
         timeout_seconds = self._catalog.timeout(task)
         parts = (task, model, system, user, output_format)
         key = cache_key(*parts) if reasoning else cache_key(*parts, REASONING_OFF)
-        cached = await self._store.cached(key)
-        if cached is not None:
-            count_call(task, model, CACHE)
-            return parse(cached, output_schema), 0, 0, 0.0
         try:
+            cached = await self._store.cached(key)
+            if cached is not None:
+                answer = parse(cached, output_schema)
+                count_call(task, model, CACHE)
+                return answer, 0, 0, 0.0
             reservation = await self._reserve(task, model)
             completion = await self._chat(
                 reservation, system, user, output_format, reasoning, timeout_seconds
             )
             result = await self._accepted(reservation, key, completion, output_schema)
-        except DomainError as error:
+        except Exception as error:
             count_call(task, model, type(error).__name__)
             raise
         count_call(task, model, OK)
@@ -203,10 +204,10 @@ class ModelGateway:
     async def _record(
         self, reservation: Reservation, tokens_in: int, tokens_out: int, cost_rub: float
     ) -> None:
-        count_spend(reservation.task, reservation.model, tokens_in, tokens_out, cost_rub)
         try:
             await self._store.settle(reservation.id, tokens_in, tokens_out, cost_rub)
         except Exception as error:
             raise UsageNotRecorded(
                 f"usage of reservation {reservation.id} is not recorded"
             ) from error
+        count_spend(reservation.task, reservation.model, tokens_in, tokens_out, cost_rub)

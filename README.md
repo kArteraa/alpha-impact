@@ -98,8 +98,8 @@ docker compose cp front:/app/app-plugin/dist-extension ./alpha-impact-extension
 docker compose --profile monitoring up -d --build --wait
 ```
 
-- [http://localhost:3000](http://localhost:3000) — Grafana без входа (слушает только этот компьютер), домашний дашборд «Alpha Impact»: запросы и коды ответов по маршрутам, задержка p95, доля 5xx, вызовы модели по задаче и исходу, токены, расход и доля кэша, память и CPU API, строки логов с ошибками и поток логов API. Остальные логи — Explore → Loki, метка `service`: `api`, `front`, `seed`, `db`.
-- [http://localhost:9090](http://localhost:9090) — Prometheus; API отдаёт ему метрики внутри сети compose на порту `METRICS_PORT`.
+- [http://localhost:3000](http://localhost:3000) — Grafana без входа, только просмотр и Explore (слушает только этот компьютер), домашний дашборд «Alpha Impact»: запросы и коды ответов по маршрутам, задержка p95, доля 5xx, вызовы модели по задаче и исходу, токены, расход и доля кэша, память и CPU API, строки логов с ошибками и поток логов API. Остальные логи — Explore → Loki, метка `service`: `api`, `front`, `seed`, `db`.
+- [http://localhost:9090](http://localhost:9090) — Prometheus; API отдаёт ему метрики внутри сети compose на `METRICS_HOST:METRICS_PORT`.
 
 Метрики модели считают только вызовы самого API (карточки, критик, уточняющий вопрос, страницы расширения): команды `seed` идут отдельными процессами, их расход входит в дневной бюджет (`llm_usage`), но не в дашборд. Остановить вместе со стеком — `docker compose --profile monitoring down`; история метрик и логов остаётся в томах `prometheusdata` и `lokidata`.
 
@@ -149,7 +149,7 @@ cd frontend && npm ci && npx playwright install chromium && npx playwright test 
 | `RELEVANCE_THRESHOLD` | порог значимости события для компании |
 | `EXTENSION_TOKEN_TTL_SECONDS` | срок токена расширения |
 | `NEWS_RSS_URLS` | ленты деловых СМИ для индекса новостей |
-| `METRICS_PORT` | порт, на котором API отдаёт метрики Prometheus; в compose задан у сервиса `api`, в `.env` нужен для запусков на хосте |
+| `METRICS_HOST`, `METRICS_PORT` | адрес и порт, на которых API отдаёт метрики Prometheus; в compose заданы у сервиса `api`, в `.env` нужны для запусков на хосте |
 
 ## Команда
 
@@ -238,7 +238,7 @@ cd backend && uv run --env-file ../.env python -m scripts.export_metrics --since
 - после AH-54: `LLM_API_BASE` — адрес прокси кейса `https://changellenge.up.railway.app/v1` (старая строка в `.env` перекрывает его — замените или удалите), `LLM_API_KEY` — ключ кейса; `MODEL_EMBED` больше не используется;
 - после AH-70: `LLM_INTERACTIVE_TIMEOUT_SECONDS=12` — таймаут плана и черновика карточки (`interpret`, `followup`), остальные вызовы — `LLM_TIMEOUT_SECONDS`; `MODEL_INTERPRET` и `MODEL_FOLLOWUP` — `deepseek/deepseek-v4.1-flash`;
 - после AH-13: `NEWS_RSS_URLS` — рубрики Коммерсанта и Ведомостей и лента Интерфакса, как в `.env.example` (старая строка с общими лентами и РБК перекрывает его — замените или удалите);
-- после AH-74: `METRICS_PORT=9000` — без него тесты на хосте падают на чтении настроек.
+- после AH-74: `METRICS_HOST=127.0.0.1` и `METRICS_PORT=9000` — без них тесты на хосте падают на чтении настроек.
 
 Проверка перед коммитом (ruff, mypy, import-linter, pytest, vitest, сборка) — раздел «Проверка» в [docs/PIPELINE.md](docs/PIPELINE.md).
 

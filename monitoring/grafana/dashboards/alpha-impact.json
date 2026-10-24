@@ -102,13 +102,14 @@
       "id": 7,
       "type": "timeseries",
       "title": "Вызовы модели по задаче и исходу",
+      "interval": "1m",
       "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": { "defaults": { "unit": "short" } },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (task, outcome) (increase(llm_calls_total[$__rate_interval]))",
+          "expr": "sum by (task, outcome) (increase(llm_calls_total[$__interval]))",
           "legendFormat": "{{task}} · {{outcome}}"
         }
       ]
@@ -117,13 +118,14 @@
       "id": 8,
       "type": "timeseries",
       "title": "Токены по модели",
+      "interval": "1m",
       "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "fieldConfig": { "defaults": { "unit": "short" } },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (model, direction) (increase(llm_tokens_total[$__rate_interval]))",
+          "expr": "sum by (model, direction) (increase(llm_tokens_total[$__interval]))",
           "legendFormat": "{{model}} · {{direction}}"
         }
       ]

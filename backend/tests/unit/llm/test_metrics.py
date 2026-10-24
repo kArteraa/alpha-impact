@@ -1,8 +1,15 @@
+from datetime import date
+
 import httpx
 import pytest
 from pydantic import BaseModel
 
-from apps.services.llm.errors import CacheNotWritten, ModelOutputInvalid, ModelUnavailable
+from apps.services.llm.errors import (
+    CacheNotWritten,
+    ModelOutputInvalid,
+    ModelUnavailable,
+    UsageNotRecorded,
+)
 from shared.contracts.errors import BudgetExceeded
 from tests.unit.conftest import sample
 from tests.unit.llm.fakes import ROUTES, TODAY, MemoryStore, ModelServer, Usage, make_gateway
@@ -88,6 +95,41 @@ async def test_paid_answer_that_cannot_be_cached_still_counts_its_spend() -> Non
     assert grown(before, usage("annotate", "CacheNotWritten")) == pytest.approx(
         {"calls": 1, "tokens_in": 40, "tokens_out": 9, "cost_rub": 0.2}
     )
+
+
+class BrokenSettleStore(MemoryStore):
+    async def settle(
+        self, reservation: int, tokens_in: int, tokens_out: int, cost_rub: float
+    ) -> None:
+        raise RuntimeError("database is down")
+
+
+async def test_unrecorded_spend_is_not_counted_beyond_the_ledger() -> None:
+    server = ModelServer(tokens_in=40, tokens_out=9, cost_rub=3.2)
+    before = usage("annotate", "UsageNotRecorded")
+    with pytest.raises(UsageNotRecorded):
+        await make_gateway(server.http_client(), BrokenSettleStore()).complete(
+            "annotate", "sys", "usr"
+        )
+    assert grown(before, usage("annotate", "UsageNotRecorded")) == pytest.approx(
+        {"calls": 1, "tokens_in": 0, "tokens_out": 0, "cost_rub": 0}
+    )
+
+
+class BrokenReserveStore(MemoryStore):
+    async def reserve(
+        self, day: date, task: str, model: str, amount_rub: float, spendable_rub: float
+    ) -> int | None:
+        raise RuntimeError("database is down")
+
+
+async def test_store_failure_is_counted_as_an_outcome() -> None:
+    before = usage("interpret", "RuntimeError")
+    with pytest.raises(RuntimeError):
+        await make_gateway(ModelServer().http_client(), BrokenReserveStore()).complete(
+            "interpret", "sys", "usr"
+        )
+    assert grown(before, usage("interpret", "RuntimeError"))["calls"] == 1
 
 
 async def test_exhausted_budget_counts_a_refused_call_without_spending() -> None:

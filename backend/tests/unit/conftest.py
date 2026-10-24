@@ -20,6 +20,7 @@ SETTINGS_ENV = {
     "CACHE_TTL_SECONDS": "3600",
     "EXTENSION_TOKEN_TTL_SECONDS": "3600",
     "NEWS_RSS_URLS": '["https://a.example/rss","https://b.example/rss"]',
+    "METRICS_HOST": "127.0.0.1",
     "METRICS_PORT": "0",
 }
 

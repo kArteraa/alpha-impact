@@ -12,6 +12,7 @@ def test_reads_every_variable_from_environment(settings_env: dict[str, str]) -> 
     assert settings.RELEVANCE_THRESHOLD == 0.3
     assert settings.CACHE_TTL_SECONDS == 3600
     assert settings.NEWS_RSS_URLS == ["https://a.example/rss", "https://b.example/rss"]
+    assert settings.METRICS_HOST == "127.0.0.1"
     assert settings.METRICS_PORT == 0
 
 

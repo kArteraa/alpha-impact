@@ -27,4 +27,5 @@ class Settings(BaseSettings):
     CACHE_TTL_SECONDS: int
     EXTENSION_TOKEN_TTL_SECONDS: int = Field(gt=0)
     NEWS_RSS_URLS: list[str]
+    METRICS_HOST: str
     METRICS_PORT: int = Field(ge=0, le=65535)

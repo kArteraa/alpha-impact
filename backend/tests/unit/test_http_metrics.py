@@ -49,6 +49,14 @@ async def test_unknown_path_adds_no_series(app: FastAPI) -> None:
     assert "no-such-page" not in exposition()
 
 
+async def test_method_the_route_does_not_accept_adds_no_series(app: FastAPI) -> None:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.request("XQZMETHOD", "/health")
+    assert response.status_code == 405
+    assert "XQZMETHOD" not in exposition()
+
+
 async def test_unhandled_error_is_counted_as_500(app: FastAPI) -> None:
     async def boom() -> None:
         raise RuntimeError("boom")
