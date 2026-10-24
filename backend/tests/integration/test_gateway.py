@@ -10,7 +10,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from shared.config.settings import Settings
-from shared.contracts.errors import BudgetExceeded, DomainError
+from shared.contracts.errors import BudgetExceeded, ChargedModelError, DomainError
 from shared.contracts.ports import HouseViewService, Interpreter
 from shared.contracts.schemas import (
     Claim,
@@ -288,7 +288,11 @@ async def test_interpret_calls_are_journaled(
 
 @pytest.mark.parametrize(
     ("error", "status_code"),
-    [(DomainError("bad draft"), 422), (BudgetExceeded("no budget"), 503)],
+    [
+        (DomainError("bad draft"), 422),
+        (BudgetExceeded("no budget"), 503),
+        (ChargedModelError("model API timed out"), 503),
+    ],
 )
 async def test_interpreter_errors_map_to_http(
     logged_in: httpx.AsyncClient, interpreter: FakeInterpreter, error: Exception, status_code: int
