@@ -153,6 +153,20 @@ describe("InsightPanel card", () => {
     );
   });
 
+  it("keeps a report path with control characters or an empty gateway as text", () => {
+    const base = mockResponses.cards.cards[0];
+    const sneaky = { kind: "house_view", id: "hv-sneaky", title: "Отчёт", url: "/	/evil.example/x.pdf", published_at: null } as const;
+    const card = { ...base, basis: [sneaky] };
+    const { rerender } = render(
+      <InsightPanel actionContext={context} role="cfo" response={{ ...mockResponses.cards, cards: [card] }} apiBase="/api" />,
+    );
+    const basis = () => screen.getByRole("region", { name: "На чём основан вывод" });
+    expect(within(basis()).queryByRole("link")).toBeNull();
+
+    rerender(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} apiBase="" />);
+    expect(within(basis()).queryByRole("link")).toBeNull();
+  });
+
   it("keeps a report source as text when the host has no gateway", () => {
     render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.rates} />);
 
@@ -211,6 +225,34 @@ describe("InsightPanel card", () => {
     const bank = screen.getByRole("region", { name: "Как это оценивает банк" });
     expect(within(bank).queryByText(/Отчёт от/)).toBeNull();
     expect(within(bank).getByText("Обзор отраслей Альфа-Банка, стр. 4")).toBeTruthy();
+  });
+
+  it("names company traits and recipient aggregates in words, not keys", () => {
+    const trait = { kind: "profile", id: "import_countries", title: "Признак компании: import_countries", url: null, published_at: null } as const;
+    const share = { kind: "graph", id: "share_of_client_outflow", title: "Контекст контрагента: share_of_client_outflow", url: null, published_at: null } as const;
+    const base = mockResponses.cards.cards[0];
+    const card = {
+      ...base,
+      why_for_you: [{ text: "Импорт из Китая и Турции", type: "fact", source_ref: trait } as const],
+      basis: [trait, share],
+    };
+    render(<InsightPanel actionContext={context} role="cfo" response={{ ...mockResponses.cards, cards: [card] }} />);
+
+    const why = screen.getByRole("region", { name: "Почему это важно для вас" });
+    expect(within(why).getByText("Страны импорта").className).toContain("chip");
+    const basis = screen.getByRole("region", { name: "На чём основан вывод" });
+    expect(within(basis).getByText("Доля сегмента получателя в оттоке компании")).toBeTruthy();
+    expect(within(basis).queryByText(/import_countries|share_of_client_outflow/)).toBeNull();
+  });
+
+  it("lists one report page once even when two claims quote it", () => {
+    const page = { kind: "house_view", title: "ALFA-7M26.pdf, стр. 1", url: "/reports/ALFA-7M26.pdf#page=1", published_at: null } as const;
+    const base = mockResponses.cards.cards[0];
+    const card = { ...base, basis: [{ ...page, id: "hv-1" }, { ...page, id: "hv-2" }] };
+    render(<InsightPanel actionContext={context} role="cfo" response={{ ...mockResponses.cards, cards: [card] }} apiBase="/api" />);
+
+    const basis = screen.getByRole("region", { name: "На чём основан вывод" });
+    expect(within(basis).getAllByText("ALFA-7M26.pdf, стр. 1")).toHaveLength(1);
   });
 
   it("names the type of every source", () => {
@@ -280,6 +322,21 @@ describe("InsightPanel card", () => {
     expect((await screen.findByRole("status")).textContent).toBe("Отзыв не отправлен");
     expect(useful.getAttribute("aria-pressed")).toBe("false");
     expect(useful.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("clears the failure note when the chosen answer is pressed again after a failed change", async () => {
+    const onFeedback = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("offline"));
+    render(<InsightPanel actionContext={context} role="cfo" response={mockResponses.cards} onFeedback={onFeedback} />);
+    const useful = screen.getByRole("button", { name: "Полезно" });
+
+    fireEvent.click(useful);
+    await waitFor(() => expect(useful.getAttribute("aria-pressed")).toBe("true"));
+    fireEvent.click(screen.getByRole("button", { name: "Не полезно" }));
+    expect((await screen.findByRole("status")).textContent).toBe("Отзыв не отправлен");
+
+    fireEvent.click(useful);
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    expect(onFeedback).toHaveBeenCalledTimes(2);
   });
 
   it("hides feedback without a handler", () => {

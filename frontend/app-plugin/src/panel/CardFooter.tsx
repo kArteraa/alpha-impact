@@ -21,6 +21,7 @@ function Feedback({ cardId, onFeedback }: { cardId: string; onFeedback: Feedback
 
   async function send(useful: boolean) {
     if (useful === chosen) {
+      setStatus("idle");
       return;
     }
     setStatus("sending");
