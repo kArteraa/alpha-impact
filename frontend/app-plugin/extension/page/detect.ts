@@ -9,7 +9,7 @@ import {
   TRACKING_PREFIX,
 } from "../config";
 import type { DetectedPage } from "../messages";
-import { hidePersonInns, legalInnsIn } from "./inn";
+import { companyInnOf, hidePersonInns } from "./inn";
 import { heading, paragraphs, textLines } from "./text";
 
 const PURCHASE_NUMBER = /№\s*(\d{11,19})(?!\d)/;
@@ -47,7 +47,7 @@ function counterparty(body: HTMLElement): Extracted | null {
   if (page === null) {
     return null;
   }
-  const [inn] = legalInnsIn(page.lines.join("\n"));
+  const inn = companyInnOf(page.lines.join("\n"));
   return inn === undefined ? null : { ...page, entities: [`inn:${inn}`] };
 }
 
@@ -81,14 +81,16 @@ const RULES: Record<PageType, Rule> = { article, counterparty, tender, fx_rate: 
 export function detectPage(document: Document, url: string): DetectedPage | null {
   const address = new URL(url);
   address.hash = "";
-  for (const name of [...address.searchParams.keys()]) {
-    if (name.startsWith(TRACKING_PREFIX) || TRACKING_PARAMS.includes(name)) {
-      address.searchParams.delete(name);
-    }
-  }
   const pageType = pageTypeOf(address.hostname);
   if (pageType === undefined || document.body === null) {
     return null;
+  }
+  if (pageType === "article") {
+    for (const name of [...address.searchParams.keys()]) {
+      if (name.startsWith(TRACKING_PREFIX) || TRACKING_PARAMS.includes(name)) {
+        address.searchParams.delete(name);
+      }
+    }
   }
   const extracted = RULES[pageType](document.body);
   if (extracted === null) {

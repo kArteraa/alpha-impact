@@ -26,6 +26,7 @@ export function hidePersonInns(text: string): string {
   return text.replace(CANDIDATE, (value) => (value.length === PERSON_INN_LENGTH && validInn(value) ? HIDDEN_INN : value));
 }
 
-export function legalInnsIn(text: string): string[] {
-  return innsIn(text).filter((value) => value.length === LEGAL_INN_LENGTH);
+export function companyInnOf(text: string): string | undefined {
+  const [first] = innsIn(text);
+  return first?.length === LEGAL_INN_LENGTH ? first : undefined;
 }

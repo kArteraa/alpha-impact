@@ -61,8 +61,13 @@ export function significanceLevel(significance: number): number {
   return Math.min(SIGNIFICANCE_LEVELS, Math.max(1, Math.ceil(significance * SIGNIFICANCE_LEVELS)));
 }
 
+export function knownTitle(source: SourceRef): string | null {
+  const names = NAMED_SOURCES[source.kind];
+  return names && Object.hasOwn(names, source.id) ? names[source.id] : (source.title ?? null);
+}
+
 export function sourceTitle(source: SourceRef): string {
-  return NAMED_SOURCES[source.kind]?.[source.id] ?? source.title ?? source.id;
+  return knownTitle(source) ?? source.id;
 }
 
 export function formatValue(value: number, unit: string): string {

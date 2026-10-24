@@ -245,6 +245,22 @@ describe("InsightPanel card", () => {
     expect(within(basis).queryByText(/import_countries|share_of_client_outflow/)).toBeNull();
   });
 
+  it("names a trait without a title by its key and does not trip on prototype keys", () => {
+    const untitled = { kind: "profile", id: "import_countries", title: null, url: null, published_at: null } as const;
+    const odd = { kind: "graph", id: "constructor", title: "Агрегат", url: null, published_at: null } as const;
+    const base = mockResponses.cards.cards[0];
+    const card = {
+      ...base,
+      why_for_you: [{ text: "Импорт из Китая", type: "fact", source_ref: untitled } as const],
+      basis: [untitled, odd],
+    };
+    render(<InsightPanel actionContext={context} role="cfo" response={{ ...mockResponses.cards, cards: [card] }} />);
+
+    const why = screen.getByRole("region", { name: "Почему это важно для вас" });
+    expect(within(why).getByText("Страны импорта").className).toContain("chip");
+    expect(within(screen.getByRole("region", { name: "На чём основан вывод" })).getByText("Агрегат")).toBeTruthy();
+  });
+
   it("lists one report page once even when two claims quote it", () => {
     const page = { kind: "house_view", title: "ALFA-7M26.pdf, стр. 1", url: "/reports/ALFA-7M26.pdf#page=1", published_at: null } as const;
     const base = mockResponses.cards.cards[0];
