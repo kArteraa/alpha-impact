@@ -6,7 +6,7 @@ from typing import Literal, Protocol
 import yaml
 from pydantic import BaseModel, TypeAdapter
 
-from apps.services.gateway.service import InterpretGateway
+from apps.services.gateway.service import InterpretGateway, needs_review
 from main import build_container
 from scripts.seed import SEED_DIR
 from shared.contracts.ports import LLMGateway
@@ -32,7 +32,7 @@ def load_steps(path: Path) -> list[DemoStep]:
 
 
 def outcome(response: InterpretResponse) -> Literal["card", "silent", "unchecked"]:
-    if any(card.needs_review for card in response.cards):
+    if needs_review(response):
         return "unchecked"
     return "card" if response.cards else "silent"
 

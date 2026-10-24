@@ -39,7 +39,7 @@ class InterpretGateway:
             except Exception as error:
                 await self._record(self._call(request, start, type(error).__name__))
                 raise
-            if not _needs_review(response):
+            if not needs_review(response):
                 await self._remember(key, response)
         trace_id = response.cards[0].trace_id if response.cards else None
         await self._record(self._call(request, start, "ok", cached, trace_id))
@@ -77,5 +77,5 @@ class InterpretGateway:
         )
 
 
-def _needs_review(response: InterpretResponse) -> bool:
+def needs_review(response: InterpretResponse) -> bool:
     return any(card.needs_review for card in response.cards)

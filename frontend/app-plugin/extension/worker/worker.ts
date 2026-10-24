@@ -88,9 +88,13 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
     return SIGNED_OUT;
   }
 
+  function expired(at: string): boolean {
+    return !(Date.parse(at) > now());
+  }
+
   async function current(): Promise<Session | null> {
     const stored = await session.get<Session>(SESSION_KEY);
-    if (stored !== undefined && !(Date.parse(stored.expiresAt) > now())) {
+    if (stored !== undefined && expired(stored.expiresAt)) {
       await endSession();
       return null;
     }
@@ -109,7 +113,7 @@ export function createWorker({ api, session, local, now }: WorkerDeps): Send {
   async function login(userId: string): Promise<ExtensionState> {
     const user = await api.authMock(userId);
     const [{ token, expires_at }, clients] = await Promise.all([api.extensionToken(), api.clients()]);
-    if (!(Date.parse(expires_at) > now())) {
+    if (expired(expires_at)) {
       throw new Error(`Extension token expires at ${expires_at || "an unreadable time"}`);
     }
     const created: Session = { userId: user.user_id, token, expiresAt: expires_at, clients };

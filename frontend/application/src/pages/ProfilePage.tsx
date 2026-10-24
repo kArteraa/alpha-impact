@@ -1,4 +1,4 @@
-import { type ClientProfile, type Feature, ROLE_LABELS } from "@alpha-impact/plugin";
+import { type ClientProfile, FEATURE_LABELS, type Feature, ROLE_LABELS } from "@alpha-impact/plugin";
 import { useCallback, useId, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ApiError, api } from "../api/client";
@@ -55,13 +55,13 @@ function FeatureRow({ name, feature, onSave }: FeatureRowProps) {
   return (
     <li className="feature" aria-labelledby={labelId}>
       <span id={labelId} className={draft === null ? "feature-label" : "visually-hidden"}>
-        {spec.label}
+        {FEATURE_LABELS[name]}
       </span>
       {options === undefined || draft === null ? (
         <span className="feature-value">{featureText(name, feature.value)}</span>
       ) : (
         <Select
-          label={spec.label}
+          label={FEATURE_LABELS[name]}
           value={draft}
           options={Object.entries(options).map(([value, text]) => ({ value, label: text }))}
           onChange={setDraft}
