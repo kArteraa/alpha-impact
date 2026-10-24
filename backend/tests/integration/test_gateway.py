@@ -355,8 +355,8 @@ def schema_ref(operation: dict[str, Any], *path: str) -> str:
 def test_openapi_matches_contracts(app: FastAPI) -> None:
     openapi = app.openapi()
     paths = openapi["paths"]
-    for method, path in ROUTES:
-        assert method.lower() in paths.get(path, {}), f"{method} {path}"
+    served = {(method.upper(), path) for path, item in paths.items() for method in item}
+    assert served - {("GET", "/health")} == set(ROUTES)
     json_body = ("requestBody", "content", "application/json", "schema")
     ok_body = ("responses", "200", "content", "application/json", "schema")
     interpret = paths["/interpret"]["post"]
